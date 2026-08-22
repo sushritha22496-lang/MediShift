@@ -152,7 +152,19 @@ func _spawn_storm_bolt() -> void:
 	if not player:
 		return
 	var bolt_pos := player.global_position + Vector2(randf_range(-300, 300), -400)
-	pass
+	var bolt := ColorRect.new()
+	bolt.size = Vector2(8, 400)
+	bolt.color = Color(0.8, 0.85, 1.0, 0.8)
+	bolt.position = bolt_pos
+	add_child(bolt)
+	AudioManager.play_sfx("explosion")
+
+	await get_tree().create_timer(0.3).timeout
+	var strike_pos: Vector2 = bolt_pos + Vector2(4.0, 380.0)
+	if is_instance_valid(player) and player.global_position.distance_to(strike_pos) < 80.0 \
+	   and player.has_method("take_damage"):
+		player.take_damage(15.0, strike_pos)
+	bolt.queue_free()
 
 func _show_task(text: String) -> void:
 	if $HUD:
