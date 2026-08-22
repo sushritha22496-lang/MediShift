@@ -308,11 +308,13 @@ func _handle_attack(delta: float) -> void:
 	else:
 		heavy_hold_timer = 0.0
 
+var current_attack_damage: float = 0.0
+
 func _do_light_attack() -> void:
 	is_attacking = true
 	attack_cooldown = 0.35
+	current_attack_damage = gada_damage * gada_damage_multiplier
 	attack_hitbox.monitoring = true
-	_apply_hit_damage(gada_damage * gada_damage_multiplier)
 	AudioManager.play_sfx("gada_swing")
 	_play_anim("attack_light")
 	await get_tree().create_timer(0.25).timeout
@@ -322,29 +324,19 @@ func _do_light_attack() -> void:
 func _do_heavy_attack() -> void:
 	is_attacking = true
 	attack_cooldown = 0.8
+	current_attack_damage = heavy_damage * gada_damage_multiplier
 	attack_hitbox.monitoring = true
-	_apply_hit_damage(heavy_damage * gada_damage_multiplier)
 	AudioManager.play_sfx("gada_heavy")
 	_play_anim("attack_heavy")
 	await get_tree().create_timer(0.5).timeout
 	attack_hitbox.monitoring = false
 	is_attacking = false
 
-func _apply_hit_damage(dmg: float) -> void:
-	var bodies := attack_hitbox.get_overlapping_bodies()
-	for body in bodies:
-		if body.has_method("take_damage"):
-			var final_dmg := dmg if not one_hit_kill else 99999.0
-			body.take_damage(final_dmg, global_position)
-			AudioManager.play_sfx("gada_hit")
-			add_rage(10.0)
-
 func _on_hit_body(body: Node2D) -> void:
 	if body.has_method("take_damage"):
-		var dmg := gada_damage * gada_damage_multiplier
-		if one_hit_kill:
-			dmg = 99999.0
+		var dmg := current_attack_damage if not one_hit_kill else 99999.0
 		body.take_damage(dmg, global_position)
+		AudioManager.play_sfx("gada_hit")
 		add_rage(10.0)
 
 func _on_tail_hit(body: Node2D) -> void:
