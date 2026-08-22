@@ -139,6 +139,8 @@ func _handle_movement(delta: float) -> void:
 	if dir != 0.0:
 		facing_right = dir > 0.0
 		sprite.scale.x = 1.0 if facing_right else -1.0
+		attack_hitbox.scale.x = 1.0 if facing_right else -1.0
+		tail_hitbox.scale.x = 1.0 if facing_right else -1.0
 
 	var spd: float = RUN_SPEED if Input.is_action_pressed("dash") else WALK_SPEED
 	spd *= speed_multiplier
@@ -289,8 +291,7 @@ func _handle_scale_transition(delta: float) -> void:
 		target_scale = ANIMA_SCALE
 	else:
 		target_scale = NORMAL_SCALE
-	var sx: float = sign(sprite.scale.x)
-	sprite.scale = sprite.scale.move_toward(target_scale * Vector2(sx, 1.0), SCALE_SPEED * delta)
+	scale = scale.move_toward(target_scale, SCALE_SPEED * delta)
 
 # ─── Attack ───────────────────────────────────────────────────────────────────
 func _handle_attack(delta: float) -> void:
