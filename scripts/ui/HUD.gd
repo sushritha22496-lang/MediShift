@@ -51,6 +51,10 @@ func _connect_signals() -> void:
 		player.power_used.connect(_on_power_used)
 		player.rage_changed.connect(_on_rage_changed)
 		player.rage_filled.connect(_on_rage_filled)
+		player.fly_energy_changed.connect(_on_fly_energy_changed)
+
+func _on_fly_energy_changed(current: float) -> void:
+	fly_bar.value = current
 
 func _on_rage_changed(current: float) -> void:
 	rage_bar.value = current

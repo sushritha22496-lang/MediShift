@@ -73,6 +73,7 @@ signal health_changed(current: float, maximum: float)
 signal died()
 signal rage_filled()
 signal rage_changed(current: float)
+signal fly_energy_changed(current: float)
 signal power_used(power: String)
 
 func _play_anim(anim_name: String) -> void:
@@ -126,6 +127,7 @@ func _handle_timers(delta: float) -> void:
 			is_dashing = false
 	if fly_energy < 100.0 and not is_flying:
 		fly_energy = minf(fly_energy + 20.0 * delta, 100.0)
+		fly_energy_changed.emit(fly_energy)
 	if GameManager.has_power("sanjeevani_aura") and health < max_health and health > 0.0:
 		health = minf(health + 3.0 * delta, max_health)
 		health_changed.emit(health, max_health)
@@ -213,6 +215,7 @@ func _handle_fly(delta: float) -> void:
 			if fly_energy <= 0.0:
 				fly_energy = 0.0
 				is_flying = false
+			fly_energy_changed.emit(fly_energy)
 		if particles_fly:
 			particles_fly.emitting = true
 	else:
