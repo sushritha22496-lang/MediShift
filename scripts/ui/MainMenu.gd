@@ -2,6 +2,7 @@ extends Control
 
 @onready var btn_new: Button = $CenterContainer/VBox/BtnNew
 @onready var btn_continue: Button = $CenterContainer/VBox/BtnContinue
+@onready var btn_map: Button = $CenterContainer/VBox/BtnMap
 @onready var btn_options: Button = $CenterContainer/VBox/BtnOptions
 @onready var btn_quit: Button = $CenterContainer/VBox/BtnQuit
 @onready var options_panel: PanelContainer = $OptionsPanel
@@ -13,6 +14,7 @@ extends Control
 func _ready() -> void:
 	btn_new.pressed.connect(_on_new_game)
 	btn_continue.pressed.connect(_on_continue)
+	btn_map.pressed.connect(_on_map)
 	btn_options.pressed.connect(_on_options)
 	btn_quit.pressed.connect(_on_quit)
 	if options_panel:
@@ -36,6 +38,9 @@ func _confirm_new_game() -> void:
 func _on_continue() -> void:
 	if SaveSystem.load_game():
 		GameManager.start_chapter(GameManager.current_chapter)
+
+func _on_map() -> void:
+	get_tree().change_scene_to_file("res://scenes/ui/world_map.tscn")
 
 func _on_options() -> void:
 	if options_panel:
