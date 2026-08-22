@@ -87,7 +87,80 @@ func _on_dundhubi_defeated(_enemy) -> void:
 	AudioManager.play_bgm("kishkindha")
 	current_task = Task.VALI_FIGHT
 	DialogueManager.start_dialogue("vali_context")
-	DialogueManager.dialogue_ended.connect(_after_vali_context, CONNECT_ONE_SHOT)
+	DialogueManager.dialogue_ended.connect(_after_vali_dialogue, CONNECT_ONE_SHOT)
+
+func _after_vali_dialogue(_id: String) -> void:
+	await _play_vali_fight_cutscene()
+	_after_vali_context("")
+
+func _play_vali_fight_cutscene() -> void:
+	GameManager.set_state(GameManager.GameState.CUTSCENE)
+
+	var layer := CanvasLayer.new()
+	layer.layer = 50
+	add_child(layer)
+
+	var bg := ColorRect.new()
+	bg.color = Color(0, 0, 0, 0.6)
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	layer.add_child(bg)
+
+	var label := Label.new()
+	label.position = Vector2(340, 180)
+	label.size = Vector2(600, 40)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.add_theme_font_size_override("font_size", 20)
+	label.text = "Vali and Sugriva clash in single combat..."
+	layer.add_child(label)
+
+	var vali := ColorRect.new()
+	vali.size = Vector2(50, 90)
+	vali.position = Vector2(500, 300)
+	vali.color = Color(0.13, 0.11, 0.09, 1)
+	layer.add_child(vali)
+
+	var vali_garland := ColorRect.new()
+	vali_garland.size = Vector2(54, 10)
+	vali_garland.position = Vector2(498, 340)
+	vali_garland.color = Color(0.85, 0.7, 0.15, 1)
+	layer.add_child(vali_garland)
+
+	var sugriva := ColorRect.new()
+	sugriva.size = Vector2(50, 90)
+	sugriva.position = Vector2(700, 300)
+	sugriva.color = Color(0.13, 0.11, 0.09, 1)
+	layer.add_child(sugriva)
+
+	AudioManager.play_sfx("gada_swing")
+	var fight_tween := create_tween().set_loops(4)
+	fight_tween.tween_property(vali, "position:x", 520.0, 0.15)
+	fight_tween.tween_property(vali, "position:x", 480.0, 0.15)
+	await fight_tween.finished
+
+	label.text = "From hiding, Rama's arrow flies true..."
+	await get_tree().create_timer(0.5).timeout
+
+	var arrow := ColorRect.new()
+	arrow.size = Vector2(30, 4)
+	arrow.position = Vector2(200, 340)
+	arrow.color = Color(0.85, 0.85, 0.85, 1)
+	layer.add_child(arrow)
+	var arrow_tween := create_tween()
+	arrow_tween.tween_property(arrow, "position:x", 500.0, 0.3)
+	await arrow_tween.finished
+	arrow.queue_free()
+	AudioManager.play_sfx("gada_hit")
+
+	label.text = "Vali falls, struck by the arrow of dharma."
+	var fall_tween := create_tween()
+	fall_tween.tween_property(vali, "rotation_degrees", 90.0, 0.6)
+	fall_tween.parallel().tween_property(vali, "modulate:a", 0.3, 0.6)
+	fall_tween.parallel().tween_property(vali_garland, "modulate:a", 0.3, 0.6)
+	await fall_tween.finished
+
+	await get_tree().create_timer(1.5).timeout
+	layer.queue_free()
+	GameManager.set_state(GameManager.GameState.PLAYING)
 
 func _after_vali_context(_id: String) -> void:
 	current_task = Task.SEARCH_PARTIES
