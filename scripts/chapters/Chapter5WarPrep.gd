@@ -37,12 +37,10 @@ func _after_news(_id: String) -> void:
 	_start_vibhishana_escort()
 
 func _start_vibhishana_escort() -> void:
-	var escort_complete := false
 	await get_tree().create_timer(0.5).timeout
 	_spawn_escort_enemies(5)
 	await get_tree().create_timer(8.0).timeout
-	if not escort_complete:
-		_on_vibhishana_safe()
+	_on_vibhishana_safe()
 
 func _spawn_escort_enemies(count: int) -> void:
 	for i in count:
@@ -67,16 +65,21 @@ func _start_setu_minigame(_id: String) -> void:
 		setu_progress.max_value = SETU_STONES_NEEDED
 		setu_progress.value = 0
 
+const BOULDERS_ACTIVE := 10
+
 func _spawn_boulders() -> void:
-	for i in 10:
-		var b_scene := load("res://scenes/objects/boulder.tscn")
-		if not b_scene:
-			continue
-		var b = b_scene.instantiate()
-		b.global_position = Vector2(randf_range(-200, 200), 300)
-		if b.has_signal("placed_in_ocean"):
-			b.placed_in_ocean.connect(_on_stone_placed)
-		add_child(b)
+	for i in BOULDERS_ACTIVE:
+		_spawn_one_boulder()
+
+func _spawn_one_boulder() -> void:
+	var b_scene := load("res://scenes/objects/boulder.tscn")
+	if not b_scene:
+		return
+	var b = b_scene.instantiate()
+	add_child(b)
+	b.global_position = Vector2(randf_range(-200, 200), 300)
+	if b.has_signal("placed_in_ocean"):
+		b.placed_in_ocean.connect(_on_stone_placed)
 
 func _on_stone_placed() -> void:
 	setu_stones_placed += 1
@@ -88,6 +91,8 @@ func _on_stone_placed() -> void:
 	_spawn_bridge_stone()
 	if setu_stones_placed >= SETU_STONES_NEEDED:
 		_setu_complete()
+	else:
+		_spawn_one_boulder()
 
 func _spawn_bridge_stone() -> void:
 	var stone := ColorRect.new()
