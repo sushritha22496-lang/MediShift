@@ -39,10 +39,20 @@ func _ready() -> void:
 	_show_task("Find the two warriors on Rishyamukha mountain")
 	GameManager.chapter_started.emit(GameManager.Chapter.KISHKINDHA)
 
+const SALA_TREE_POSITIONS: Array[Vector2] = [
+	Vector2(250, 580), Vector2(450, 580), Vector2(650, 580), Vector2(850, 580),
+	Vector2(1050, 580), Vector2(1250, 580), Vector2(1450, 580)
+]
+
 func _setup_sala_trees() -> void:
-	for tree in sala_trees_group.get_children():
-		if tree.has_signal("destroyed"):
-			tree.destroyed.connect(_on_sala_tree_destroyed)
+	var scene := load("res://scenes/objects/sala_tree.tscn")
+	if not scene:
+		return
+	for pos in SALA_TREE_POSITIONS:
+		var tree = scene.instantiate()
+		sala_trees_group.add_child(tree)
+		tree.global_position = pos
+		tree.destroyed.connect(_on_sala_tree_destroyed)
 
 func _trigger_rama_meeting(body: Node) -> void:
 	if not body.is_in_group("player"):

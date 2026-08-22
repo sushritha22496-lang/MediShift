@@ -42,9 +42,19 @@ func _ready() -> void:
 	DialogueManager.start_dialogue("vatika_destruction")
 
 func _setup_vatika() -> void:
-	for obj in vatika_objects.get_children():
-		if obj.has_signal("destroyed"):
-			obj.destroyed.connect(_on_vatika_item_destroyed)
+	var scene := load("res://scenes/objects/vatika_tree.tscn")
+	if not scene:
+		return
+	for i in VATIKA_ITEMS:
+		var tree = scene.instantiate()
+		vatika_objects.add_child(tree)
+		tree.global_position = Vector2(200.0 + float(i) * 55.0, 580.0)
+		tree.destroyed.connect(_on_vatika_item_destroyed)
+
+	for i in 8:
+		var marker := Marker2D.new()
+		guard_spawner.add_child(marker)
+		marker.global_position = Vector2(300.0 + float(i) * 130.0, 500.0)
 
 func _on_vatika_item_destroyed() -> void:
 	vatika_destroyed += 1
@@ -62,16 +72,17 @@ func _start_guard_waves() -> void:
 func _spawn_guard_wave(count: int) -> void:
 	wave_count += 1
 	var spawned: int = 0
+	var guard_scene := load("res://scenes/enemies/demon_guard.tscn")
 	for spawn_point in guard_spawner.get_children():
 		if spawned >= count:
 			break
-		var guard_scene := load("res://scenes/enemies/demon_guard.tscn")
 		if guard_scene:
 			var guard = guard_scene.instantiate()
 			guard.global_position = spawn_point.global_position
 			guard.died.connect(_on_guard_died)
 			add_child(guard)
 			spawned += 1
+	guards_alive = spawned
 
 var guards_alive: int = 0
 func _on_guard_died(_enemy) -> void:
