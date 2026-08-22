@@ -102,6 +102,8 @@ func _state_patrol(delta: float) -> void:
 	velocity.x = patrol_dir * move_speed * 0.5
 	facing_right = patrol_dir > 0.0
 	sprite.scale.x = 1.0 if facing_right else -1.0
+	if attack_area:
+		attack_area.scale.x = 1.0 if facing_right else -1.0
 	_play_anim("walk")
 	if is_on_wall():
 		patrol_dir *= -1.0
@@ -126,6 +128,8 @@ func _state_chase(delta: float) -> void:
 	velocity.x = dir * move_speed
 	facing_right = dir > 0.0
 	sprite.scale.x = 1.0 if facing_right else -1.0
+	if attack_area:
+		attack_area.scale.x = 1.0 if facing_right else -1.0
 	_play_anim("run")
 	if is_flying_enemy:
 		var vy: float = sign(player.global_position.y - global_position.y) * move_speed
