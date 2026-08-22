@@ -94,7 +94,7 @@ func _apply_effect(effect: String, activate: bool) -> void:
 			if player:
 				player.one_hit_kill = activate
 		"all_chapters", "all_levels":
-			pass
+			GameManager.cheat_unlock_all_chapters = activate
 		"super_speed":
 			if player:
 				player.speed_multiplier = 3.0 if activate else 1.0

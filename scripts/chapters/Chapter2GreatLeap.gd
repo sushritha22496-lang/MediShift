@@ -32,16 +32,14 @@ var simhika_triggered: bool = false
 func _ready() -> void:
 	AudioManager.play_bgm("leap")
 	jambavan_trigger.body_entered.connect(_start_jambavan)
-	_show_task("The Vanaras search for a way across the ocean...")
-	_start_jambavan_intro()
+	_show_task("Approach Jambavan — the elder of the Vanaras")
 
-func _start_jambavan_intro() -> void:
-	await get_tree().create_timer(1.0).timeout
+func _start_jambavan(body: Node) -> void:
+	if not body.is_in_group("player"):
+		return
+	jambavan_trigger.body_entered.disconnect(_start_jambavan)
 	DialogueManager.start_dialogue("great_leap_narration")
 	DialogueManager.dialogue_ended.connect(_after_jambavan, CONNECT_ONE_SHOT)
-
-func _start_jambavan(_body) -> void:
-	pass
 
 func _after_jambavan(_id: String) -> void:
 	GameManager.unlock_power("fly")

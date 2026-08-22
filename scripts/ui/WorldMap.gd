@@ -174,6 +174,8 @@ func _icon_for_type(type: String) -> String:
 func _node_state(n: Dictionary) -> String:
 	if n.chapter == -1:
 		return "lore"
+	if GameManager.cheat_unlock_all_chapters:
+		return "completed" if n.chapter != GameManager.current_chapter else "current"
 	if n.chapter < GameManager.current_chapter:
 		return "completed"
 	elif n.chapter == GameManager.current_chapter:

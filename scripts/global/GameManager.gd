@@ -14,6 +14,7 @@ enum Chapter {
 
 var current_state: GameState = GameState.MENU
 var current_chapter: Chapter = Chapter.KISHKINDHA
+var cheat_unlock_all_chapters: bool = false
 var score: int = 0
 var enemies_defeated: int = 0
 var bosses_defeated: Array[String] = []
@@ -147,6 +148,7 @@ func new_game() -> void:
 	powers_unlocked["gada"] = true
 	for key in story_flags:
 		story_flags[key] = false
+	cheat_unlock_all_chapters = false
 	CheatCodes.reset()
 	start_chapter(Chapter.KISHKINDHA)
 
