@@ -41,6 +41,11 @@ const TYPE_COLORS: Dictionary = {
 	"palace": Color(0.75, 0.6, 0.1),
 }
 
+const CHAPTER_MARKER_NODE: Dictionary = {
+	1: "rishya", 2: "mahendra", 3: "gates", 4: "vatika",
+	5: "setu", 6: "battle", 7: "ayodhya"
+}
+
 const WILDLIFE: Array[Dictionary] = [
 	{"name": "Elephants", "pos": Vector2(340, 300), "color": Color(0.5, 0.45, 0.42)},
 	{"name": "Tigers",    "pos": Vector2(430, 330), "color": Color(0.8, 0.5, 0.1)},
@@ -66,6 +71,7 @@ func _ready() -> void:
 	_draw_path()
 	_spawn_nodes()
 	_spawn_wildlife()
+	_spawn_hanuman_marker()
 	AudioManager.play_bgm("kishkindha")
 
 func _draw_path() -> void:
@@ -127,6 +133,29 @@ func _spawn_wildlife() -> void:
 		label.add_theme_font_size_override("font_size", 10)
 		label.modulate = Color(1, 1, 1, 0.7)
 		wildlife_container.add_child(label)
+
+func _spawn_hanuman_marker() -> void:
+	var node_id: String = CHAPTER_MARKER_NODE.get(GameManager.current_chapter, "rishya")
+	var target_pos: Vector2 = Vector2.ZERO
+	for n in NODES:
+		if n.id == node_id:
+			target_pos = n.pos
+			break
+
+	var marker := ColorRect.new()
+	marker.size = Vector2(20, 26)
+	marker.position = target_pos + Vector2(-10, -60)
+	marker.color = Color(0.93, 0.4, 0.05, 1)
+	node_container.add_child(marker)
+
+	var label := Label.new()
+	label.text = "Hanuman"
+	label.position = target_pos + Vector2(-40, -84)
+	label.custom_minimum_size = Vector2(80, 16)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.add_theme_font_size_override("font_size", 11)
+	label.modulate = Color(1, 0.75, 0.4, 1)
+	node_container.add_child(label)
 
 func _icon_for_type(type: String) -> String:
 	match type:

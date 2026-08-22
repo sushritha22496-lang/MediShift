@@ -101,4 +101,18 @@ position = Vector2(2200, 300)
 [node name="MainakaShape" type="CollisionShape2D" parent="Triggers/Mainaka"]
 shape = SubResource("2")
 
+[node name="MainakaPeak" type="ColorRect" parent="Triggers/Mainaka"]
+offset_left = -120.0
+offset_top = -40.0
+offset_right = 120.0
+offset_bottom = 300.0
+color = Color(0.42, 0.4, 0.38, 1)
+
+[node name="MainakaSnowCap" type="ColorRect" parent="Triggers/Mainaka"]
+offset_left = -40.0
+offset_top = -40.0
+offset_right = 40.0
+offset_bottom = -10.0
+color = Color(0.95, 0.95, 0.98, 1)
+
 [node name="StormSpawner" type="Node2D" parent="."]
