@@ -49,6 +49,11 @@ light_energy = 0.3
 mesh = SubResource("ground_mesh")
 surface_material_override/0 = SubResource("ground_mat")
 
+[node name="KeyLight" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, 2.0, -2.5)
+light_energy = 3.5
+omni_range = 8.0
+
 [node name="Hanuman3D" parent="." instance=ExtResource("2")]
 
 [node name="ShowcaseCamera" type="Camera3D" parent="."]
