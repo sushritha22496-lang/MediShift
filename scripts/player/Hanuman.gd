@@ -220,6 +220,8 @@ func _handle_fly(delta: float) -> void:
 
 # ─── Climb ───────────────────────────────────────────────────────────────────
 func _handle_climb() -> void:
+	if climb_detector:
+		climb_detector.target_position.x = absf(climb_detector.target_position.x) * (1.0 if facing_right else -1.0)
 	if climb_detector and climb_detector.is_colliding():
 		on_wall = true
 		if Input.is_action_pressed("jump") or Input.is_action_pressed("move_up"):
