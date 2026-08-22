@@ -1,0 +1,118 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/chapters/Chapter1Kishkindha.gd" id="1"]
+[ext_resource type="PackedScene" path="res://scenes/player/hanuman.tscn" id="2"]
+[ext_resource type="PackedScene" path="res://scenes/ui/hud.tscn" id="3"]
+
+[sub_resource type="RectangleShape2D" id="1"]
+size = Vector2(2000, 40)
+
+[sub_resource type="RectangleShape2D" id="2"]
+size = Vector2(100, 80)
+
+[node name="Chapter1Kishkindha" type="Node2D"]
+script = ExtResource("1")
+
+[node name="Camera2D" type="Camera2D" parent="."]
+zoom = Vector2(1, 1)
+limit_right = 3000
+limit_bottom = 800
+position_smoothing_enabled = true
+position_smoothing_speed = 5.0
+
+[node name="Player" parent="." instance=ExtResource("2")]
+position = Vector2(120, 500)
+
+[node name="HUD" parent="." instance=ExtResource("3")]
+
+[node name="Ground" type="StaticBody2D" parent="."]
+position = Vector2(1000, 620)
+
+[node name="GroundShape" type="CollisionShape2D" parent="Ground"]
+shape = SubResource("1")
+
+[node name="GroundVis" type="ColorRect" parent="Ground"]
+offset_left = -1000.0
+offset_top = -20.0
+offset_right = 1000.0
+offset_bottom = 20.0
+color = Color(0.2, 0.5, 0.15, 1)
+
+[node name="Platforms" type="Node2D" parent="."]
+
+[node name="Platform1" type="StaticBody2D" parent="Platforms"]
+position = Vector2(300, 500)
+
+[node name="P1Shape" type="CollisionShape2D" parent="Platforms/Platform1"]
+shape = SubResource("2")
+
+[node name="P1Vis" type="ColorRect" parent="Platforms/Platform1"]
+offset_left = -50.0
+offset_top = -20.0
+offset_right = 50.0
+offset_bottom = 20.0
+color = Color(0.25, 0.55, 0.18, 1)
+
+[node name="Platform2" type="StaticBody2D" parent="Platforms"]
+position = Vector2(600, 420)
+
+[node name="P2Shape" type="CollisionShape2D" parent="Platforms/Platform2"]
+shape = SubResource("2")
+
+[node name="P2Vis" type="ColorRect" parent="Platforms/Platform2"]
+offset_left = -50.0
+offset_top = -20.0
+offset_right = 50.0
+offset_bottom = 20.0
+color = Color(0.25, 0.55, 0.18, 1)
+
+[node name="Platform3" type="StaticBody2D" parent="Platforms"]
+position = Vector2(900, 340)
+
+[node name="P3Shape" type="CollisionShape2D" parent="Platforms/Platform3"]
+shape = SubResource("2")
+
+[node name="P3Vis" type="ColorRect" parent="Platforms/Platform3"]
+offset_left = -50.0
+offset_top = -20.0
+offset_right = 50.0
+offset_bottom = 20.0
+color = Color(0.25, 0.55, 0.18, 1)
+
+[node name="SpawnPoints" type="Node2D" parent="."]
+
+[node name="Dundhubi" type="Marker2D" parent="SpawnPoints"]
+position = Vector2(1400, 500)
+
+[node name="Triggers" type="Node2D" parent="."]
+
+[node name="RamaMeeting" type="Area2D" parent="Triggers"]
+position = Vector2(800, 400)
+
+[node name="RamaMeetingShape" type="CollisionShape2D" parent="Triggers/RamaMeeting"]
+shape = SubResource("2")
+
+[node name="SalaTrees" type="Node2D" parent="."]
+
+[node name="TaskMarkers" type="Node2D" parent="."]
+
+[node name="Marker1" type="Marker2D" parent="TaskMarkers"]
+position = Vector2(800, 300)
+
+[node name="Background" type="Node2D" parent="."]
+
+[node name="Sky" type="ColorRect" parent="Background"]
+z_index = -10
+offset_left = -200.0
+offset_top = -200.0
+offset_right = 3200.0
+offset_bottom = 650.0
+color = Color(0.5, 0.75, 0.95, 1)
+
+[node name="MountainBG" type="ColorRect" parent="Background"]
+z_index = -9
+offset_left = -200.0
+offset_top = 250.0
+offset_right = 3200.0
+offset_bottom = 650.0
+color = Color(0.3, 0.55, 0.25, 1)
