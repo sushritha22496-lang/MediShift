@@ -25,6 +25,7 @@ var powers_unlocked: Dictionary = {
 	"mahima": false,
 	"anima": false,
 	"laghima": false,
+	"garima": false,
 	"tail_fire": false,
 	"vayuvega": false,
 	"sanjeevani_aura": false,

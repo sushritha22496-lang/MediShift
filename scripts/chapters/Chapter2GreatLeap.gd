@@ -48,6 +48,7 @@ func _after_jambavan(_id: String) -> void:
 	GameManager.unlock_power("mahima")
 	GameManager.unlock_power("anima")
 	GameManager.unlock_power("laghima")
+	GameManager.unlock_power("garima")
 	_show_task("Press [1] to grow (Mahima) — then LEAP across the ocean!")
 	current_task = Task.GROW_AND_LEAP
 	_wait_for_leap()

@@ -39,6 +39,7 @@ var is_flying: bool = false
 var is_climbing: bool = false
 var is_mahima: bool = false
 var is_anima: bool = false
+var is_garima: bool = false
 var on_wall: bool = false
 var facing_right: bool = true
 var rage_meter: float = 0.0
@@ -142,6 +143,8 @@ func _handle_movement(delta: float) -> void:
 		spd *= 0.7
 	if is_anima:
 		spd *= 1.4
+	if is_garima:
+		spd *= 0.4
 
 	if not is_flying and not is_climbing:
 		velocity.x = lerpf(velocity.x, dir * spd, 12.0 * delta)
@@ -238,6 +241,8 @@ func _handle_powers_input() -> void:
 	if Input.is_action_just_pressed("tail_fire") and \
 	   (GameManager.has_power("tail_fire") or fire_mode_permanent):
 		_activate_tail_fire()
+	if Input.is_action_just_pressed("garima") and GameManager.has_power("garima"):
+		_toggle_garima()
 
 func _toggle_mahima() -> void:
 	if is_anima:
@@ -252,6 +257,11 @@ func _toggle_anima() -> void:
 	is_anima = !is_anima
 	AudioManager.play_sfx("anima")
 	power_used.emit("anima")
+
+func _toggle_garima() -> void:
+	is_garima = !is_garima
+	AudioManager.play_sfx("mahima")
+	power_used.emit("garima")
 
 func _activate_tail_fire() -> void:
 	tail_hitbox.monitoring = true
@@ -361,6 +371,8 @@ func _activate_rage_mode() -> void:
 func take_damage(amount: float, source_pos: Vector2 = Vector2.ZERO) -> void:
 	if god_mode or is_dashing:
 		return
+	if is_garima:
+		amount *= 0.7
 	health = maxf(health - amount, 0.0)
 	health_changed.emit(health, max_health)
 	_knockback(source_pos)
@@ -374,6 +386,8 @@ func heal(amount: float) -> void:
 	AudioManager.play_sfx("sanjeevani")
 
 func _knockback(from: Vector2) -> void:
+	if is_garima:
+		return
 	var dir := (global_position - from).normalized()
 	velocity += dir * 300.0
 
