@@ -1,6 +1,7 @@
 extends Control
 
 @onready var btn_new: Button = $CenterContainer/VBox/BtnNew
+@onready var btn_3d: Button = $CenterContainer/VBox/Btn3D
 @onready var btn_continue: Button = $CenterContainer/VBox/BtnContinue
 @onready var btn_map: Button = $CenterContainer/VBox/BtnMap
 @onready var btn_options: Button = $CenterContainer/VBox/BtnOptions
@@ -13,6 +14,7 @@ extends Control
 
 func _ready() -> void:
 	btn_new.pressed.connect(_on_new_game)
+	btn_3d.pressed.connect(_on_play_3d)
 	btn_continue.pressed.connect(_on_continue)
 	btn_map.pressed.connect(_on_map)
 	btn_options.pressed.connect(_on_options)
@@ -38,6 +40,9 @@ func _confirm_new_game() -> void:
 func _on_continue() -> void:
 	if SaveSystem.load_game():
 		GameManager.start_chapter(GameManager.current_chapter)
+
+func _on_play_3d() -> void:
+	get_tree().change_scene_to_file("res://scenes3d/chapters/ch1_kishkindha_3d.tscn")
 
 func _on_map() -> void:
 	get_tree().change_scene_to_file("res://scenes/ui/world_map.tscn")
