@@ -4,7 +4,7 @@
 // Incrementing CACHE_VERSION will kick off the install event and force
 // previously cached resources to be updated from the network.
 /** @type {string} */
-const CACHE_VERSION = '1787423056|6409956';
+const CACHE_VERSION = '1787423123|5476336';
 /** @type {string} */
 const CACHE_PREFIX = 'Hanuman Chronicl-sw-cache-';
 const CACHE_NAME = CACHE_PREFIX + CACHE_VERSION;
