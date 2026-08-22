@@ -96,8 +96,24 @@ func _start_arrow_rain() -> void:
 func _fire_arrow(target_offset: Vector2) -> void:
 	if not player:
 		return
-	var target := player.global_position + target_offset
-	pass
+	var spawn_pos := player.global_position + target_offset
+	var strike_x := spawn_pos.x
+
+	var arrow := ColorRect.new()
+	arrow.size = Vector2(6, 30)
+	arrow.color = Color(0.6, 0.55, 0.5, 1)
+	arrow.position = spawn_pos
+	get_parent().add_child(arrow)
+
+	var ground_y: float = spawn_pos.y + 700.0
+	var fall_tween := create_tween()
+	fall_tween.tween_property(arrow, "position:y", ground_y, 0.6)
+	await fall_tween.finished
+
+	if is_instance_valid(player) and absf(player.global_position.x - strike_x) < 40.0 \
+	   and player.has_method("take_damage"):
+		player.take_damage(attack_damage * 0.5, Vector2(strike_x, ground_y))
+	arrow.queue_free()
 
 # ─── Phase 3: Summon Army ─────────────────────────────────────────────────────
 func _setup_summon() -> void:
@@ -106,7 +122,12 @@ func _setup_summon() -> void:
 		_spawn_minion()
 
 func _spawn_minion() -> void:
-	pass
+	var scene := load("res://scenes/enemies/demon_guard.tscn")
+	if not scene:
+		return
+	var minion = scene.instantiate()
+	get_parent().add_child(minion)
+	minion.global_position = global_position + Vector2(randf_range(-150.0, 150.0), 0.0)
 
 # ─── Phase 4: Illusion Copies ────────────────────────────────────────────────
 func _setup_illusions() -> void:
@@ -114,7 +135,19 @@ func _setup_illusions() -> void:
 		_create_illusion(i)
 
 func _create_illusion(_idx: int) -> void:
-	pass
+	var scene := load("res://scenes/enemies/demon_guard.tscn")
+	if not scene:
+		return
+	var illusion = scene.instantiate()
+	illusion.enemy_name = "Ravana's Illusion"
+	illusion.max_health = 40.0
+	illusion.score_value = 300
+	get_parent().add_child(illusion)
+	illusion.global_position = global_position + Vector2(randf_range(-200.0, 200.0), randf_range(-50.0, 50.0))
+	illusion.modulate = Color(0.7, 0.2, 0.7, 0.75)
+	await get_tree().create_timer(6.0).timeout
+	if is_instance_valid(illusion):
+		illusion.queue_free()
 
 # ─── Phase 5: Brahmastra Charge ───────────────────────────────────────────────
 func _setup_brahmastra() -> void:
@@ -163,10 +196,14 @@ func _phase3_logic(_delta: float) -> void:
 	_setup_summon()
 
 func _phase4_logic(_delta: float) -> void:
-	pass
+	if attack_cooldown <= 0.0:
+		_create_illusion(0)
+		attack_cooldown = 4.0
 
 func _phase5_logic(_delta: float) -> void:
-	pass
+	if attack_cooldown <= 0.0:
+		_setup_brahmastra()
+		attack_cooldown = 6.0
 
 func _phase6_logic(_delta: float) -> void:
 	if player:
