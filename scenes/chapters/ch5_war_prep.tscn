@@ -51,6 +51,22 @@ color = Color(0.6, 0.8, 0.35, 1)
 [node name="Rama" type="Marker2D" parent="Markers"]
 position = Vector2(600, 500)
 
+[node name="RamaVis" type="Node2D" parent="Markers/Rama"]
+
+[node name="RamaBody" type="ColorRect" parent="Markers/Rama/RamaVis"]
+offset_left = -16.0
+offset_top = -60.0
+offset_right = 16.0
+offset_bottom = 20.0
+color = Color(0.16, 0.18, 0.4, 1)
+
+[node name="RamaDhoti" type="ColorRect" parent="Markers/Rama/RamaVis"]
+offset_left = -16.0
+offset_top = -12.0
+offset_right = 16.0
+offset_bottom = 20.0
+color = Color(0.9, 0.75, 0.2, 1)
+
 [node name="SetuZone" type="Node2D" parent="."]
 position = Vector2(1500, 400)
 

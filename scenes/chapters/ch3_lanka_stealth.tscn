@@ -130,6 +130,30 @@ emitting = false
 amount = 20
 lifetime = 0.5
 
+[node name="Sita" type="Node2D" parent="."]
+position = Vector2(2400, 500)
+
+[node name="SitaSkin" type="ColorRect" parent="Sita"]
+offset_left = -14.0
+offset_top = -66.0
+offset_right = 14.0
+offset_bottom = -30.0
+color = Color(0.9, 0.75, 0.55, 1)
+
+[node name="SitaBodice" type="ColorRect" parent="Sita"]
+offset_left = -16.0
+offset_top = -32.0
+offset_right = 16.0
+offset_bottom = -8.0
+color = Color(0.15, 0.45, 0.25, 1)
+
+[node name="SitaSkirt" type="ColorRect" parent="Sita"]
+offset_left = -18.0
+offset_top = -8.0
+offset_right = 18.0
+offset_bottom = 30.0
+color = Color(0.55, 0.1, 0.1, 1)
+
 [node name="AshokaTrees" type="Node2D" parent="."]
 
 [node name="Tree1" type="Node2D" parent="AshokaTrees"]
