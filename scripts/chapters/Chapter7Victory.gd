@@ -38,7 +38,23 @@ func _after_sita_freed(_id: String) -> void:
 	_play_agni_pariksha()
 
 func _play_agni_pariksha() -> void:
+	var fire := ColorRect.new()
+	fire.size = Vector2(60, 90)
+	fire.position = Vector2(430, 375) + Vector2(0, -30)
+	fire.color = Color(0.95, 0.4, 0.05, 0.0)
+	add_child(fire)
+	var flicker := create_tween().set_loops(8)
+	flicker.tween_property(fire, "color:a", 0.75, 0.25)
+	flicker.tween_property(fire, "color:a", 0.4, 0.25)
+	AudioManager.play_sfx("tail_fire")
+
 	await get_tree().create_timer(4.0).timeout
+
+	var fade := create_tween()
+	fade.tween_property(fire, "color:a", 0.0, 1.0)
+	await fade.finished
+	fire.queue_free()
+
 	_show_task("Sita emerges pure! Agni — God of Fire — proclaims her innocence!")
 	await get_tree().create_timer(3.0).timeout
 	_board_vimana()

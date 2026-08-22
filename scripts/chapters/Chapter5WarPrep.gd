@@ -85,8 +85,17 @@ func _on_stone_placed() -> void:
 	if setu_progress:
 		setu_progress.value = setu_stones_placed
 	_show_task("Ram Setu: %d / %d stones placed" % [setu_stones_placed, SETU_STONES_NEEDED])
+	_spawn_bridge_stone()
 	if setu_stones_placed >= SETU_STONES_NEEDED:
 		_setu_complete()
+
+func _spawn_bridge_stone() -> void:
+	var stone := ColorRect.new()
+	stone.size = Vector2(26, 18)
+	var step: float = 960.0 / float(SETU_STONES_NEEDED)
+	stone.position = Vector2(-390.0 + float(setu_stones_placed - 1) * step, 130.0)
+	stone.color = Color(0.72, 0.66, 0.5, 1)
+	setu_zone.add_child(stone)
 
 func _setu_complete() -> void:
 	if setu_progress:
