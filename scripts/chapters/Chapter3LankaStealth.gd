@@ -46,10 +46,26 @@ func _setup_lankini() -> void:
 	if lankini:
 		lankini.died.connect(_on_lankini_defeated)
 
+const ZONE1_GUARD_POSITIONS: Array[Vector2] = [
+	Vector2(550, 550), Vector2(800, 500), Vector2(1050, 550), Vector2(1300, 500)
+]
+const ZONE2_GUARD_POSITIONS: Array[Vector2] = [
+	Vector2(1550, 550), Vector2(1800, 500), Vector2(2050, 550)
+]
+
 func _setup_guards() -> void:
-	for guard in guards_zone1.get_children():
-		if guard.has_signal("player_detected"):
-			guard.player_detected.connect(_on_guard_alert)
+	_spawn_guards(guards_zone1, ZONE1_GUARD_POSITIONS)
+	_spawn_guards(guards_zone2, ZONE2_GUARD_POSITIONS)
+
+func _spawn_guards(zone: Node2D, positions: Array[Vector2]) -> void:
+	var scene := load("res://scenes/enemies/demon_guard.tscn")
+	if not scene:
+		return
+	for pos in positions:
+		var guard = scene.instantiate()
+		zone.add_child(guard)
+		guard.global_position = pos
+		guard.player_detected.connect(_on_guard_alert)
 
 func _process(delta: float) -> void:
 	_update_detection(delta)

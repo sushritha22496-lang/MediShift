@@ -41,6 +41,7 @@ var patrol_timer: float = 0.0
 # ─── Signals ──────────────────────────────────────────────────────────────────
 signal died(enemy: EnemyBase)
 signal health_changed(current: float, maximum: float)
+signal player_detected()
 
 func _play_anim(anim_name: String) -> void:
 	if anim.has_animation(anim_name):
@@ -199,6 +200,7 @@ func _on_player_detected(body: Node) -> void:
 	if body.is_in_group("player"):
 		player = body
 		state = State.CHASE
+		player_detected.emit()
 
 func _on_player_lost(body: Node) -> void:
 	if body.is_in_group("player"):
