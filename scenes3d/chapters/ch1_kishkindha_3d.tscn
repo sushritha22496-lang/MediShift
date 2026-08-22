@@ -159,6 +159,9 @@ position = Vector3(-5, 0, -6)
 [node name="Spawn3" type="Marker3D" parent="EnemySpawns"]
 position = Vector3(2, 0, -12)
 
+[node name="BossSpawn" type="Marker3D" parent="."]
+position = Vector3(0, 0, -16)
+
 [node name="HUD" type="CanvasLayer" parent="."]
 
 [node name="Margin" type="MarginContainer" parent="HUD"]
@@ -186,3 +189,22 @@ offset_bottom = 90.0
 text = "Chapter I"
 horizontal_alignment = 1
 theme_override_font_sizes/font_size = 32
+
+[node name="BossBar" type="Control" parent="HUD"]
+offset_left = 340.0
+offset_top = 640.0
+offset_right = 940.0
+offset_bottom = 690.0
+
+[node name="VBox" type="VBoxContainer" parent="HUD/BossBar"]
+theme_override_constants/separation = 4
+
+[node name="BossNameLabel" type="Label" parent="HUD/BossBar/VBox"]
+text = "Boss"
+horizontal_alignment = 1
+
+[node name="BossHealthBar" type="ProgressBar" parent="HUD/BossBar/VBox"]
+custom_minimum_size = Vector2(600, 18)
+max_value = 500.0
+value = 500.0
+modulate = Color(0.9, 0.15, 0.1, 1)

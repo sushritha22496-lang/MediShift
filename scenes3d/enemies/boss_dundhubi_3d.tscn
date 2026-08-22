@@ -1,0 +1,75 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts3d/enemies/EnemyBase3D.gd" id="1"]
+
+[sub_resource type="CapsuleShape3D" id="col1"]
+radius = 0.9
+height = 3.2
+
+[sub_resource type="StandardMaterial3D" id="skin_mat"]
+albedo_color = Color(0.24, 0.16, 0.1, 1)
+roughness = 0.75
+
+[sub_resource type="StandardMaterial3D" id="eye_mat"]
+albedo_color = Color(1, 0.15, 0, 1)
+emission_enabled = true
+emission = Color(1, 0.2, 0, 1)
+emission_energy_multiplier = 2.0
+
+[sub_resource type="CapsuleMesh" id="body_mesh"]
+radius = 0.85
+height = 2.8
+material = SubResource("skin_mat")
+
+[sub_resource type="SphereMesh" id="head_mesh"]
+radius = 0.6
+height = 1.2
+material = SubResource("skin_mat")
+
+[sub_resource type="SphereMesh" id="eye_mesh"]
+radius = 0.1
+height = 0.2
+material = SubResource("eye_mat")
+
+[node name="BossDundhubi3D" type="CharacterBody3D"]
+collision_layer = 4
+collision_mask = 3
+script = ExtResource("1")
+enemy_name = "Dundhubi"
+max_health = 500.0
+move_speed = 2.2
+attack_damage = 30.0
+attack_range = 3.0
+detect_range = 18.0
+score_value = 3000
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+position = Vector3(0, 1.6, 0)
+shape = SubResource("col1")
+
+[node name="Model" type="Node3D" parent="."]
+
+[node name="Body" type="MeshInstance3D" parent="Model"]
+position = Vector3(0, 1.6, 0)
+mesh = SubResource("body_mesh")
+
+[node name="Head" type="MeshInstance3D" parent="Model/Body"]
+position = Vector3(0, 1.85, 0.1)
+mesh = SubResource("head_mesh")
+
+[node name="EyeL" type="MeshInstance3D" parent="Model/Body/Head"]
+position = Vector3(-0.22, 0.15, 0.5)
+mesh = SubResource("eye_mesh")
+
+[node name="EyeR" type="MeshInstance3D" parent="Model/Body/Head"]
+position = Vector3(0.22, 0.15, 0.5)
+mesh = SubResource("eye_mesh")
+
+[node name="AttackArea" type="Area3D" parent="Model"]
+collision_layer = 0
+collision_mask = 2
+monitoring = false
+
+[node name="AttackShape" type="CollisionShape3D" parent="Model/AttackArea"]
+position = Vector3(0, 1.6, 1.0)
+shape = SubResource("col1")

@@ -23,6 +23,9 @@ var lean: float = 0.0
 @onready var spring_arm: SpringArm3D = $SpringArm3D
 @onready var camera: Camera3D = $SpringArm3D/Camera3D
 @onready var tail_mesh: MeshInstance3D = $Model/Tail
+@onready var left_arm: Node3D = $Model/LeftArmPivot
+@onready var left_leg: Node3D = $Model/LeftLegPivot
+@onready var right_leg: Node3D = $Model/RightLegPivot
 
 signal health_changed(current: float, maximum: float)
 signal died()
@@ -87,11 +90,22 @@ func _animate_idle_motion(delta: float) -> void:
 	var t := Time.get_ticks_msec() / 1000.0
 	var moving := Vector2(velocity.x, velocity.z).length() > 0.3
 	if moving:
-		body_mesh.position.y = 0.9 + sin(t * 10.0) * 0.05
-		tail_mesh.rotation.x = sin(t * 10.0) * 0.4
+		var walk_speed := 10.0
+		body_mesh.position.y = 0.9 + sin(t * walk_speed) * 0.05
+		tail_mesh.rotation.x = sin(t * walk_speed) * 0.4
+		if not is_attacking:
+			left_arm.rotation.x = sin(t * walk_speed) * 0.9
+			gada_pivot.rotation.x = 0.3 - sin(t * walk_speed) * 0.5
+		left_leg.rotation.x = sin(t * walk_speed) * 0.7
+		right_leg.rotation.x = -sin(t * walk_speed) * 0.7
 	else:
 		body_mesh.position.y = 0.9 + sin(t * 2.0) * 0.02
 		tail_mesh.rotation.x = sin(t * 1.5) * 0.15
+		if not is_attacking:
+			left_arm.rotation.x = lerp_angle(left_arm.rotation.x, 0.0, 6.0 * delta)
+			gada_pivot.rotation.x = lerp_angle(gada_pivot.rotation.x, 0.3, 6.0 * delta)
+		left_leg.rotation.x = lerp_angle(left_leg.rotation.x, 0.0, 6.0 * delta)
+		right_leg.rotation.x = lerp_angle(right_leg.rotation.x, 0.0, 6.0 * delta)
 
 func _handle_attack(delta: float) -> void:
 	if attack_cooldown > 0.0:
