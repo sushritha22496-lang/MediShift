@@ -259,8 +259,8 @@ def build_limb(name, base_loc, length, radius_top, radius_bottom, bend_deg, mat,
     obj.data.materials.append(mat)
     return obj
 
-BICEP_BULGE = [(0.72, 0.16, 0.95)]
-QUAD_CALF_BULGE = [(0.82, 0.14, 0.8), (0.22, 0.15, 0.6)]
+BICEP_BULGE = [(0.6, 0.17, 1.4)]
+QUAD_CALF_BULGE = [(0.8, 0.15, 1.0), (0.35, 0.16, 0.85)]
 
 left_arm = build_limb("ArmL", (-0.5, 0, 1.10), 0.7, 0.15, 0.095, 8, skin_mat, bulges=BICEP_BULGE)
 right_arm = build_limb("ArmR", (0.5, 0, 1.10), 0.7, 0.15, 0.095, -8, skin_mat, bulges=BICEP_BULGE)
