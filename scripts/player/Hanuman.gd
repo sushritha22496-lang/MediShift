@@ -72,6 +72,7 @@ var speed_multiplier: float = 1.0
 signal health_changed(current: float, maximum: float)
 signal died()
 signal rage_filled()
+signal rage_changed(current: float)
 signal power_used(power: String)
 
 func _play_anim(anim_name: String) -> void:
@@ -250,6 +251,8 @@ func _handle_powers_input() -> void:
 		_activate_tail_fire()
 	if Input.is_action_just_pressed("garima") and GameManager.has_power("garima"):
 		_toggle_garima()
+	if Input.is_action_just_pressed("rage") and rage_meter >= 100.0:
+		use_rage()
 
 func _toggle_mahima() -> void:
 	if is_anima:
@@ -338,6 +341,8 @@ func _on_hit_body(body: Node2D) -> void:
 		body.take_damage(dmg, global_position)
 		AudioManager.play_sfx("gada_hit")
 		add_rage(10.0)
+		if hud and hud.has_method("add_combo"):
+			hud.add_combo()
 
 func _on_tail_hit(body: Node2D) -> void:
 	if body.has_method("take_damage"):
@@ -348,6 +353,7 @@ func _on_tail_hit(body: Node2D) -> void:
 # ─── Rage ─────────────────────────────────────────────────────────────────────
 func add_rage(amount: float) -> void:
 	rage_meter = minf(rage_meter + amount, 100.0)
+	rage_changed.emit(rage_meter)
 	if rage_meter >= 100.0:
 		rage_filled.emit()
 
@@ -355,6 +361,7 @@ func use_rage() -> void:
 	if rage_meter < 100.0:
 		return
 	rage_meter = 0.0
+	rage_changed.emit(rage_meter)
 	AudioManager.play_sfx("roar")
 	_activate_rage_mode()
 

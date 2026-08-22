@@ -49,6 +49,14 @@ func _connect_signals() -> void:
 	if player:
 		player.health_changed.connect(_on_health_changed)
 		player.power_used.connect(_on_power_used)
+		player.rage_changed.connect(_on_rage_changed)
+		player.rage_filled.connect(_on_rage_filled)
+
+func _on_rage_changed(current: float) -> void:
+	rage_bar.value = current
+
+func _on_rage_filled() -> void:
+	_show_notification("RAGE READY! Press [R] to unleash!", 3.0)
 
 func _on_health_changed(current: float, maximum: float) -> void:
 	health_bar.max_value = maximum
