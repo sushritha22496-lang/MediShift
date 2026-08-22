@@ -1,0 +1,75 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/enemies/EnemyBase.gd" id="1"]
+
+[sub_resource type="CapsuleShape2D" id="1"]
+radius = 24.0
+height = 68.0
+
+[sub_resource type="RectangleShape2D" id="2"]
+size = Vector2(140, 100)
+
+[node name="BossDhoomraksha" type="CharacterBody2D"]
+collision_layer = 4
+collision_mask = 3
+script = ExtResource("1")
+enemy_name = "Dhoomraksha"
+max_health = 1000.0
+move_speed = 130.0
+attack_damage = 40.0
+attack_range = 95.0
+score_value = 6000
+
+[node name="Sprite" type="Node2D" parent="."]
+
+[node name="Body" type="ColorRect" parent="Sprite"]
+offset_left = -24.0
+offset_top = -66.0
+offset_right = 24.0
+offset_bottom = 2.0
+color = Color(0.35, 0.35, 0.38, 1)
+
+[node name="Eyes" type="ColorRect" parent="Sprite"]
+offset_left = -10.0
+offset_top = -58.0
+offset_right = 10.0
+offset_bottom = -48.0
+color = Color(0.9, 0.2, 0.1, 1)
+
+[node name="Smoke" type="GPUParticles2D" parent="Sprite"]
+position = Vector2(0, -60)
+emitting = true
+amount = 15
+lifetime = 1.2
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, -12)
+shape = SubResource("1")
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="."]
+
+[node name="DetectArea" type="Area2D" parent="."]
+collision_layer = 0
+collision_mask = 2
+
+[node name="DetectShape" type="CollisionShape2D" parent="DetectArea"]
+shape = SubResource("2")
+
+[node name="AttackArea" type="Area2D" parent="."]
+collision_layer = 0
+collision_mask = 2
+monitoring = false
+
+[node name="AttackShape" type="CollisionShape2D" parent="AttackArea"]
+position = Vector2(50, -35)
+
+[node name="HealthBar" type="ProgressBar" parent="."]
+offset_left = -55.0
+offset_top = -100.0
+offset_right = 55.0
+offset_bottom = -86.0
+
+[node name="FireParticles" type="GPUParticles2D" parent="."]
+emitting = false
+amount = 25
+lifetime = 0.5

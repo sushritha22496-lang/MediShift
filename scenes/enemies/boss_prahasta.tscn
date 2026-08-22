@@ -1,0 +1,83 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/enemies/EnemyBase.gd" id="1"]
+
+[sub_resource type="CapsuleShape2D" id="1"]
+radius = 30.0
+height = 84.0
+
+[sub_resource type="RectangleShape2D" id="2"]
+size = Vector2(170, 120)
+
+[node name="BossPrahasta" type="CharacterBody2D"]
+collision_layer = 4
+collision_mask = 3
+script = ExtResource("1")
+enemy_name = "Prahasta"
+max_health = 1600.0
+move_speed = 150.0
+attack_damage = 55.0
+attack_range = 110.0
+score_value = 9000
+
+[node name="Sprite" type="Node2D" parent="."]
+
+[node name="Body" type="ColorRect" parent="Sprite"]
+offset_left = -30.0
+offset_top = -82.0
+offset_right = 30.0
+offset_bottom = 2.0
+color = Color(0.5, 0.08, 0.08, 1)
+
+[node name="Armor" type="ColorRect" parent="Sprite"]
+offset_left = -32.0
+offset_top = -55.0
+offset_right = 32.0
+offset_bottom = -20.0
+color = Color(0.15, 0.15, 0.17, 1)
+
+[node name="Crown" type="ColorRect" parent="Sprite"]
+offset_left = -20.0
+offset_top = -100.0
+offset_right = 20.0
+offset_bottom = -80.0
+color = Color(0.75, 0.6, 0.1, 1)
+
+[node name="Eyes" type="ColorRect" parent="Sprite"]
+offset_left = -12.0
+offset_top = -76.0
+offset_right = 12.0
+offset_bottom = -64.0
+color = Color(1, 0.4, 0, 1)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, -18)
+shape = SubResource("1")
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="."]
+
+[node name="DetectArea" type="Area2D" parent="."]
+collision_layer = 0
+collision_mask = 2
+
+[node name="DetectShape" type="CollisionShape2D" parent="DetectArea"]
+shape = SubResource("2")
+
+[node name="AttackArea" type="Area2D" parent="."]
+collision_layer = 0
+collision_mask = 2
+monitoring = false
+
+[node name="AttackShape" type="CollisionShape2D" parent="AttackArea"]
+position = Vector2(60, -40)
+
+[node name="HealthBar" type="ProgressBar" parent="."]
+offset_left = -60.0
+offset_top = -120.0
+offset_right = 60.0
+offset_bottom = -106.0
+
+[node name="FireParticles" type="GPUParticles2D" parent="."]
+emitting = false
+amount = 30
+lifetime = 0.6

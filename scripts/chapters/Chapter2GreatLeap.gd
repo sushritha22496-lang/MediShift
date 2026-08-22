@@ -21,7 +21,7 @@ var surasa_triggered: bool = false
 var simhika_triggered: bool = false
 
 @onready var player: CharacterBody2D = $Player
-@onready var camera: Camera2D = $Camera2D
+@onready var camera: Camera2D = $Player/Camera2D
 @onready var jambavan_trigger: Area2D = $Triggers/Jambavan
 @onready var mainaka_trigger: Area2D = $Triggers/Mainaka
 @onready var surasa_spawn: Marker2D = $SpawnPoints/Surasa

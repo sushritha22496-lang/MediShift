@@ -118,7 +118,7 @@ func _create_illusion(_idx: int) -> void:
 
 # ─── Phase 5: Brahmastra Charge ───────────────────────────────────────────────
 func _setup_brahmastra() -> void:
-	anim.play("brahmastra_charge")
+	_play_anim("brahmastra_charge")
 	await get_tree().create_timer(3.0).timeout
 	_fire_brahmastra()
 
@@ -137,7 +137,7 @@ func _setup_chariot() -> void:
 func _setup_navel_phase() -> void:
 	move_speed = 60.0
 	attack_damage *= 2.0
-	anim.play("navel_exposed")
+	_play_anim("navel_exposed")
 
 func _state_special(delta: float) -> void:
 	match current_phase:

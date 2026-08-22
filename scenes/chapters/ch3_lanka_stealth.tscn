@@ -1,14 +1,19 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scripts/chapters/Chapter3LankaStealth.gd" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/player/hanuman.tscn" id="2"]
 [ext_resource type="PackedScene" path="res://scenes/ui/hud.tscn" id="3"]
+[ext_resource type="Script" path="res://scripts/enemies/EnemyBase.gd" id="4"]
 
 [sub_resource type="RectangleShape2D" id="1"]
 size = Vector2(2000, 40)
 
 [sub_resource type="RectangleShape2D" id="2"]
 size = Vector2(120, 100)
+
+[sub_resource type="CapsuleShape2D" id="3"]
+radius = 26.0
+height = 76.0
 
 [node name="Chapter3LankaStealth" type="Node2D"]
 script = ExtResource("1")
@@ -75,13 +80,55 @@ shape = SubResource("2")
 
 [node name="Lankini" type="CharacterBody2D" parent="."]
 position = Vector2(300, 550)
+collision_layer = 4
+collision_mask = 3
+script = ExtResource("4")
+enemy_name = "Lankini"
+max_health = 300.0
+move_speed = 100.0
+attack_damage = 20.0
+score_value = 1000
 
-[node name="LankiniVis" type="ColorRect" parent="Lankini"]
+[node name="Sprite" type="Node2D" parent="Lankini"]
+
+[node name="LankiniVis" type="ColorRect" parent="Lankini/Sprite"]
 offset_left = -25.0
 offset_top = -80.0
 offset_right = 25.0
 offset_bottom = 0.0
 color = Color(0.6, 0.1, 0.6, 1)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Lankini"]
+position = Vector2(0, -18)
+shape = SubResource("3")
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="Lankini"]
+
+[node name="DetectArea" type="Area2D" parent="Lankini"]
+collision_layer = 0
+collision_mask = 2
+
+[node name="DetectShape" type="CollisionShape2D" parent="Lankini/DetectArea"]
+shape = SubResource("2")
+
+[node name="AttackArea" type="Area2D" parent="Lankini"]
+collision_layer = 0
+collision_mask = 2
+monitoring = false
+
+[node name="AttackShape" type="CollisionShape2D" parent="Lankini/AttackArea"]
+position = Vector2(40, -30)
+
+[node name="HealthBar" type="ProgressBar" parent="Lankini"]
+offset_left = -40.0
+offset_top = -100.0
+offset_right = 40.0
+offset_bottom = -87.0
+
+[node name="FireParticles" type="GPUParticles2D" parent="Lankini"]
+emitting = false
+amount = 20
+lifetime = 0.5
 
 [node name="AshokaTrees" type="Node2D" parent="."]
 

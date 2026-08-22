@@ -29,7 +29,7 @@ func _do_combo() -> void:
 		var dist := global_position.distance_to(player.global_position)
 		if dist < 120.0 and player.has_method("take_damage"):
 			player.take_damage(attack_damage, global_position)
-		anim.play("attack")
+		_play_anim("attack")
 		AudioManager.play_sfx("gada_swing")
 	attack_cooldown = 1.2
 	is_attacking = false

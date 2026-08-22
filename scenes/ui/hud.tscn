@@ -129,6 +129,39 @@ visible = false
 text = "> _"
 theme_override_font_sizes/font_size = 20
 
+[node name="AlarmLabel" type="Label" parent="."]
+layout_mode = 1
+offset_left = 500.0
+offset_top = 100.0
+offset_right = 780.0
+offset_bottom = 140.0
+text = "DETECTED!"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 26
+modulate = Color(1, 0.15, 0.1, 1)
+visible = false
+
+[node name="StealthMeter" type="ProgressBar" parent="."]
+layout_mode = 1
+offset_left = 500.0
+offset_top = 60.0
+offset_right = 780.0
+offset_bottom = 84.0
+max_value = 100.0
+value = 0.0
+modulate = Color(0.8, 0.2, 0.8, 1)
+
+[node name="SetuProgress" type="ProgressBar" parent="."]
+layout_mode = 1
+offset_left = 400.0
+offset_top = 60.0
+offset_right = 880.0
+offset_bottom = 84.0
+max_value = 30.0
+value = 0.0
+modulate = Color(0.2, 0.6, 1, 1)
+visible = false
+
 [node name="NotificationLabel" type="Label" parent="."]
 layout_mode = 1
 offset_left = 0.0

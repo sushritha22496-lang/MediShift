@@ -73,6 +73,10 @@ signal died()
 signal rage_filled()
 signal power_used(power: String)
 
+func _play_anim(anim_name: String) -> void:
+	if anim.has_animation(anim_name):
+		anim.play(anim_name)
+
 # ─── Lifecycle ────────────────────────────────────────────────────────────────
 func _ready() -> void:
 	add_to_group("player")
@@ -173,7 +177,7 @@ func _do_jump(force: float) -> void:
 	jump_buffer_timer = 0.0
 	coyote_timer = 0.0
 	AudioManager.play_sfx("jump" if jumps_left == MAX_JUMPS - 1 else "double_jump")
-	anim.play("jump")
+	_play_anim("jump")
 
 func _do_dash() -> void:
 	is_dashing = true
@@ -294,7 +298,7 @@ func _do_light_attack() -> void:
 	attack_hitbox.monitoring = true
 	_apply_hit_damage(gada_damage * gada_damage_multiplier)
 	AudioManager.play_sfx("gada_swing")
-	anim.play("attack_light")
+	_play_anim("attack_light")
 	await get_tree().create_timer(0.25).timeout
 	attack_hitbox.monitoring = false
 	is_attacking = false
@@ -305,7 +309,7 @@ func _do_heavy_attack() -> void:
 	attack_hitbox.monitoring = true
 	_apply_hit_damage(heavy_damage * gada_damage_multiplier)
 	AudioManager.play_sfx("gada_heavy")
-	anim.play("attack_heavy")
+	_play_anim("attack_heavy")
 	await get_tree().create_timer(0.5).timeout
 	attack_hitbox.monitoring = false
 	is_attacking = false
@@ -360,7 +364,7 @@ func take_damage(amount: float, source_pos: Vector2 = Vector2.ZERO) -> void:
 	health = maxf(health - amount, 0.0)
 	health_changed.emit(health, max_health)
 	_knockback(source_pos)
-	anim.play("hurt")
+	_play_anim("hurt")
 	if health <= 0.0:
 		_die()
 
@@ -376,7 +380,7 @@ func _knockback(from: Vector2) -> void:
 func _die() -> void:
 	set_physics_process(false)
 	died.emit()
-	anim.play("death")
+	_play_anim("death")
 	await get_tree().create_timer(1.5).timeout
 	GameManager.trigger_game_over()
 
@@ -390,12 +394,12 @@ func _update_animation() -> void:
 	if is_attacking or is_dashing:
 		return
 	if is_flying:
-		anim.play("fly")
+		_play_anim("fly")
 	elif is_climbing:
-		anim.play("climb")
+		_play_anim("climb")
 	elif not is_on_floor():
-		anim.play("jump" if velocity.y < 0.0 else "fall")
+		_play_anim("jump" if velocity.y < 0.0 else "fall")
 	elif abs(velocity.x) > 20.0:
-		anim.play("run" if abs(velocity.x) > WALK_SPEED * 0.8 else "walk")
+		_play_anim("run" if abs(velocity.x) > WALK_SPEED * 0.8 else "walk")
 	else:
-		anim.play("idle")
+		_play_anim("idle")

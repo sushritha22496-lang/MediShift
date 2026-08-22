@@ -29,7 +29,7 @@ const SALA_TREES_NEEDED := 7
 @onready var dundhubi_spawn: Marker2D = $SpawnPoints/Dundhubi
 @onready var dialogue_trigger_rama: Area2D = $Triggers/RamaMeeting
 @onready var sala_trees_group: Node2D = $SalaTrees
-@onready var chapter_camera: Camera2D = $Camera2D
+@onready var chapter_camera: Camera2D = $Player/Camera2D
 
 func _ready() -> void:
 	AudioManager.play_bgm("kishkindha")

@@ -18,7 +18,7 @@ func _ready() -> void:
 	move_speed = 80.0
 	score_value = 20000
 	scale = Vector2(4.0, 4.0)
-	anim.play("sleeping")
+	_play_anim("sleeping")
 
 func take_damage(amount: float, source_pos: Vector2) -> void:
 	if is_asleep:
@@ -31,7 +31,7 @@ func take_damage(amount: float, source_pos: Vector2) -> void:
 
 func _wake_up() -> void:
 	is_asleep = false
-	anim.play("waking")
+	_play_anim("waking")
 	AudioManager.play_sfx("boss_roar")
 	woke_up.emit()
 	await get_tree().create_timer(2.0).timeout
@@ -46,7 +46,7 @@ func _state_chase(delta: float) -> void:
 
 func _stomp() -> void:
 	attack_cooldown = 3.0
-	anim.play("stomp")
+	_play_anim("stomp")
 	await get_tree().create_timer(0.6).timeout
 	var range_check := 400.0
 	var players := get_tree().get_nodes_in_group("player")

@@ -1,0 +1,76 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/enemies/EnemyBase.gd" id="1"]
+
+[sub_resource type="CapsuleShape2D" id="1"]
+radius = 34.0
+height = 100.0
+
+[sub_resource type="RectangleShape2D" id="2"]
+size = Vector2(150, 100)
+
+[node name="BossDundhubi" type="CharacterBody2D"]
+collision_layer = 4
+collision_mask = 3
+script = ExtResource("1")
+enemy_name = "Dundhubi"
+max_health = 800.0
+move_speed = 90.0
+attack_damage = 35.0
+attack_range = 100.0
+score_value = 3000
+
+[node name="Sprite" type="Node2D" parent="."]
+
+[node name="Body" type="ColorRect" parent="Sprite"]
+offset_left = -34.0
+offset_top = -96.0
+offset_right = 34.0
+offset_bottom = 4.0
+color = Color(0.3, 0.2, 0.12, 1)
+
+[node name="Horns" type="ColorRect" parent="Sprite"]
+offset_left = -30.0
+offset_top = -118.0
+offset_right = 30.0
+offset_bottom = -96.0
+color = Color(0.5, 0.45, 0.4, 1)
+
+[node name="Eyes" type="ColorRect" parent="Sprite"]
+offset_left = -14.0
+offset_top = -90.0
+offset_right = 14.0
+offset_bottom = -76.0
+color = Color(1, 0.2, 0, 1)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, -20)
+shape = SubResource("1")
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="."]
+
+[node name="DetectArea" type="Area2D" parent="."]
+collision_layer = 0
+collision_mask = 2
+
+[node name="DetectShape" type="CollisionShape2D" parent="DetectArea"]
+shape = SubResource("2")
+
+[node name="AttackArea" type="Area2D" parent="."]
+collision_layer = 0
+collision_mask = 2
+monitoring = false
+
+[node name="AttackShape" type="CollisionShape2D" parent="AttackArea"]
+position = Vector2(60, -40)
+
+[node name="HealthBar" type="ProgressBar" parent="."]
+offset_left = -60.0
+offset_top = -140.0
+offset_right = 60.0
+offset_bottom = -125.0
+
+[node name="FireParticles" type="GPUParticles2D" parent="."]
+emitting = false
+amount = 30
+lifetime = 0.6

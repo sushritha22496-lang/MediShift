@@ -64,7 +64,7 @@ func _strike_from_shadow() -> void:
 func _use_nagapasha() -> void:
 	nagapasha_used = true
 	indrajit_phase = IndrajitPhase.NAGAPASHA
-	anim.play("nagapasha")
+	_play_anim("nagapasha")
 	await get_tree().create_timer(1.5).timeout
 	var players := get_tree().get_nodes_in_group("player")
 	for p in players:

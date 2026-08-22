@@ -42,6 +42,10 @@ var patrol_timer: float = 0.0
 signal died(enemy: EnemyBase)
 signal health_changed(current: float, maximum: float)
 
+func _play_anim(anim_name: String) -> void:
+	if anim.has_animation(anim_name):
+		anim.play(anim_name)
+
 func _ready() -> void:
 	health = max_health
 	add_to_group("enemies")
@@ -86,7 +90,7 @@ func _run_state_machine(delta: float) -> void:
 
 func _state_idle(delta: float) -> void:
 	velocity.x = lerpf(velocity.x, 0.0, 8.0 * delta)
-	anim.play("idle")
+	_play_anim("idle")
 	patrol_timer -= delta
 	if patrol_timer <= 0.0:
 		state = State.PATROL
@@ -97,7 +101,7 @@ func _state_patrol(delta: float) -> void:
 	velocity.x = patrol_dir * move_speed * 0.5
 	facing_right = patrol_dir > 0.0
 	sprite.scale.x = 1.0 if facing_right else -1.0
-	anim.play("walk")
+	_play_anim("walk")
 	if is_on_wall():
 		patrol_dir *= -1.0
 	patrol_timer -= delta
@@ -121,7 +125,7 @@ func _state_chase(delta: float) -> void:
 	velocity.x = dir * move_speed
 	facing_right = dir > 0.0
 	sprite.scale.x = 1.0 if facing_right else -1.0
-	anim.play("run")
+	_play_anim("run")
 	if is_flying_enemy:
 		var vy: float = sign(player.global_position.y - global_position.y) * move_speed
 		velocity.y = vy
@@ -132,7 +136,7 @@ func _state_attack(delta: float) -> void:
 		return
 	is_attacking = true
 	attack_cooldown = 1.5
-	anim.play("attack")
+	_play_anim("attack")
 	if attack_area:
 		attack_area.monitoring = true
 	await get_tree().create_timer(0.4).timeout
@@ -155,7 +159,7 @@ func take_damage(amount: float, source_pos: Vector2) -> void:
 	_knockback(source_pos)
 	is_stunned = true
 	stun_timer = 0.3
-	anim.play("hurt")
+	_play_anim("hurt")
 	GameManager.add_score(int(amount))
 	if health <= 0.0:
 		_die()
@@ -180,7 +184,7 @@ func _die() -> void:
 	GameManager.enemies_defeated += 1
 	GameManager.add_score(score_value)
 	AudioManager.play_sfx("enemy_death")
-	anim.play("death")
+	_play_anim("death")
 	_spawn_drops()
 	died.emit(self)
 	await get_tree().create_timer(1.2).timeout

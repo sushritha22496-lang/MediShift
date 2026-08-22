@@ -27,7 +27,7 @@ func _open_mouth_cycle() -> void:
 	while not escaped and not is_dead:
 		mouth_open = true
 		mouth_size = 1.0
-		anim.play("mouth_open")
+		_play_anim("mouth_open")
 		player_must_shrink.emit()
 		await get_tree().create_timer(0.5).timeout
 		mouth_size = 2.0
@@ -37,7 +37,7 @@ func _open_mouth_cycle() -> void:
 		mouth_size = 4.0
 		await get_tree().create_timer(0.5).timeout
 		mouth_open = false
-		anim.play("mouth_close")
+		_play_anim("mouth_close")
 		await get_tree().create_timer(2.0).timeout
 
 func _physics_process(delta: float) -> void:
@@ -59,7 +59,7 @@ func _check_player_escape() -> void:
 func _handle_escape() -> void:
 	escaped = true
 	puzzle_solved.emit()
-	anim.play("defeated")
+	_play_anim("defeated")
 	await get_tree().create_timer(1.0).timeout
 	AudioManager.play_sfx("power_unlock")
 	_die()
