@@ -15,9 +15,10 @@ var attack_cooldown: float = 0.0
 var is_attacking: bool = false
 var facing_yaw: float = 0.0
 var lean: float = 0.0
+var body_base_y: float = 0.0
 
 @onready var model: Node3D = $Model
-@onready var body_mesh: MeshInstance3D = $Model/Body
+@onready var body_mesh: MeshInstance3D = $Model/Torso
 @onready var gada_pivot: Node3D = $Model/GadaPivot
 @onready var attack_area: Area3D = $Model/GadaPivot/AttackArea
 @onready var spring_arm: SpringArm3D = $SpringArm3D
@@ -33,6 +34,7 @@ signal died()
 func _ready() -> void:
 	add_to_group("player3d")
 	health = max_health
+	body_base_y = body_mesh.position.y
 	attack_area.monitoring = false
 	attack_area.body_entered.connect(_on_gada_hit)
 	health_changed.emit(health, max_health)
@@ -91,7 +93,7 @@ func _animate_idle_motion(delta: float) -> void:
 	var moving := Vector2(velocity.x, velocity.z).length() > 0.3
 	if moving:
 		var walk_speed := 10.0
-		body_mesh.position.y = 0.9 + sin(t * walk_speed) * 0.05
+		body_mesh.position.y = body_base_y + sin(t * walk_speed) * 0.05
 		tail_mesh.rotation.x = sin(t * walk_speed) * 0.4
 		if not is_attacking:
 			left_arm.rotation.x = sin(t * walk_speed) * 0.9
@@ -99,7 +101,7 @@ func _animate_idle_motion(delta: float) -> void:
 		left_leg.rotation.x = sin(t * walk_speed) * 0.7
 		right_leg.rotation.x = -sin(t * walk_speed) * 0.7
 	else:
-		body_mesh.position.y = 0.9 + sin(t * 2.0) * 0.02
+		body_mesh.position.y = body_base_y + sin(t * 2.0) * 0.02
 		tail_mesh.rotation.x = sin(t * 1.5) * 0.15
 		if not is_attacking:
 			left_arm.rotation.x = lerp_angle(left_arm.rotation.x, 0.0, 6.0 * delta)
