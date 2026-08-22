@@ -167,7 +167,15 @@ const DIALOGUES: Dictionary = {
 }
 
 func _ready() -> void:
-	pass
+	set_process_unhandled_input(true)
+
+func _unhandled_input(event: InputEvent) -> void:
+	if not _is_playing:
+		return
+	var is_click: bool = event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT
+	if event.is_action_pressed("interact") or is_click:
+		advance()
+		get_viewport().set_input_as_handled()
 
 func start_dialogue(dialogue_id: String) -> void:
 	if not DIALOGUES.has(dialogue_id):
