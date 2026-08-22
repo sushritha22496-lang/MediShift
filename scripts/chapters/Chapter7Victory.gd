@@ -100,9 +100,15 @@ func _start_celebration(_id: String) -> void:
 	_start_coronation()
 
 func _light_all_lamps() -> void:
-	for lamp in lamp_group.get_children():
-		if lamp.has_method("light"):
-			lamp.light()
+	for i in 14:
+		var lamp := ColorRect.new()
+		lamp.size = Vector2(10, 14)
+		lamp.position = Vector2(2150.0 + float(i) * 260.0, 220.0 + fmod(float(i) * 53.0, 320.0))
+		lamp.color = Color(0.3, 0.25, 0.05, 1)
+		lamp_group.add_child(lamp)
+		var tween := create_tween()
+		tween.tween_interval(float(i) * 0.12)
+		tween.tween_property(lamp, "color", Color(1.0, 0.85, 0.3, 1), 0.3)
 
 func _start_coronation() -> void:
 	current_task = Task.CORONATION

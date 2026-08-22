@@ -49,17 +49,24 @@ func _process(delta: float) -> void:
 		elif sanjeevani_timer_remaining <= 30.0:
 			sanjeevani_timer_label.add_theme_color_override("font_color", Color.RED)
 
+const GATE_WAVE_SIZE := 20
+
 func _start_gate_battle() -> void:
-	gate_enemies_alive = 20
-	for sp in gate_spawner.get_children():
-		var scene := load("res://scenes/enemies/demon_guard.tscn")
-		if not scene:
-			gate_enemies_alive -= 1
-			continue
+	var scene := load("res://scenes/enemies/demon_guard.tscn")
+	var markers := gate_spawner.get_children()
+	if not scene or markers.is_empty():
+		gate_enemies_alive = 0
+		_after_gate_battle()
+		return
+	var spawned := 0
+	for i in GATE_WAVE_SIZE:
+		var sp = markers[i % markers.size()]
 		var e = scene.instantiate()
-		e.global_position = sp.global_position
-		e.died.connect(_on_gate_enemy_died)
 		add_child(e)
+		e.global_position = sp.global_position + Vector2(randf_range(-40.0, 40.0), randf_range(-20.0, 20.0))
+		e.died.connect(_on_gate_enemy_died)
+		spawned += 1
+	gate_enemies_alive = spawned
 	if gate_enemies_alive <= 0:
 		_after_gate_battle()
 
