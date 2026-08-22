@@ -8,13 +8,14 @@ size = Vector2(600, 40)
 
 [node name="SanjeevaniMission" type="Node2D"]
 
-[node name="Camera2D" type="Camera2D" parent="."]
+[node name="Player" parent="." instance=ExtResource("1")]
+position = Vector2(100, 300)
+
+[node name="Camera2D" type="Camera2D" parent="Player"]
+enabled = true
 limit_right = 5000
 limit_bottom = 900
 position_smoothing_enabled = true
-
-[node name="Player" parent="." instance=ExtResource("1")]
-position = Vector2(100, 300)
 
 [node name="HUD" parent="." instance=ExtResource("2")]
 
