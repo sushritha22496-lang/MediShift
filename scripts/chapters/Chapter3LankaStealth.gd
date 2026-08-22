@@ -102,6 +102,7 @@ func _on_sita_found(body: Node) -> void:
 
 func _after_sita_found(_id: String) -> void:
 	current_task = Task.DELIVER_RING
+	ring_trigger.monitoring = true
 	_show_task("Approach Sita carefully and deliver Rama's ring [E]")
 
 func _on_ring_delivery(body: Node) -> void:
