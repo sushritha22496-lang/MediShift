@@ -142,7 +142,8 @@ func on_sanjeevani_collected() -> void:
 
 func _lakshmana_revived(_id: String) -> void:
 	GameManager.set_flag("lakshmana_saved")
-	_show_task("Lakshmana lives! Now face Kumbhakarna!")
+	GameManager.unlock_power("sanjeevani_aura")
+	_show_task("Lakshmana lives! The Sanjeevani's blessing lingers with you — Jai Shri Ram!")
 	_spawn_boss("kumbhakarna", Task.BOSS_KUMBHAKARNA)
 
 func _spawn_ravana() -> void:

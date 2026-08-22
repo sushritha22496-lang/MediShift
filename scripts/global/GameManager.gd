@@ -28,8 +28,7 @@ var powers_unlocked: Dictionary = {
 	"garima": false,
 	"tail_fire": false,
 	"vayuvega": false,
-	"sanjeevani_aura": false,
-	"panchavadana": false
+	"sanjeevani_aura": false
 }
 
 # ─── Story Flags ───────────────────────────────────────────────────────────────

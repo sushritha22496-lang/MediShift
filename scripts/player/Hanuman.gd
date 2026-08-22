@@ -125,6 +125,9 @@ func _handle_timers(delta: float) -> void:
 			is_dashing = false
 	if fly_energy < 100.0 and not is_flying:
 		fly_energy = minf(fly_energy + 20.0 * delta, 100.0)
+	if GameManager.has_power("sanjeevani_aura") and health < max_health and health > 0.0:
+		health = minf(health + 3.0 * delta, max_health)
+		health_changed.emit(health, max_health)
 
 # ─── Movement ────────────────────────────────────────────────────────────────
 func _handle_movement(delta: float) -> void:
