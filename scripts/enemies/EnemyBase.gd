@@ -117,13 +117,13 @@ func _state_chase(delta: float) -> void:
 		state = State.PATROL
 		player = null
 		return
-	var dir := sign(player.global_position.x - global_position.x)
+	var dir: float = sign(player.global_position.x - global_position.x)
 	velocity.x = dir * move_speed
 	facing_right = dir > 0.0
 	sprite.scale.x = 1.0 if facing_right else -1.0
 	anim.play("run")
 	if is_flying_enemy:
-		var vy := sign(player.global_position.y - global_position.y) * move_speed
+		var vy: float = sign(player.global_position.y - global_position.y) * move_speed
 		velocity.y = vy
 
 func _state_attack(delta: float) -> void:

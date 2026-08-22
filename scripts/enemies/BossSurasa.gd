@@ -50,7 +50,9 @@ func _check_player_escape() -> void:
 	if not player or not mouth_open:
 		return
 	# Player must be Anima (tiny) to escape
-	var is_tiny := player.is_anima if player.has("is_anima") else false
+	var is_tiny: bool = false
+	if "is_anima" in player:
+		is_tiny = player.get("is_anima")
 	if is_tiny and mouth_open and mouth_size >= 3.0:
 		_handle_escape()
 

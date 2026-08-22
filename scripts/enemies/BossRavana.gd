@@ -170,7 +170,7 @@ func _phase5_logic(_delta: float) -> void:
 
 func _phase6_logic(_delta: float) -> void:
 	if player:
-		var dir := sign(player.global_position.x - global_position.x)
+		var dir: float = sign(player.global_position.x - global_position.x)
 		velocity.x = dir * move_speed
 
 func _phase7_logic(_delta: float) -> void:

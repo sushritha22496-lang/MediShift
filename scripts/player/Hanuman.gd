@@ -270,7 +270,7 @@ func _handle_scale_transition(delta: float) -> void:
 		target_scale = ANIMA_SCALE
 	else:
 		target_scale = NORMAL_SCALE
-	var sx := sign(sprite.scale.x)
+	var sx: float = sign(sprite.scale.x)
 	sprite.scale = sprite.scale.move_toward(target_scale * Vector2(sx, 1.0), SCALE_SPEED * delta)
 
 # ─── Attack ───────────────────────────────────────────────────────────────────
