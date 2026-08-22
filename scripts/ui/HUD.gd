@@ -22,12 +22,37 @@ var notification_tween: Tween
 var combo_count: int = 0
 var combo_timer: float = 0.0
 
+const POWER_LABELS: Dictionary = {
+	"gada": "Gada", "fly": "Laghima", "mahima": "Mahima", "anima": "Anima",
+	"laghima": "Laghima", "garima": "Garima", "tail_fire": "Agni Tail",
+	"vayuvega": "Vayuvega", "sanjeevani_aura": "Sanjeevani"
+}
+
 func _ready() -> void:
 	_connect_signals()
 	boss_health_bar.visible = false
 	dialogue_box.visible = false
 	cheat_console.visible = false
 	notification_label.visible = false
+	_refresh_power_icons()
+	GameManager.power_unlocked.connect(func(_p): _refresh_power_icons())
+
+func _refresh_power_icons() -> void:
+	for child in power_icons.get_children():
+		child.queue_free()
+	var shown_labels: Array[String] = []
+	for power_name in GameManager.powers_unlocked:
+		if not GameManager.powers_unlocked[power_name]:
+			continue
+		var label_text: String = POWER_LABELS.get(power_name, power_name)
+		if label_text in shown_labels:
+			continue
+		shown_labels.append(label_text)
+		var chip := Label.new()
+		chip.text = "[%s]" % label_text
+		chip.add_theme_font_size_override("font_size", 13)
+		chip.add_theme_color_override("font_color", Color(1.0, 0.8, 0.4, 1))
+		power_icons.add_child(chip)
 
 func _process(delta: float) -> void:
 	if combo_timer > 0.0:
