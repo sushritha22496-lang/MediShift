@@ -53,14 +53,14 @@ def parent_keep_transform(child, parent):
 
 clear_scene()
 
-skin_mat = add_material("Skin", (0.84, 0.22, 0.05), roughness=0.55, subsurface=0.15)
-face_mat = add_material("Face", (0.90, 0.34, 0.10), roughness=0.48, subsurface=0.12)
-gold_mat = add_material("Gold", (0.87, 0.68, 0.14), roughness=0.22, metallic=0.95)
-gold_wear_mat = add_material("GoldWorn", (0.78, 0.62, 0.12), roughness=0.32, metallic=0.88)
-wood_mat = add_material("Wood", (0.37, 0.22, 0.09), roughness=0.70)
-eye_mat = add_material("Eye", (0.01, 0.01, 0.01), roughness=0.08)
-sclera_mat = add_material("Sclera", (0.87, 0.82, 0.72), roughness=0.25, subsurface=0.08)
-hair_mat = add_material("Hair", (0.08, 0.05, 0.03), roughness=0.88)
+skin_mat = add_material("Skin", (0.84, 0.22, 0.05), roughness=0.52, subsurface=0.16)
+face_mat = add_material("Face", (0.90, 0.34, 0.10), roughness=0.45, subsurface=0.13)
+gold_mat = add_material("Gold", (0.87, 0.68, 0.14), roughness=0.18, metallic=0.96)
+gold_wear_mat = add_material("GoldWorn", (0.78, 0.62, 0.12), roughness=0.28, metallic=0.90)
+wood_mat = add_material("Wood", (0.37, 0.22, 0.09), roughness=0.65)
+eye_mat = add_material("Eye", (0.01, 0.01, 0.01), roughness=0.05)
+sclera_mat = add_material("Sclera", (0.87, 0.82, 0.72), roughness=0.20, subsurface=0.10)
+hair_mat = add_material("Hair", (0.08, 0.05, 0.03), roughness=0.82)
 
 # ── Torso (muscled: broad shoulders, chest, abs, tapered waist) ────────────
 bpy.ops.mesh.primitive_cylinder_add(vertices=40, radius=0.38, depth=0.95, location=(0, 0, 1.0))
@@ -285,7 +285,7 @@ lower_lip.scale = (1.2, 0.6, 0.7)
 add_subsurf(lower_lip, 1)
 apply_all_modifiers(lower_lip)
 shade_smooth(lower_lip)
-lip_mat = add_material("Lips", (0.75, 0.25, 0.15), roughness=0.4)
+lip_mat = add_material("Lips", (0.75, 0.25, 0.15), roughness=0.32, subsurface=0.08)
 lower_lip.data.materials.append(lip_mat)
 
 bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=0.052, location=(0, 0.33, 1.68))
@@ -394,7 +394,7 @@ for side, sign in [("L", -1), ("R", 1)]:
     bpy.ops.mesh.primitive_uv_sphere_add(segments=8, ring_count=6, radius=0.030, location=(sign * 0.105, 0.311, 1.824))
     cornea = bpy.context.object
     cornea.name = f"Cornea{side}"
-    cornea_mat = add_material("Cornea", (0.95, 0.95, 0.96), roughness=0.08, metallic=0.05)
+    cornea_mat = add_material("Cornea", (0.96, 0.96, 0.97), roughness=0.04, metallic=0.08)
     shade_smooth(cornea)
     cornea.data.materials.append(cornea_mat)
 
