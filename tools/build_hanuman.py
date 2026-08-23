@@ -55,8 +55,9 @@ clear_scene()
 
 skin_mat = add_material("Skin", (0.84, 0.22, 0.05), roughness=0.55, subsurface=0.15)
 face_mat = add_material("Face", (0.90, 0.34, 0.10), roughness=0.48, subsurface=0.12)
-gold_mat = add_material("Gold", (0.87, 0.68, 0.14), roughness=0.18, metallic=0.92)
-wood_mat = add_material("Wood", (0.37, 0.22, 0.09), roughness=0.72)
+gold_mat = add_material("Gold", (0.87, 0.68, 0.14), roughness=0.22, metallic=0.95)
+gold_wear_mat = add_material("GoldWorn", (0.78, 0.62, 0.12), roughness=0.32, metallic=0.88)
+wood_mat = add_material("Wood", (0.37, 0.22, 0.09), roughness=0.70)
 eye_mat = add_material("Eye", (0.01, 0.01, 0.01), roughness=0.08)
 sclera_mat = add_material("Sclera", (0.87, 0.82, 0.72), roughness=0.25, subsurface=0.08)
 hair_mat = add_material("Hair", (0.08, 0.05, 0.03), roughness=0.88)
@@ -156,7 +157,13 @@ bm.free()
 add_subsurf(cloth, 2)
 apply_all_modifiers(cloth)
 shade_smooth(cloth)
-cloth_mat = add_material("Cloth", (0.86, 0.56, 0.10), roughness=0.78)
+cloth_mat = add_material("Cloth", (0.86, 0.56, 0.10), roughness=0.75)
+cloth_tex = bpy.data.textures.new("ClothWrinkle", type='CLOUDS')
+cloth_tex.noise_scale = 1.2
+cloth_tex.cloud_type = 'COLOR'
+cloth_disp = cloth.modifiers.new(name="ClothWrinkles", type='DISPLACE')
+cloth_disp.texture = cloth_tex
+cloth_disp.strength = 0.012
 cloth.data.materials.append(cloth_mat)
 
 # Neck: bridges torso top to head with proper detail
@@ -882,14 +889,14 @@ for i, rz in enumerate([1.09, 1.26, 1.43]):
     gada_rings.append(ring)
 
 # ── Ornaments: armlets, wristlets, anklets, waistband ───────────────────────
-def make_torus(name, major_r, minor_r, location, rot=(0, 0, 0)):
+def make_torus(name, major_r, minor_r, location, rot=(0, 0, 0), mat=None):
     bpy.ops.mesh.primitive_torus_add(major_radius=major_r, minor_radius=minor_r, location=location)
     obj = bpy.context.object
     obj.name = name
     obj.rotation_euler = rot
     apply_all_modifiers(obj)
     shade_smooth(obj)
-    obj.data.materials.append(gold_mat)
+    obj.data.materials.append(mat if mat else gold_mat)
     return obj
 
 armlet_l = make_torus("ArmletL", 0.155, 0.025, (-0.5, 0.0, 1.30))
@@ -898,7 +905,7 @@ wristlet_l = make_torus("WristletL", 0.11, 0.02, (-0.5, 0.0, 0.68))
 wristlet_r = make_torus("WristletR", 0.11, 0.02, (0.5, 0.0, 0.68))
 anklet_l = make_torus("AnkletL", 0.15, 0.022, (-0.18, 0.05, -0.10))
 anklet_r = make_torus("AnkletR", 0.15, 0.022, (0.18, 0.05, -0.10))
-waistband = make_torus("Waistband", 0.34, 0.03, (0, 0, 0.68), rot=(0, 0, 0))
+waistband = make_torus("Waistband", 0.34, 0.03, (0, 0, 0.68), rot=(0, 0, 0), mat=gold_wear_mat)
 
 # ── Skeleton: real bones instead of empty pivots, for genuine skinned
 #    animation (Godot Skeleton3D + AnimationPlayer) rather than a script-
