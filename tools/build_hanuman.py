@@ -343,7 +343,7 @@ for side, sign in [("L", -1), ("R", 1)]:
     shade_smooth(socket)
     socket.data.materials.append(face_mat)
 
-# Eyes: sclera + pupil for a clearer, human-like gaze
+# Eyes: sclera + iris + pupil + cornea for expressive gaze
 for side, sign in [("L", -1), ("R", 1)]:
     bpy.ops.mesh.primitive_uv_sphere_add(segments=12, ring_count=10, radius=0.050, location=(sign * 0.105, 0.272, 1.820))
     sclera = bpy.context.object
@@ -351,12 +351,20 @@ for side, sign in [("L", -1), ("R", 1)]:
     sclera.scale = (0.92, 0.75, 1.05)
     apply_all_modifiers(sclera)
     shade_smooth(sclera)
-    sclera.data.materials.append(sclera_mat)
+    sclera_bright = add_material("ScleraBright", (0.92, 0.88, 0.84), roughness=0.18, subsurface=0.05)
+    sclera.data.materials.append(sclera_bright)
 
     bpy.ops.mesh.primitive_uv_sphere_add(segments=10, ring_count=8, radius=0.028, location=(sign * 0.105, 0.312, 1.820))
     iris = bpy.context.object
     iris.name = f"Iris{side}"
-    iris_mat = add_material(f"Iris{side}", (0.15, 0.12, 0.08), roughness=0.3)
+    iris_color = (0.25, 0.18, 0.10)
+    iris_mat = add_material(f"Iris{side}", iris_color, roughness=0.22, metallic=0.02)
+    iris_tex = bpy.data.textures.new(f"IrisTexture{side}", type='CLOUDS')
+    iris_tex.noise_scale = 2.8
+    iris_tex.cloud_type = 'COLOR'
+    iris_disp = iris.modifiers.new(name="IrisDetail", type='DISPLACE')
+    iris_disp.texture = iris_tex
+    iris_disp.strength = 0.004
     shade_smooth(iris)
     iris.data.materials.append(iris_mat)
 
@@ -365,6 +373,13 @@ for side, sign in [("L", -1), ("R", 1)]:
     pupil.name = f"Pupil{side}"
     shade_smooth(pupil)
     pupil.data.materials.append(eye_mat)
+
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=8, ring_count=6, radius=0.030, location=(sign * 0.105, 0.311, 1.824))
+    cornea = bpy.context.object
+    cornea.name = f"Cornea{side}"
+    cornea_mat = add_material("Cornea", (0.95, 0.95, 0.96), roughness=0.08, metallic=0.05)
+    shade_smooth(cornea)
+    cornea.data.materials.append(cornea_mat)
 
 # Light beard tufts along the jaw/chin
 beard_objs = []
@@ -929,6 +944,7 @@ BONE_GROUPS = {
              bpy.data.objects["EyeWhiteL"], bpy.data.objects["EyeWhiteR"],
              bpy.data.objects["IrisL"], bpy.data.objects["IrisR"],
              bpy.data.objects["PupilL"], bpy.data.objects["PupilR"],
+             bpy.data.objects["CorneaL"], bpy.data.objects["CorneaR"],
              bpy.data.objects["BrowL"], bpy.data.objects["BrowR"],
              bpy.data.objects["CheekL"], bpy.data.objects["CheekR"],
              bpy.data.objects["TrapeziusL"], bpy.data.objects["TrapeziusR"],
