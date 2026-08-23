@@ -670,6 +670,19 @@ for side, sign in [("L", -1), ("R", 1)]:
     shade_smooth(oblique)
     oblique.data.materials.append(skin_mat)
 
+# Subtle rib hints on torso sides
+for side, sign in [("L", -1), ("R", 1)]:
+    for rib_i in range(3):
+        rib_z = 1.15 - rib_i * 0.22
+        bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=0.06, location=(sign * 0.37, 0.0, rib_z))
+        rib = bpy.context.object
+        rib.name = f"Rib{side}{rib_i}"
+        rib.scale = (0.4, 1.2, 0.5)
+        add_subsurf(rib, 1)
+        apply_all_modifiers(rib)
+        shade_smooth(rib)
+        rib.data.materials.append(skin_mat)
+
 # ── Big feet with toe and arch definition ────────────────────────────────────
 def build_foot(name, x_sign):
     bpy.ops.mesh.primitive_cube_add(size=1.0, location=(0.18 * x_sign, 0.18, -0.16))
@@ -769,22 +782,56 @@ shade_smooth(tail_obj)
 tail_obj.data.materials.append(skin_mat)
 
 # ── Gada (mace): bumpy head via displacement + handle ───────────────────────
-bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=3, radius=0.26, location=(0.78, 0.05, 1.72))
+bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=4, radius=0.27, location=(0.78, 0.05, 1.72))
 gada_head = bpy.context.object
 gada_head.name = "GadaHead"
+me = gada_head.data
+bm = bmesh.new()
+bm.from_mesh(me)
+bm.verts.ensure_lookup_table()
+for v in bm.verts:
+    dist = math.sqrt(v.co.x**2 + v.co.y**2 + v.co.z**2)
+    if dist > 0.01:
+        bump_val = 0.5 * math.sin(v.co.z * 8.0) * math.sin(v.co.x * 6.0)
+        scale = 1.0 + 0.08 * bump_val
+        v.co.x *= scale
+        v.co.y *= scale
+        v.co.z *= scale
+bm.to_mesh(me)
+bm.free()
 tex = bpy.data.textures.new("GadaBumps", type='VORONOI')
-tex.noise_scale = 0.35
+tex.noise_scale = 0.3
 disp = gada_head.modifiers.new(name="Bumps", type='DISPLACE')
 disp.texture = tex
-disp.strength = 0.04
+disp.strength = 0.035
 add_subsurf(gada_head, 1)
 apply_all_modifiers(gada_head)
 shade_smooth(gada_head)
 gada_head.data.materials.append(gold_mat)
 
-bpy.ops.mesh.primitive_cylinder_add(vertices=10, radius=0.05, depth=0.85, location=(0.74, 0.05, 1.26))
+bpy.ops.mesh.primitive_cylinder_add(vertices=12, radius=0.052, depth=0.87, location=(0.74, 0.05, 1.26))
 gada_handle = bpy.context.object
 gada_handle.name = "GadaHandle"
+me = gada_handle.data
+bm = bmesh.new()
+bm.from_mesh(me)
+bm.verts.ensure_lookup_table()
+bm.edges.ensure_lookup_table()
+handle_edges = [e for e in bm.edges if abs(e.verts[0].co.z - e.verts[1].co.z) > 0.1]
+bmesh.ops.subdivide_edges(bm, edges=handle_edges, cuts=3)
+bm.verts.ensure_lookup_table()
+for v in bm.verts:
+    t = (v.co.z + 0.435) / 0.87
+    taper = 1.0 - 0.08 * t
+    v.co.x *= taper
+    v.co.y *= taper
+    grain = 0.3 * math.sin(v.co.z * 15.0)
+    if abs(v.co.x) > 0.01:
+        v.co.x += 0.008 * grain
+bm.to_mesh(me)
+bm.free()
+add_subsurf(gada_handle, 1)
+apply_all_modifiers(gada_handle)
 shade_smooth(gada_handle)
 gada_handle.data.materials.append(wood_mat)
 
@@ -858,9 +905,11 @@ def rigid_bind(obj, bone_name):
     obj.parent = armature_obj
     obj.matrix_parent_inverse = armature_obj.matrix_world.inverted()
 
+rib_objs = [bpy.data.objects[f"Rib{side}{i}"] for side in ["L", "R"] for i in range(3)]
+
 BONE_GROUPS = {
     "Hips": [torso, neck, cloth, waistband, bpy.data.objects["PectoralL"], bpy.data.objects["PectoralR"],
-             bpy.data.objects["ObliqueL"], bpy.data.objects["ObliqueR"]] + chest_hair + chest_hair_upper,
+             bpy.data.objects["ObliqueL"], bpy.data.objects["ObliqueR"]] + rib_objs + chest_hair + chest_hair_upper,
     "Head": [head, bpy.data.objects["EarL"], bpy.data.objects["EarR"],
              bpy.data.objects["EyeSocketL"], bpy.data.objects["EyeSocketR"],
              bpy.data.objects["EyeWhiteL"], bpy.data.objects["EyeWhiteR"],
