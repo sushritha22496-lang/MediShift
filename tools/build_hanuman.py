@@ -51,16 +51,16 @@ def parent_keep_transform(child, parent):
 
 clear_scene()
 
-skin_mat = add_material("Skin", (0.82, 0.2, 0.04), roughness=0.6)
-face_mat = add_material("Face", (0.88, 0.32, 0.09), roughness=0.5)
-gold_mat = add_material("Gold", (0.85, 0.66, 0.12), roughness=0.2, metallic=0.9)
-wood_mat = add_material("Wood", (0.35, 0.2, 0.08), roughness=0.7)
-eye_mat = add_material("Eye", (0.02, 0.02, 0.02), roughness=0.15)
-sclera_mat = add_material("Sclera", (0.85, 0.8, 0.7), roughness=0.35)
-hair_mat = add_material("Hair", (0.06, 0.04, 0.03), roughness=0.85)
+skin_mat = add_material("Skin", (0.84, 0.22, 0.05), roughness=0.55)
+face_mat = add_material("Face", (0.90, 0.34, 0.10), roughness=0.48)
+gold_mat = add_material("Gold", (0.87, 0.68, 0.14), roughness=0.18, metallic=0.92)
+wood_mat = add_material("Wood", (0.37, 0.22, 0.09), roughness=0.72)
+eye_mat = add_material("Eye", (0.01, 0.01, 0.01), roughness=0.12)
+sclera_mat = add_material("Sclera", (0.87, 0.82, 0.72), roughness=0.32)
+hair_mat = add_material("Hair", (0.08, 0.05, 0.03), roughness=0.88)
 
 # ── Torso (muscled: broad shoulders, chest, abs, tapered waist) ────────────
-bpy.ops.mesh.primitive_cylinder_add(vertices=36, radius=0.38, depth=0.95, location=(0, 0, 1.0))
+bpy.ops.mesh.primitive_cylinder_add(vertices=40, radius=0.38, depth=0.95, location=(0, 0, 1.0))
 torso = bpy.context.object
 torso.name = "Torso"
 me = torso.data
@@ -69,7 +69,7 @@ bm.from_mesh(me)
 bm.verts.ensure_lookup_table()
 bm.edges.ensure_lookup_table()
 vertical_edges = [e for e in bm.edges if abs(e.verts[0].co.z - e.verts[1].co.z) > 0.1]
-bmesh.ops.subdivide_edges(bm, edges=vertical_edges, cuts=13)
+bmesh.ops.subdivide_edges(bm, edges=vertical_edges, cuts=15)
 bm.verts.ensure_lookup_table()
 for v in bm.verts:
     z = v.co.z
@@ -158,10 +158,10 @@ shade_smooth(neck)
 neck.data.materials.append(skin_mat)
 
 # ── Head ───────────────────────────────────────────────────────────────────
-bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=3, radius=0.3, location=(0, 0.03, 1.78))
+bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=4, radius=0.3, location=(0, 0.03, 1.78))
 head = bpy.context.object
 head.name = "Head"
-head.scale = (1.0, 1.03, 0.92)
+head.scale = (1.0, 1.04, 0.93)
 add_subsurf(head, 1)
 apply_all_modifiers(head)
 shade_smooth(head)
@@ -328,7 +328,7 @@ for i, (bx, by, bz) in enumerate(beard_points):
 
 # ── Limb builder (tapered + muscle bulges) ──────────────────────────────────
 def build_limb(name, base_loc, length, radius_top, radius_bottom, bend_deg, mat, bulges=None):
-    bpy.ops.mesh.primitive_cylinder_add(vertices=12, radius=radius_top, depth=length, location=base_loc)
+    bpy.ops.mesh.primitive_cylinder_add(vertices=14, radius=radius_top, depth=length, location=base_loc)
     obj = bpy.context.object
     obj.name = name
     me = obj.data
@@ -337,7 +337,7 @@ def build_limb(name, base_loc, length, radius_top, radius_bottom, bend_deg, mat,
     bm.verts.ensure_lookup_table()
     bm.edges.ensure_lookup_table()
     limb_vertical_edges = [e for e in bm.edges if abs(e.verts[0].co.z - e.verts[1].co.z) > length * 0.3]
-    bmesh.ops.subdivide_edges(bm, edges=limb_vertical_edges, cuts=9)
+    bmesh.ops.subdivide_edges(bm, edges=limb_vertical_edges, cuts=11)
     bm.verts.ensure_lookup_table()
     half = length / 2.0
     for v in bm.verts:
