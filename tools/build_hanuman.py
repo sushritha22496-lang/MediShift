@@ -60,7 +60,7 @@ sclera_mat = add_material("Sclera", (0.85, 0.8, 0.7), roughness=0.35)
 hair_mat = add_material("Hair", (0.06, 0.04, 0.03), roughness=0.85)
 
 # ── Torso (muscled: broad shoulders, chest, abs, tapered waist) ────────────
-bpy.ops.mesh.primitive_cylinder_add(vertices=28, radius=0.38, depth=0.95, location=(0, 0, 1.0))
+bpy.ops.mesh.primitive_cylinder_add(vertices=36, radius=0.38, depth=0.95, location=(0, 0, 1.0))
 torso = bpy.context.object
 torso.name = "Torso"
 me = torso.data
@@ -69,7 +69,7 @@ bm.from_mesh(me)
 bm.verts.ensure_lookup_table()
 bm.edges.ensure_lookup_table()
 vertical_edges = [e for e in bm.edges if abs(e.verts[0].co.z - e.verts[1].co.z) > 0.1]
-bmesh.ops.subdivide_edges(bm, edges=vertical_edges, cuts=11)
+bmesh.ops.subdivide_edges(bm, edges=vertical_edges, cuts=13)
 bm.verts.ensure_lookup_table()
 for v in bm.verts:
     z = v.co.z
@@ -81,23 +81,29 @@ for v in bm.verts:
     scale = 1.0
     if z > 0.32:
         scale *= 1.3
-    shoulder_t = max(0.0, 1.0 - abs(z - 0.29) / 0.08) * side_f
-    scale *= 1.0 + 0.42 * shoulder_t
-    chest_t = max(0.0, 1.0 - abs(z - 0.16) / 0.15)
+    shoulder_t = max(0.0, 1.0 - abs(z - 0.29) / 0.1) * side_f
+    scale *= 1.0 + 0.32 * shoulder_t
+    chest_t = max(0.0, 1.0 - abs(z - 0.16) / 0.18)
     sternum_dip = 1.0 - 0.55 * math.exp(-((v.co.x) / 0.12) ** 2)
-    scale *= 1.0 + 0.55 * chest_t * front * sternum_dip
+    scale *= 1.0 + 0.45 * chest_t * front * sternum_dip
     if -0.30 <= z < 0.04:
         ridge = 0.5 + 0.5 * math.cos((z - 0.04) * 22.0)
-        scale *= 1.0 - 0.15 * ridge * front
-    back_t = max(0.0, 1.0 - abs(z - 0.05) / 0.35)
-    scale *= 1.0 + 0.28 * back_t * back
+        scale *= 1.0 - 0.13 * ridge * front
+    back_t = max(0.0, 1.0 - abs(z - 0.05) / 0.4)
+    scale *= 1.0 + 0.2 * back_t * back
+    # shoulder-blade hints + spine groove, back only
+    blade_t = max(0.0, 1.0 - abs(z - 0.18) / 0.12) * max(0.0, back - 0.35) * 1.5
+    scale *= 1.0 + 0.16 * min(blade_t, 1.0)
+    spine_t = max(0.0, 1.0 - abs(v.co.x) / 0.05) * back * max(0.0, 1.0 - abs(z - 0.05) / 0.3)
+    scale *= 1.0 - 0.1 * spine_t
     if z < -0.32:
         scale *= 0.68
     v.co.x *= scale
     v.co.y *= scale
 cap_verts = [v for v in bm.verts if abs(v.co.z) > 0.46]
 interior_verts = [v for v in bm.verts if v not in cap_verts]
-bmesh.ops.smooth_vert(bm, verts=interior_verts, factor=0.15, use_axis_x=True, use_axis_y=True, use_axis_z=False)
+bmesh.ops.smooth_vert(bm, verts=interior_verts, factor=0.2, use_axis_x=True, use_axis_y=True, use_axis_z=False)
+bmesh.ops.smooth_vert(bm, verts=interior_verts, factor=0.12, use_axis_x=True, use_axis_y=True, use_axis_z=True)
 bm.to_mesh(me)
 bm.free()
 add_subsurf(torso, 2)
@@ -106,7 +112,7 @@ shade_smooth(torso)
 torso.data.materials.append(skin_mat)
 
 # Loincloth (dhoti wrap) around the waist
-bpy.ops.mesh.primitive_cylinder_add(vertices=28, radius=0.42, depth=0.32, location=(0, 0, 0.62))
+bpy.ops.mesh.primitive_cylinder_add(vertices=28, radius=0.45, depth=0.36, location=(0, 0, 0.62))
 cloth = bpy.context.object
 cloth.name = "Loincloth"
 me = cloth.data
@@ -314,7 +320,7 @@ hand_r_parts = build_hand("HandR", (0.5, 0.06, 0.6), 1, skin_mat)
 deltoid_l = None
 deltoid_r = None
 for side, sign, sculptname in [("L", -1, "deltoid_l"), ("R", 1, "deltoid_r")]:
-    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=2, radius=0.17, location=(sign * 0.46, 0.0, 1.42))
+    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=2, radius=0.19, location=(sign * 0.43, 0.0, 1.43))
     delt = bpy.context.object
     delt.name = f"Deltoid{side}"
     delt.scale = (1.0, 0.85, 0.9)
@@ -610,6 +616,16 @@ set_bone_rot("Head", (-8, 0, 0), 22)
 push_action_to_nla(action)
 
 reset_pose()
+
+# Safety cleanup: delete any stray object that never got bound to the rig
+# (e.g. a primitive left over from a mis-renamed/duplicated creation call) so
+# it can't sneak into the export as an unbound, unmaterialed artifact.
+for obj in list(bpy.data.objects):
+    if obj is armature_obj:
+        continue
+    if obj.parent is not armature_obj:
+        print("REMOVING_STRAY_OBJECT:", obj.name)
+        bpy.data.objects.remove(obj, do_unlink=True)
 
 # ── Export ───────────────────────────────────────────────────────────────
 bpy.ops.object.select_all(action='SELECT')
