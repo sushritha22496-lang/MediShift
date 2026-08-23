@@ -123,6 +123,11 @@ skin_tex.noise_scale = 0.5
 skin_disp = torso.modifiers.new(name="SkinDisplace", type='DISPLACE')
 skin_disp.texture = skin_tex
 skin_disp.strength = 0.008
+scars_tex = bpy.data.textures.new("SkinScars", type='VORONOI')
+scars_tex.noise_scale = 3.5
+scars_disp = torso.modifiers.new(name="SkinScars", type='DISPLACE')
+scars_disp.texture = scars_tex
+scars_disp.strength = 0.003
 apply_all_modifiers(torso)
 shade_smooth(torso)
 torso.data.materials.append(skin_mat)
@@ -202,6 +207,11 @@ head_tex.noise_scale = 0.6
 head_disp = head.modifiers.new(name="HeadDisplace", type='DISPLACE')
 head_disp.texture = head_tex
 head_disp.strength = 0.006
+head_scars_tex = bpy.data.textures.new("HeadScars", type='VORONOI')
+head_scars_tex.noise_scale = 4.2
+head_scars_disp = head.modifiers.new(name="HeadScars", type='DISPLACE')
+head_scars_disp.texture = head_scars_tex
+head_scars_disp.strength = 0.002
 apply_all_modifiers(head)
 shade_smooth(head)
 head.data.materials.append(face_mat)
