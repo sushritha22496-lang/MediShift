@@ -1009,6 +1009,55 @@ for lip_name in ("LowerLip", "UpperLip"):
         else:
             open_key.data[v.index].co = v.co
 
+    smile_key = lip.shape_key_add(name="Smile", from_mix=False)
+    smile_key.value = 0.0
+    for v in lip.data.vertices:
+        if lip_name == "LowerLip":
+            if abs(v.co.x) > 0.3:
+                smile_key.data[v.index].co = (v.co.x, v.co.y + 0.05, v.co.z + 0.03)
+            else:
+                smile_key.data[v.index].co = v.co
+        else:
+            if abs(v.co.x) > 0.3:
+                smile_key.data[v.index].co = (v.co.x, v.co.y + 0.06, v.co.z - 0.02)
+            else:
+                smile_key.data[v.index].co = v.co
+
+    frown_key = lip.shape_key_add(name="Frown", from_mix=False)
+    frown_key.value = 0.0
+    for v in lip.data.vertices:
+        if lip_name == "LowerLip":
+            if abs(v.co.x) > 0.3:
+                frown_key.data[v.index].co = (v.co.x, v.co.y - 0.04, v.co.z - 0.02)
+            else:
+                frown_key.data[v.index].co = v.co
+        else:
+            if abs(v.co.x) > 0.3:
+                frown_key.data[v.index].co = (v.co.x, v.co.y - 0.05, v.co.z + 0.03)
+            else:
+                frown_key.data[v.index].co = v.co
+
+# Cheek expressions for emotion
+for cheek_name in ("CheekL", "CheekR"):
+    cheek = bpy.data.objects[cheek_name]
+    cheek.shape_key_add(name="Basis", from_mix=False)
+
+    smile_cheek = cheek.shape_key_add(name="Smile", from_mix=False)
+    smile_cheek.value = 0.0
+    for v in cheek.data.vertices:
+        if v.co.z > 0:
+            smile_cheek.data[v.index].co = (v.co.x, v.co.y + 0.04, v.co.z + 0.03)
+        else:
+            smile_cheek.data[v.index].co = v.co
+
+    frown_cheek = cheek.shape_key_add(name="Frown", from_mix=False)
+    frown_cheek.value = 0.0
+    for v in cheek.data.vertices:
+        if v.co.z > 0:
+            frown_cheek.data[v.index].co = (v.co.x, v.co.y - 0.03, v.co.z - 0.02)
+        else:
+            frown_cheek.data[v.index].co = v.co
+
 # ── Animations: bone-keyframed actions, exported as separate glTF clips ────
 def set_bone_rot(name, degrees_xyz, frame):
     pb = armature_obj.pose.bones[name]
