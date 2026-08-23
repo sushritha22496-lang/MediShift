@@ -116,7 +116,7 @@ shade_smooth(torso)
 torso.data.materials.append(skin_mat)
 
 # Loincloth (dhoti wrap) around the waist
-bpy.ops.mesh.primitive_cylinder_add(vertices=28, radius=0.45, depth=0.36, location=(0, 0, 0.62))
+bpy.ops.mesh.primitive_cylinder_add(vertices=32, radius=0.46, depth=0.40, location=(0, 0, 0.62))
 cloth = bpy.context.object
 cloth.name = "Loincloth"
 me = cloth.data
@@ -125,22 +125,27 @@ bm.from_mesh(me)
 bm.verts.ensure_lookup_table()
 bm.edges.ensure_lookup_table()
 cloth_vertical_edges = [e for e in bm.edges if abs(e.verts[0].co.z - e.verts[1].co.z) > 0.05]
-bmesh.ops.subdivide_edges(bm, edges=cloth_vertical_edges, cuts=5)
+bmesh.ops.subdivide_edges(bm, edges=cloth_vertical_edges, cuts=6)
 bm.verts.ensure_lookup_table()
 for v in bm.verts:
     r = math.sqrt(v.co.x * v.co.x + v.co.y * v.co.y)
-    back = max(-(v.co.y / r), 0.0) if r > 1e-6 else 0.0
-    bottom_t = max(0.0, min(1.0, (0.16 - v.co.z) / 0.32))
-    flare = 1.0 + 0.16 * bottom_t
+    ff = (v.co.y / r) if r > 1e-6 else 0.0
+    back = max(-ff, 0.0)
+    front = max(ff, 0.0)
+    bottom_t = max(0.0, min(1.0, (0.18 - v.co.z) / 0.36))
+    flare = 1.0 + 0.18 * bottom_t
     v.co.x *= flare
     v.co.y *= flare
-    v.co.z -= 0.09 * bottom_t * back
+    v.co.z -= 0.11 * bottom_t * back
+    if bottom_t > 0.5 and abs(v.co.x) > 0.15:
+        fold_strength = max(0.0, bottom_t - 0.5) * front * 0.8
+        v.co.y += 0.08 * fold_strength
 bm.to_mesh(me)
 bm.free()
 add_subsurf(cloth, 2)
 apply_all_modifiers(cloth)
 shade_smooth(cloth)
-cloth_mat = add_material("Cloth", (0.85, 0.55, 0.08), roughness=0.75)
+cloth_mat = add_material("Cloth", (0.86, 0.56, 0.10), roughness=0.78)
 cloth.data.materials.append(cloth_mat)
 
 # Neck: bridges torso top to head so subsurf shrinkage can't leave a gap
@@ -386,6 +391,39 @@ for side, sign in [("L", -1), ("R", 1)]:
     shade_smooth(forearm_muscle)
     forearm_muscle.data.materials.append(skin_mat)
 
+# Rotator cuff detail on shoulder back
+for side, sign in [("L", -1), ("R", 1)]:
+    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=0.09, location=(sign * 0.40, -0.10, 1.35))
+    rotator = bpy.context.object
+    rotator.name = f"RotatorCuff{side}"
+    rotator.scale = (0.85, 0.65, 0.75)
+    add_subsurf(rotator, 1)
+    apply_all_modifiers(rotator)
+    shade_smooth(rotator)
+    rotator.data.materials.append(skin_mat)
+
+# Wrist tendon definition
+for side, sign in [("L", -1), ("R", 1)]:
+    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=0.06, location=(sign * 0.5, 0.065, 0.62))
+    wrist = bpy.context.object
+    wrist.name = f"WristTendon{side}"
+    wrist.scale = (0.85, 0.6, 0.8)
+    add_subsurf(wrist, 1)
+    apply_all_modifiers(wrist)
+    shade_smooth(wrist)
+    wrist.data.materials.append(skin_mat)
+
+# Ankle tendon definition
+for side, sign in [("L", -1), ("R", 1)]:
+    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=0.06, location=(sign * 0.18, 0.12, -0.15))
+    ankle = bpy.context.object
+    ankle.name = f"AnkleTendon{side}"
+    ankle.scale = (0.8, 0.5, 0.85)
+    add_subsurf(ankle, 1)
+    apply_all_modifiers(ankle)
+    shade_smooth(ankle)
+    ankle.data.materials.append(skin_mat)
+
 # Hands: palm + four fingers + thumb with better joint articulation
 def build_hand(name, wrist_pos, x_sign, mat):
     wx, wy, wz = wrist_pos
@@ -530,11 +568,16 @@ def add_hair_tufts(prefix, base_pos, count, spread, parent_hint):
         objs.append(t)
     return objs
 
-chest_hair = add_hair_tufts("ChestHair", (0.0, 0.30, 1.15), 4, 0.10, "torso")
-forearm_hair_l = add_hair_tufts("ForearmHairL", (-0.5, 0.05, 0.95), 3, 0.05, "armL")
-forearm_hair_r = add_hair_tufts("ForearmHairR", (0.5, 0.05, 0.95), 3, 0.05, "armR")
-shin_hair_l = add_hair_tufts("ShinHairL", (-0.18, 0.10, -0.05), 3, 0.06, "legL")
-shin_hair_r = add_hair_tufts("ShinHairR", (0.18, 0.10, -0.05), 3, 0.06, "legR")
+chest_hair = add_hair_tufts("ChestHair", (0.0, 0.30, 1.15), 6, 0.12, "torso")
+chest_hair_upper = add_hair_tufts("ChestHairUpper", (0.0, 0.28, 1.35), 4, 0.08, "torso")
+shoulder_hair_l = add_hair_tufts("ShoulderHairL", (-0.35, 0.12, 1.40), 3, 0.08, "armL")
+shoulder_hair_r = add_hair_tufts("ShoulderHairR", (0.35, 0.12, 1.40), 3, 0.08, "armR")
+forearm_hair_l = add_hair_tufts("ForearmHairL", (-0.5, 0.05, 0.95), 4, 0.06, "armL")
+forearm_hair_r = add_hair_tufts("ForearmHairR", (0.5, 0.05, 0.95), 4, 0.06, "armR")
+thigh_hair_l = add_hair_tufts("ThighHairL", (-0.18, 0.08, 0.40), 3, 0.07, "legL")
+thigh_hair_r = add_hair_tufts("ThighHairR", (0.18, 0.08, 0.40), 3, 0.07, "legR")
+shin_hair_l = add_hair_tufts("ShinHairL", (-0.18, 0.10, -0.05), 4, 0.07, "legL")
+shin_hair_r = add_hair_tufts("ShinHairR", (0.18, 0.10, -0.05), 4, 0.07, "legR")
 
 # Calf muscles for leg definition
 for side, sign in [("L", -1), ("R", 1)]:
@@ -737,7 +780,7 @@ def rigid_bind(obj, bone_name):
 
 BONE_GROUPS = {
     "Hips": [torso, neck, cloth, waistband, bpy.data.objects["PectoralL"], bpy.data.objects["PectoralR"],
-             bpy.data.objects["ObliqueL"], bpy.data.objects["ObliqueR"]] + chest_hair,
+             bpy.data.objects["ObliqueL"], bpy.data.objects["ObliqueR"]] + chest_hair + chest_hair_upper,
     "Head": [head, bpy.data.objects["EarL"], bpy.data.objects["EarR"],
              bpy.data.objects["EyeSocketL"], bpy.data.objects["EyeSocketR"],
              bpy.data.objects["EyeWhiteL"], bpy.data.objects["EyeWhiteR"],
@@ -747,10 +790,12 @@ BONE_GROUPS = {
              bpy.data.objects["CheekL"], bpy.data.objects["CheekR"],
              bpy.data.objects["Nose"], bpy.data.objects["NostrilL"], bpy.data.objects["NostrilR"]] + beard_objs,
     "Jaw": [chin, snout, bpy.data.objects["LowerLip"], bpy.data.objects["UpperLip"]],
-    "UpperArmL": [deltoid_l, left_arm, bpy.data.objects["TricepL"], bpy.data.objects["ForearmMuscleL"], armlet_l, wristlet_l] + forearm_hair_l + hand_l_parts,
-    "UpperArmR": [deltoid_r, right_arm, bpy.data.objects["TricepR"], bpy.data.objects["ForearmMuscleR"], gada_head, gada_handle, armlet_r, wristlet_r] + forearm_hair_r + gada_rings + hand_r_parts,
-    "ThighL": [left_leg, bpy.data.objects["CalfL"], foot_l, bpy.data.objects["FootArchL"], anklet_l] + toes_l + shin_hair_l,
-    "ThighR": [right_leg, bpy.data.objects["CalfR"], foot_r, bpy.data.objects["FootArchR"], anklet_r] + toes_r + shin_hair_r,
+    "UpperArmL": [deltoid_l, left_arm, bpy.data.objects["TricepL"], bpy.data.objects["ForearmMuscleL"],
+                  bpy.data.objects["RotatorCuffL"], bpy.data.objects["WristTendonL"], armlet_l, wristlet_l] + forearm_hair_l + shoulder_hair_l + hand_l_parts,
+    "UpperArmR": [deltoid_r, right_arm, bpy.data.objects["TricepR"], bpy.data.objects["ForearmMuscleR"],
+                  bpy.data.objects["RotatorCuffR"], bpy.data.objects["WristTendonR"], gada_head, gada_handle, armlet_r, wristlet_r] + forearm_hair_r + shoulder_hair_r + gada_rings + hand_r_parts,
+    "ThighL": [left_leg, bpy.data.objects["CalfL"], bpy.data.objects["AnkleTendonL"], foot_l, bpy.data.objects["FootArchL"], anklet_l] + toes_l + shin_hair_l + thigh_hair_l,
+    "ThighR": [right_leg, bpy.data.objects["CalfR"], bpy.data.objects["AnkleTendonR"], foot_r, bpy.data.objects["FootArchR"], anklet_r] + toes_r + shin_hair_r + thigh_hair_r,
     "Tail": [tail_obj],
 }
 for bone_name, objs in BONE_GROUPS.items():
