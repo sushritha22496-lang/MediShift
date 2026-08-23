@@ -701,6 +701,17 @@ thigh_hair_r = add_hair_cards("ThighHairR", (0.18, 0.08, 0.40), 3, 0.07, "legR")
 shin_hair_l = add_hair_cards("ShinHairL", (-0.18, 0.10, -0.05), 4, 0.07, "legL")
 shin_hair_r = add_hair_cards("ShinHairR", (0.18, 0.10, -0.05), 4, 0.07, "legR")
 
+# Quadriceps muscles on thighs
+for side, sign in [("L", -1), ("R", 1)]:
+    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=2, radius=0.16, location=(sign * 0.18, 0.05, 0.65))
+    quad = bpy.context.object
+    quad.name = f"Quadriceps{side}"
+    quad.scale = (0.9, 1.1, 0.85)
+    add_subsurf(quad, 1)
+    apply_all_modifiers(quad)
+    shade_smooth(quad)
+    quad.data.materials.append(skin_mat)
+
 # Calf muscles for leg definition
 for side, sign in [("L", -1), ("R", 1)]:
     bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=2, radius=0.14, location=(sign * 0.18, -0.08, -0.08))
@@ -979,9 +990,9 @@ BONE_GROUPS = {
                   bpy.data.objects["RotatorCuffL"], bpy.data.objects["WristTendonL"], armlet_l, wristlet_l] + forearm_hair_l + shoulder_hair_l + hand_l_parts,
     "UpperArmR": [deltoid_r, right_arm, bpy.data.objects["TricepR"], bpy.data.objects["ForearmMuscleR"],
                   bpy.data.objects["RotatorCuffR"], bpy.data.objects["WristTendonR"], gada_head, gada_handle, armlet_r, wristlet_r] + forearm_hair_r + shoulder_hair_r + gada_rings + hand_r_parts,
-    "ThighL": [left_leg, bpy.data.objects["CalfL"], bpy.data.objects["AnkleTendonL"], foot_l, bpy.data.objects["FootArchL"],
+    "ThighL": [left_leg, bpy.data.objects["QuadricepsL"], bpy.data.objects["CalfL"], bpy.data.objects["AnkleTendonL"], foot_l, bpy.data.objects["FootArchL"],
                bpy.data.objects["HeelL"], anklet_l] + toes_l + shin_hair_l + thigh_hair_l,
-    "ThighR": [right_leg, bpy.data.objects["CalfR"], bpy.data.objects["AnkleTendonR"], foot_r, bpy.data.objects["FootArchR"],
+    "ThighR": [right_leg, bpy.data.objects["QuadricepsR"], bpy.data.objects["CalfR"], bpy.data.objects["AnkleTendonR"], foot_r, bpy.data.objects["FootArchR"],
                bpy.data.objects["HeelR"], anklet_r] + toes_r + shin_hair_r + thigh_hair_r,
     "Tail": [tail_obj],
 }
@@ -1086,6 +1097,25 @@ for muscle_name in ("ForearmMuscleL", "ForearmMuscleR"):
     flex_key.value = 0.0
     for v in muscle.data.vertices:
         flex_key.data[v.index].co = (v.co.x * 1.12, v.co.y + 0.06, v.co.z)
+
+# Muscle flexion shapes for legs
+for muscle_name in ("QuadricepsL", "QuadricepsR"):
+    muscle = bpy.data.objects[muscle_name]
+    muscle.shape_key_add(name="Basis", from_mix=False)
+
+    flex_key = muscle.shape_key_add(name="Flex", from_mix=False)
+    flex_key.value = 0.0
+    for v in muscle.data.vertices:
+        flex_key.data[v.index].co = (v.co.x * 1.18, v.co.y + 0.10, v.co.z)
+
+for muscle_name in ("CalfL", "CalfR"):
+    muscle = bpy.data.objects[muscle_name]
+    muscle.shape_key_add(name="Basis", from_mix=False)
+
+    flex_key = muscle.shape_key_add(name="Flex", from_mix=False)
+    flex_key.value = 0.0
+    for v in muscle.data.vertices:
+        flex_key.data[v.index].co = (v.co.x * 1.14, v.co.y - 0.05, v.co.z)
 
 # ── Animations: bone-keyframed actions, exported as separate glTF clips ────
 def set_bone_rot(name, degrees_xyz, frame):

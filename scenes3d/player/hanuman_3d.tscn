@@ -1884,12 +1884,12 @@ dof_blur_far_distance = 22.0
 dof_blur_far_transition = 12.0
 dof_blur_amount = 0.15
 
-[node name="Hanuman3D" type="CharacterBody3D" unique_id=1300127474]
+[node name="Hanuman3D" type="CharacterBody3D" unique_id=616393981]
 collision_layer = 2
 collision_mask = 5
 script = ExtResource("1_aj814")
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=282142994]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=1520719282]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
 shape = SubResource("CapsuleShape3D_rqsw4")
 
@@ -2270,26 +2270,26 @@ skin = SubResource("Skin_sfs3o")
 mesh = SubResource("ArrayMesh_vc855")
 skin = SubResource("Skin_sfs3o")
 
-[node name="GadaAttach" type="BoneAttachment3D" parent="Model/Skeleton/Skeleton3D" unique_id=822586346]
+[node name="GadaAttach" type="BoneAttachment3D" parent="Model/Skeleton/Skeleton3D" unique_id=1361441606]
 bone_name = "UpperArmR"
 
-[node name="AttackArea" type="Area3D" parent="Model/Skeleton/Skeleton3D/GadaAttach" unique_id=846055528]
+[node name="AttackArea" type="Area3D" parent="Model/Skeleton/Skeleton3D/GadaAttach" unique_id=1836367164]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.28, 0.27, -0.05)
 collision_layer = 0
 collision_mask = 4
 monitoring = false
 
-[node name="AttackShape" type="CollisionShape3D" parent="Model/Skeleton/Skeleton3D/GadaAttach/AttackArea" unique_id=1194625795]
+[node name="AttackShape" type="CollisionShape3D" parent="Model/Skeleton/Skeleton3D/GadaAttach/AttackArea" unique_id=1393076477]
 shape = SubResource("CapsuleShape3D_vfmch")
 
 [node name="AnimationPlayer" type="AnimationPlayer" parent="Model" unique_id=1091576139]
 libraries/ = SubResource("AnimationLibrary_vws34")
 
-[node name="SpringArm3D" type="SpringArm3D" parent="." unique_id=1227210273]
+[node name="SpringArm3D" type="SpringArm3D" parent="." unique_id=2121922769]
 transform = Transform3D(1, 0, 0, 0, 0.939693, 0.34202, 0, -0.34202, 0.939693, 0, 2.2, 0)
 spring_length = 7.0
 
-[node name="Camera3D" type="Camera3D" parent="SpringArm3D" unique_id=1935954944]
+[node name="Camera3D" type="Camera3D" parent="SpringArm3D" unique_id=568121548]
 attributes = SubResource("CameraAttributesPractical_u2wgx")
 current = true
 fov = 55.0
