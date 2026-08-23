@@ -12,13 +12,15 @@ def clear_scene():
         if block.users == 0:
             bpy.data.meshes.remove(block)
 
-def add_material(name, color, roughness=0.5, metallic=0.0):
+def add_material(name, color, roughness=0.5, metallic=0.0, subsurface=0.0):
     mat = bpy.data.materials.new(name)
     mat.use_nodes = True
     bsdf = mat.node_tree.nodes["Principled BSDF"]
     bsdf.inputs["Base Color"].default_value = (color[0], color[1], color[2], 1.0)
     bsdf.inputs["Roughness"].default_value = roughness
     bsdf.inputs["Metallic"].default_value = metallic
+    if subsurface > 0:
+        bsdf.inputs["Subsurface Weight"].default_value = subsurface
     return mat
 
 def add_subsurf(obj, levels=2):
@@ -51,12 +53,12 @@ def parent_keep_transform(child, parent):
 
 clear_scene()
 
-skin_mat = add_material("Skin", (0.84, 0.22, 0.05), roughness=0.55)
-face_mat = add_material("Face", (0.90, 0.34, 0.10), roughness=0.48)
+skin_mat = add_material("Skin", (0.84, 0.22, 0.05), roughness=0.55, subsurface=0.15)
+face_mat = add_material("Face", (0.90, 0.34, 0.10), roughness=0.48, subsurface=0.12)
 gold_mat = add_material("Gold", (0.87, 0.68, 0.14), roughness=0.18, metallic=0.92)
 wood_mat = add_material("Wood", (0.37, 0.22, 0.09), roughness=0.72)
-eye_mat = add_material("Eye", (0.01, 0.01, 0.01), roughness=0.12)
-sclera_mat = add_material("Sclera", (0.87, 0.82, 0.72), roughness=0.32)
+eye_mat = add_material("Eye", (0.01, 0.01, 0.01), roughness=0.08)
+sclera_mat = add_material("Sclera", (0.87, 0.82, 0.72), roughness=0.25, subsurface=0.08)
 hair_mat = add_material("Hair", (0.08, 0.05, 0.03), roughness=0.88)
 
 # ── Torso (muscled: broad shoulders, chest, abs, tapered waist) ────────────
@@ -114,6 +116,12 @@ bmesh.ops.smooth_vert(bm, verts=interior_verts, factor=0.12, use_axis_x=True, us
 bm.to_mesh(me)
 bm.free()
 add_subsurf(torso, 2)
+skin_tex = bpy.data.textures.new("SkinDetail", type='CLOUDS')
+skin_tex.cloud_type = 'COLOR'
+skin_tex.noise_scale = 0.5
+skin_disp = torso.modifiers.new(name="SkinDisplace", type='DISPLACE')
+skin_disp.texture = skin_tex
+skin_disp.strength = 0.008
 apply_all_modifiers(torso)
 shade_smooth(torso)
 torso.data.materials.append(skin_mat)
@@ -181,6 +189,12 @@ head = bpy.context.object
 head.name = "Head"
 head.scale = (1.0, 1.04, 0.93)
 add_subsurf(head, 1)
+head_tex = bpy.data.textures.new("HeadDetail", type='CLOUDS')
+head_tex.cloud_type = 'COLOR'
+head_tex.noise_scale = 0.6
+head_disp = head.modifiers.new(name="HeadDisplace", type='DISPLACE')
+head_disp.texture = head_tex
+head_disp.strength = 0.006
 apply_all_modifiers(head)
 shade_smooth(head)
 head.data.materials.append(face_mat)
