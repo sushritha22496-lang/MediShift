@@ -1,0 +1,248 @@
+[gd_scene load_steps=20 format=3 uid="uid://dfj5mxpwn0qo31"]
+
+[ext_resource type="Script" path="res://scripts3d/managers/ForestManager.gd" id="1"]
+[ext_resource type="PackedScene" path="res://scenes3d/characters/rama_character_3d.tscn" id="2"]
+[ext_resource type="PackedScene" path="res://scenes3d/npcs/hanuman_npc_3d.tscn" id="3"]
+[ext_resource type="PackedScene" path="res://scenes3d/npcs/monkey_npc_3d.tscn" id="4"]
+
+[sub_resource type="ProceduralSkyMaterial" id="sky_mat"]
+sky_top_color = Color(0.35, 0.55, 0.8, 1)
+sky_horizon_color = Color(0.75, 0.65, 0.45, 1)
+ground_horizon_color = Color(0.45, 0.4, 0.3, 1)
+ground_bottom_color = Color(0.15, 0.1, 0.05, 1)
+sun_angle_max = 40.0
+sun_curve = 0.2
+
+[sub_resource type="Sky" id="sky"]
+sky_material = SubResource("sky_mat")
+
+[sub_resource type="Environment" id="env"]
+background_mode = 2
+sky = SubResource("sky")
+ambient_light_source = 2
+ambient_light_energy = 0.65
+tonemap_mode = 3
+glow_enabled = true
+glow_intensity = 0.35
+glow_bloom = 0.08
+ssao_enabled = true
+ssao_radius = 2.5
+ssao_intensity = 1.5
+fog_enabled = true
+fog_light_color = Color(0.7, 0.65, 0.5, 1)
+fog_density = 0.012
+fog_aerial_perspective = 0.05
+adjustment_enabled = true
+adjustment_saturation = 1.1
+
+[sub_resource type="BoxMesh" id="ground_mesh"]
+size = Vector3(800, 3, 800)
+
+[sub_resource type="StandardMaterial3D" id="ground_mat"]
+albedo_color = Color(0.25, 0.3, 0.15, 1)
+roughness = 0.98
+ao_enabled = true
+
+[sub_resource type="BoxShape3D" id="ground_shape"]
+size = Vector3(800, 3, 800)
+
+[sub_resource type="CylinderMesh" id="tree_trunk_mesh"]
+radius = 1.0
+height = 25.0
+
+[sub_resource type="StandardMaterial3D" id="tree_trunk_mat"]
+albedo_color = Color(0.35, 0.25, 0.1, 1)
+roughness = 1.0
+
+[sub_resource type="SphereMesh" id="tree_foliage_mesh"]
+radius = 10.0
+height = 20.0
+
+[sub_resource type="StandardMaterial3D" id="foliage_mat"]
+albedo_color = Color(0.15, 0.4, 0.1, 1)
+roughness = 0.9
+
+[sub_resource type="BoxMesh" id="water_mesh"]
+size = Vector3(150, 2, 120)
+
+[sub_resource type="StandardMaterial3D" id="water_mat"]
+albedo_color = Color(0.15, 0.35, 0.55, 1)
+roughness = 0.15
+metallic = 0.3
+
+[sub_resource type="BoxMesh" id="rock_mesh"]
+size = Vector3(8, 4, 8)
+
+[sub_resource type="StandardMaterial3D" id="rock_mat"]
+albedo_color = Color(0.5, 0.45, 0.4, 1)
+roughness = 1.0
+
+[node name="BadrachalamForestExpanded" type="Node3D"]
+script = ExtResource("1")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("env")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.707107, 0.707107, 0, -0.707107, 0.707107, 0, 50, 0)
+shadow_enabled = true
+shadow_blur = 3.0
+
+[node name="Ground" type="MeshInstance3D" parent="."]
+mesh = SubResource("ground_mesh")
+material_override = SubResource("ground_mat")
+
+[node name="GroundCollider" type="StaticBody3D" parent="."]
+[node name="CollisionShape3D" parent="GroundCollider" index="0"]
+shape = SubResource("ground_shape")
+
+[node name="Forest" type="Node3D" parent="."]
+
+[node name="TreeGroup1" type="Node3D" parent="Forest"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -100, 0, -150)
+
+[node name="Tree1" type="Node3D" parent="Forest/TreeGroup1"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+[node name="Trunk" type="MeshInstance3D" parent="Forest/TreeGroup1/Tree1"]
+mesh = SubResource("tree_trunk_mesh")
+material_override = SubResource("tree_trunk_mat")
+[node name="Foliage" type="MeshInstance3D" parent="Forest/TreeGroup1/Tree1"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, 0)
+mesh = SubResource("tree_foliage_mesh")
+material_override = SubResource("foliage_mat")
+[node name="Collider" type="StaticBody3D" parent="Forest/TreeGroup1/Tree1"]
+[node name="CollisionShape3D" type="CapsuleShape3D" parent="Forest/TreeGroup1/Tree1/Collider"]
+radius = 1.0
+height = 25.0
+
+[node name="Tree2" type="Node3D" parent="Forest/TreeGroup1"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 40, 0, 20)
+[node name="Trunk" type="MeshInstance3D" parent="Forest/TreeGroup1/Tree2"]
+mesh = SubResource("tree_trunk_mesh")
+material_override = SubResource("tree_trunk_mat")
+[node name="Foliage" type="MeshInstance3D" parent="Forest/TreeGroup1/Tree2"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, 0)
+mesh = SubResource("tree_foliage_mesh")
+material_override = SubResource("foliage_mat")
+[node name="Collider" type="StaticBody3D" parent="Forest/TreeGroup1/Tree2"]
+[node name="CollisionShape3D" type="CapsuleShape3D" parent="Forest/TreeGroup1/Tree2/Collider"]
+radius = 1.0
+height = 25.0
+
+[node name="Tree3" type="Node3D" parent="Forest/TreeGroup1"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -35, 0, 50)
+[node name="Trunk" type="MeshInstance3D" parent="Forest/TreeGroup1/Tree3"]
+mesh = SubResource("tree_trunk_mesh")
+material_override = SubResource("tree_trunk_mat")
+[node name="Foliage" type="MeshInstance3D" parent="Forest/TreeGroup1/Tree3"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, 0)
+mesh = SubResource("tree_foliage_mesh")
+material_override = SubResource("foliage_mat")
+[node name="Collider" type="StaticBody3D" parent="Forest/TreeGroup1/Tree3"]
+[node name="CollisionShape3D" type="CapsuleShape3D" parent="Forest/TreeGroup1/Tree3/Collider"]
+radius = 1.0
+height = 25.0
+
+[node name="TreeGroup2" type="Node3D" parent="Forest"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 150, 0, 100)
+
+[node name="Tree1" type="Node3D" parent="Forest/TreeGroup2"]
+[node name="Trunk" type="MeshInstance3D" parent="Forest/TreeGroup2/Tree1"]
+mesh = SubResource("tree_trunk_mesh")
+material_override = SubResource("tree_trunk_mat")
+[node name="Foliage" type="MeshInstance3D" parent="Forest/TreeGroup2/Tree1"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, 0)
+mesh = SubResource("tree_foliage_mesh")
+material_override = SubResource("foliage_mat")
+[node name="Collider" type="StaticBody3D" parent="Forest/TreeGroup2/Tree1"]
+[node name="CollisionShape3D" type="CapsuleShape3D" parent="Forest/TreeGroup2/Tree1/Collider"]
+radius = 1.0
+height = 25.0
+
+[node name="Tree2" type="Node3D" parent="Forest/TreeGroup2"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 45, 0, -30)
+[node name="Trunk" type="MeshInstance3D" parent="Forest/TreeGroup2/Tree2"]
+mesh = SubResource("tree_trunk_mesh")
+material_override = SubResource("tree_trunk_mat")
+[node name="Foliage" type="MeshInstance3D" parent="Forest/TreeGroup2/Tree2"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, 0)
+mesh = SubResource("tree_foliage_mesh")
+material_override = SubResource("foliage_mat")
+[node name="Collider" type="StaticBody3D" parent="Forest/TreeGroup2/Tree2"]
+[node name="CollisionShape3D" type="CapsuleShape3D" parent="Forest/TreeGroup2/Tree2/Collider"]
+radius = 1.0
+height = 25.0
+
+[node name="Water" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 200, 0.5, -250)
+mesh = SubResource("water_mesh")
+material_override = SubResource("water_mat")
+
+[node name="WaterCollider" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 200, 0.5, -250)
+[node name="CollisionShape3D" type="BoxShape3D" parent="WaterCollider"]
+shape = SubResource("ground_shape")
+
+[node name="RocksAndDetails" type="Node3D" parent="."]
+
+[node name="Rock1" type="MeshInstance3D" parent="RocksAndDetails"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -80, 1, 100)
+mesh = SubResource("rock_mesh")
+material_override = SubResource("rock_mat")
+
+[node name="Rock2" type="MeshInstance3D" parent="RocksAndDetails"]
+transform = Transform3D(1.2, 0, 0, 0, 1, 0, 0, 0, 1.2, 120, 1, -120)
+mesh = SubResource("rock_mesh")
+material_override = SubResource("rock_mat")
+
+[node name="Characters" type="Node3D" parent="."]
+
+[node name="Rama" parent="Characters" instance=ExtResource("2")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0)
+
+[node name="Hanuman" parent="Characters" instance=ExtResource("3")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -80, 2, 100)
+
+[node name="Monkeys" type="Node3D" parent="Characters"]
+
+[node name="Monkey1" parent="Characters/Monkeys" instance=ExtResource("4")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 50, 2, 50)
+monkey_name = "Monkey Scout 1"
+
+[node name="Monkey2" parent="Characters/Monkeys" instance=ExtResource("4")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -40, 2, -80)
+monkey_name = "Monkey Scout 2"
+
+[node name="Monkey3" parent="Characters/Monkeys" instance=ExtResource("4")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 100, 2, 120)
+monkey_name = "Monkey Scout 3"
+
+[node name="Monkey4" parent="Characters/Monkeys" instance=ExtResource("4")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 150, 2, -60)
+monkey_name = "Monkey Scout 4"
+
+[node name="Monkey5" parent="Characters/Monkeys" instance=ExtResource("4")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -120, 2, 40)
+monkey_name = "Monkey Scout 5"
+
+[node name="HUD" type="CanvasLayer" parent="."]
+
+[node name="MainLabel" type="Label" parent="HUD"]
+offset_left = 20.0
+offset_top = 20.0
+offset_right = 500.0
+offset_bottom = 200.0
+text = "🌲 BADRACHALAM FOREST - The Search for Sita
+
+WASD - Move | Shift - Run | Space - Call for Sita
+E - Interact | Esc - Debug Info
+
+Rama searches desperately for his beloved Sita...
+Hanuman wanders the forest with his monkey companions..."
+
+[node name="ObjectiveLabel" type="Label" parent="HUD"]
+offset_left = 20.0
+offset_top = 220.0
+offset_right = 500.0
+offset_bottom = 280.0
+text = "📍 Objective: Find Hanuman and form an alliance"

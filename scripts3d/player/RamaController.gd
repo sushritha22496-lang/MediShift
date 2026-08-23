@@ -33,6 +33,12 @@ func _ready() -> void:
 		audio_player = AudioStreamPlayer3D.new()
 		add_child(audio_player)
 
+	# Load animations for Rama
+	if anim_player:
+		CharacterAnimationSetup.load_animations_for_player(anim_player, "hanuman_final")
+		if anim_player.has_animation("idle"):
+			anim_player.play("idle")
+
 func _physics_process(delta: float) -> void:
 	# Apply gravity
 	if not is_on_floor():

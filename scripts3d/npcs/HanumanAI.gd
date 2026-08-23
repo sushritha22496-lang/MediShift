@@ -39,6 +39,12 @@ func _ready() -> void:
 	current_state = State.IDLE
 	target_position = global_position
 
+	# Load animations for Hanuman
+	if anim_player:
+		CharacterAnimationSetup.load_animations_for_player(anim_player, "hanuman_final")
+		if anim_player.has_animation("idle"):
+			anim_player.play("idle")
+
 func _physics_process(delta: float) -> void:
 	if not is_on_floor():
 		velocity.y -= gravity * delta

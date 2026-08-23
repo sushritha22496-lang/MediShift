@@ -1,0 +1,18 @@
+[gd_scene load_steps=3 format=3 uid="uid://ba8rl2eay7yx"]
+
+[ext_resource type="PackedScene" path="res://assets/models/characters/processed/demon_guard_3.glb" id="1"]
+[ext_resource type="Script" path="res://scripts3d/npcs/MonkeyNPC.gd" id="2"]
+
+[node name="Monkey" type="CharacterBody3D"]
+script = ExtResource("2")
+
+[node name="Model" type="Node3D" parent="."]
+
+[node name="Character" parent="Model" instance=ExtResource("1")]
+transform = Transform3D(0.85, 0, 0, 0, 0.85, 0, 0, 0, 0.85, 0, 0, 0)
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="Model"]
+
+[node name="CollisionShape3D" type="CapsuleShape3D" parent="."]
+radius = 0.5
+height = 1.8

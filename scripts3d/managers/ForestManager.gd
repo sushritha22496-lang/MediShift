@@ -3,9 +3,11 @@ extends Node3D
 class_name ForestManager
 
 # References
-@onready var rama: RamaController = $Rama
-@onready var hanuman: HanumanAI = $Hanuman
-@onready var hud_label: Label = $HUD/Label
+@onready var rama: RamaController = $Characters/Rama
+@onready var hanuman: HanumanAI = $Characters/Hanuman
+@onready var monkeys: Node3D = $Characters/Monkeys
+@onready var main_label: Label = $HUD/MainLabel
+@onready var objective_label: Label = $HUD/ObjectiveLabel
 
 # State
 var has_met: bool = false
@@ -24,7 +26,7 @@ func _ready() -> void:
 	hanuman.set_rama_reference(rama)
 
 	# Show initial HUD message
-	_show_hud_message("🌲 BADRACHALAM FOREST\nThe Search for Sita\n\nRama: Where is my beloved Sita?\n\nPress SPACE to call for Sita")
+	_show_hud_message("🌲 BADRACHALAM FOREST - The Search for Sita\n\nRama searches desperately through the forest...\n\nPress SPACE to call for Sita!\nMonkeys wander the forest with Hanuman...")
 
 	game_started = true
 
@@ -81,8 +83,10 @@ func _on_hanuman_agrees() -> void:
 
 func _show_hud_message(message: String) -> void:
 	"""Display a message on the HUD"""
-	if hud_label:
-		hud_label.text = message
+	if main_label:
+		main_label.text = message
+	if objective_label and "Objective:" not in message:
+		objective_label.text = "📍 " + message.split("\n")[0]
 
 func _process(_delta: float) -> void:
 	# Optional: Show debug info
