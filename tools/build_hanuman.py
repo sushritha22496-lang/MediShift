@@ -148,10 +148,25 @@ shade_smooth(cloth)
 cloth_mat = add_material("Cloth", (0.86, 0.56, 0.10), roughness=0.78)
 cloth.data.materials.append(cloth_mat)
 
-# Neck: bridges torso top to head so subsurf shrinkage can't leave a gap
-bpy.ops.mesh.primitive_cylinder_add(vertices=12, radius=0.19, depth=0.34, location=(0, 0.02, 1.55))
+# Neck: bridges torso top to head with proper detail
+bpy.ops.mesh.primitive_cylinder_add(vertices=14, radius=0.195, depth=0.36, location=(0, 0.02, 1.55))
 neck = bpy.context.object
 neck.name = "Neck"
+me = neck.data
+bm = bmesh.new()
+bm.from_mesh(me)
+bm.verts.ensure_lookup_table()
+bm.edges.ensure_lookup_table()
+neck_edges = [e for e in bm.edges if abs(e.verts[0].co.z - e.verts[1].co.z) > 0.05]
+bmesh.ops.subdivide_edges(bm, edges=neck_edges, cuts=4)
+bm.verts.ensure_lookup_table()
+for v in bm.verts:
+    t = (v.co.z + 0.18) / 0.36
+    taper = 1.0 - 0.12 * t
+    v.co.x *= taper
+    v.co.y *= taper
+bm.to_mesh(me)
+bm.free()
 add_subsurf(neck, 1)
 apply_all_modifiers(neck)
 shade_smooth(neck)
@@ -167,15 +182,37 @@ apply_all_modifiers(head)
 shade_smooth(head)
 head.data.materials.append(face_mat)
 
-# Chin/jaw tip for a more defined human-like jawline
-bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=2, radius=0.13, location=(0, 0.22, 1.55))
+# Chin/jaw with proper definition
+bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=2, radius=0.135, location=(0, 0.24, 1.54))
 chin = bpy.context.object
 chin.name = "Chin"
-chin.scale = (0.8, 0.9, 0.7)
+chin.scale = (0.85, 0.95, 0.75)
+me = chin.data
+bm = bmesh.new()
+bm.from_mesh(me)
+bm.verts.ensure_lookup_table()
+for v in bm.verts:
+    if v.co.z > 0.05:
+        v.co.z *= 1.15
+    if v.co.y < -0.05:
+        v.co.y *= 0.9
+bm.to_mesh(me)
+bm.free()
 add_subsurf(chin, 1)
 apply_all_modifiers(chin)
 shade_smooth(chin)
 chin.data.materials.append(face_mat)
+
+# Jaw angle definition on sides
+for side, sign in [("L", -1), ("R", 1)]:
+    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=0.08, location=(sign * 0.18, 0.16, 1.60))
+    jaw_angle = bpy.context.object
+    jaw_angle.name = f"JawAngle{side}"
+    jaw_angle.scale = (0.75, 0.85, 0.7)
+    add_subsurf(jaw_angle, 1)
+    apply_all_modifiers(jaw_angle)
+    shade_smooth(jaw_angle)
+    jaw_angle.data.materials.append(face_mat)
 
 # Nose with nostrils and bridge definition
 bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=2, radius=0.11, location=(0, 0.36, 1.75))
@@ -430,15 +467,20 @@ def build_hand(name, wrist_pos, x_sign, mat):
     bpy.ops.mesh.primitive_cube_add(size=1.0, location=(wx, wy, wz))
     palm = bpy.context.object
     palm.name = f"{name}Palm"
-    palm.scale = (0.115, 0.095, 0.14)
+    palm.scale = (0.118, 0.100, 0.145)
     bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
     me = palm.data
     bm = bmesh.new()
     bm.from_mesh(me)
     bm.verts.ensure_lookup_table()
+    bm.edges.ensure_lookup_table()
+    bmesh.ops.subdivide_edges(bm, edges=list(bm.edges), cuts=1)
+    bm.verts.ensure_lookup_table()
     for v in bm.verts:
         if v.co.z < 0:
-            v.co.z *= 0.8
+            v.co.z *= 0.75
+        if abs(v.co.x) > 0.05 and v.co.z > -0.05:
+            v.co.x *= 0.9
     bm.to_mesh(me)
     bm.free()
     add_subsurf(palm, 1)
@@ -648,14 +690,25 @@ foot_r, toes_r = build_foot("FootR", 1)
 
 # Foot arch detail
 for side, sign in [("L", -1), ("R", 1)]:
-    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=0.05, location=(0.18 * sign, 0.08, -0.20))
+    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=0.052, location=(0.18 * sign, 0.08, -0.20))
     arch = bpy.context.object
     arch.name = f"FootArch{side}"
-    arch.scale = (0.75, 0.4, 0.9)
+    arch.scale = (0.78, 0.45, 0.95)
     add_subsurf(arch, 1)
     apply_all_modifiers(arch)
     shade_smooth(arch)
     arch.data.materials.append(skin_mat)
+
+# Heel and sole definition
+for side, sign in [("L", -1), ("R", 1)]:
+    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=0.045, location=(0.18 * sign, 0.10, -0.32))
+    heel = bpy.context.object
+    heel.name = f"Heel{side}"
+    heel.scale = (0.82, 0.5, 0.88)
+    add_subsurf(heel, 1)
+    apply_all_modifiers(heel)
+    shade_smooth(heel)
+    heel.data.materials.append(skin_mat)
 
 # ── Tail (curve with bevel, tapered) ────────────────────────────────────────
 curve_data = bpy.data.curves.new('TailCurve', type='CURVE')
@@ -789,13 +842,16 @@ BONE_GROUPS = {
              bpy.data.objects["BrowL"], bpy.data.objects["BrowR"],
              bpy.data.objects["CheekL"], bpy.data.objects["CheekR"],
              bpy.data.objects["Nose"], bpy.data.objects["NostrilL"], bpy.data.objects["NostrilR"]] + beard_objs,
-    "Jaw": [chin, snout, bpy.data.objects["LowerLip"], bpy.data.objects["UpperLip"]],
+    "Jaw": [chin, snout, bpy.data.objects["JawAngleL"], bpy.data.objects["JawAngleR"],
+             bpy.data.objects["LowerLip"], bpy.data.objects["UpperLip"]],
     "UpperArmL": [deltoid_l, left_arm, bpy.data.objects["TricepL"], bpy.data.objects["ForearmMuscleL"],
                   bpy.data.objects["RotatorCuffL"], bpy.data.objects["WristTendonL"], armlet_l, wristlet_l] + forearm_hair_l + shoulder_hair_l + hand_l_parts,
     "UpperArmR": [deltoid_r, right_arm, bpy.data.objects["TricepR"], bpy.data.objects["ForearmMuscleR"],
                   bpy.data.objects["RotatorCuffR"], bpy.data.objects["WristTendonR"], gada_head, gada_handle, armlet_r, wristlet_r] + forearm_hair_r + shoulder_hair_r + gada_rings + hand_r_parts,
-    "ThighL": [left_leg, bpy.data.objects["CalfL"], bpy.data.objects["AnkleTendonL"], foot_l, bpy.data.objects["FootArchL"], anklet_l] + toes_l + shin_hair_l + thigh_hair_l,
-    "ThighR": [right_leg, bpy.data.objects["CalfR"], bpy.data.objects["AnkleTendonR"], foot_r, bpy.data.objects["FootArchR"], anklet_r] + toes_r + shin_hair_r + thigh_hair_r,
+    "ThighL": [left_leg, bpy.data.objects["CalfL"], bpy.data.objects["AnkleTendonL"], foot_l, bpy.data.objects["FootArchL"],
+               bpy.data.objects["HeelL"], anklet_l] + toes_l + shin_hair_l + thigh_hair_l,
+    "ThighR": [right_leg, bpy.data.objects["CalfR"], bpy.data.objects["AnkleTendonR"], foot_r, bpy.data.objects["FootArchR"],
+               bpy.data.objects["HeelR"], anklet_r] + toes_r + shin_hair_r + thigh_hair_r,
     "Tail": [tail_obj],
 }
 for bone_name, objs in BONE_GROUPS.items():
