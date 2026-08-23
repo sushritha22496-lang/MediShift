@@ -5,7 +5,7 @@ const RUN_SPEED := 9.0
 const JUMP_VELOCITY := 8.5
 const GRAVITY := 22.0
 const ROTATE_SPEED := 10.0
-const ATTACK_COOLDOWN := 0.4
+const ATTACK_COOLDOWN := 0.6
 
 @export var max_health: float = 200.0
 @export var gada_damage: float = 35.0
@@ -15,18 +15,15 @@ var attack_cooldown: float = 0.0
 var is_attacking: bool = false
 var facing_yaw: float = 0.0
 var lean: float = 0.0
-var body_base_y: float = 0.0
+var blink_timer: float = 0.0
 
 @onready var model: Node3D = $Model
-@onready var body_mesh: MeshInstance3D = $Model/Torso
-@onready var gada_pivot: Node3D = $Model/GadaPivot
-@onready var attack_area: Area3D = $Model/GadaPivot/AttackArea
+@onready var anim_player: AnimationPlayer = $Model/AnimationPlayer
+@onready var attack_area: Area3D = $Model/Skeleton/Skeleton3D/GadaAttach/AttackArea
 @onready var spring_arm: SpringArm3D = $SpringArm3D
 @onready var camera: Camera3D = $SpringArm3D/Camera3D
-@onready var tail_mesh: MeshInstance3D = $Model/Tail
-@onready var left_arm: Node3D = $Model/LeftArmPivot
-@onready var left_leg: Node3D = $Model/LeftLegPivot
-@onready var right_leg: Node3D = $Model/RightLegPivot
+@onready var eye_white_l: MeshInstance3D = $Model/Skeleton/Skeleton3D/EyeWhiteL
+@onready var eye_white_r: MeshInstance3D = $Model/Skeleton/Skeleton3D/EyeWhiteR
 
 signal health_changed(current: float, maximum: float)
 signal died()
@@ -34,17 +31,17 @@ signal died()
 func _ready() -> void:
 	add_to_group("player3d")
 	health = max_health
-	body_base_y = body_mesh.position.y
 	attack_area.monitoring = false
 	attack_area.body_entered.connect(_on_gada_hit)
 	health_changed.emit(health, max_health)
+	blink_timer = randf_range(2.0, 5.0)
+	anim_player.play("Idle")
 
 func _physics_process(delta: float) -> void:
 	_handle_gravity(delta)
 	_handle_movement(delta)
 	_handle_attack(delta)
-	_handle_camera_input(delta)
-	_animate_idle_motion(delta)
+	_handle_blink(delta)
 	move_and_slide()
 
 func _handle_gravity(delta: float) -> void:
@@ -69,6 +66,7 @@ func _handle_movement(delta: float) -> void:
 	var move_dir: Vector3 = (right * input_dir.x + forward * -input_dir.y)
 	move_dir.y = 0.0
 	var speed: float = RUN_SPEED if Input.is_action_pressed("dash") else WALK_SPEED
+	var moving := false
 
 	if move_dir.length() > 0.01:
 		move_dir = move_dir.normalized()
@@ -77,6 +75,7 @@ func _handle_movement(delta: float) -> void:
 		facing_yaw = atan2(move_dir.x, move_dir.z)
 		model.rotation.y = lerp_angle(model.rotation.y, facing_yaw, ROTATE_SPEED * delta)
 		lean = clampf(lean + delta * 4.0, 0.0, 1.0)
+		moving = true
 	else:
 		velocity.x = lerp(velocity.x, 0.0, 10.0 * delta)
 		velocity.z = lerp(velocity.z, 0.0, 10.0 * delta)
@@ -84,30 +83,26 @@ func _handle_movement(delta: float) -> void:
 
 	model.rotation.z = lerp_angle(model.rotation.z, -0.08 * lean, 8.0 * delta)
 
-func _handle_camera_input(delta: float) -> void:
-	if Input.is_action_pressed("move_left") or Input.is_action_pressed("move_right"):
-		pass
+	if not is_attacking:
+		var target_anim := "Walk" if moving else "Idle"
+		if anim_player.current_animation != target_anim:
+			anim_player.play(target_anim, 0.2)
+		anim_player.speed_scale = 1.6 if (moving and Input.is_action_pressed("dash")) else 1.0
 
-func _animate_idle_motion(delta: float) -> void:
-	var t := Time.get_ticks_msec() / 1000.0
-	var moving := Vector2(velocity.x, velocity.z).length() > 0.3
-	if moving:
-		var walk_speed := 10.0
-		body_mesh.position.y = body_base_y + sin(t * walk_speed) * 0.05
-		tail_mesh.rotation.x = sin(t * walk_speed) * 0.4
-		if not is_attacking:
-			left_arm.rotation.x = sin(t * walk_speed) * 0.9
-			gada_pivot.rotation.x = 0.3 - sin(t * walk_speed) * 0.5
-		left_leg.rotation.x = sin(t * walk_speed) * 0.7
-		right_leg.rotation.x = -sin(t * walk_speed) * 0.7
-	else:
-		body_mesh.position.y = body_base_y + sin(t * 2.0) * 0.02
-		tail_mesh.rotation.x = sin(t * 1.5) * 0.15
-		if not is_attacking:
-			left_arm.rotation.x = lerp_angle(left_arm.rotation.x, 0.0, 6.0 * delta)
-			gada_pivot.rotation.x = lerp_angle(gada_pivot.rotation.x, 0.3, 6.0 * delta)
-		left_leg.rotation.x = lerp_angle(left_leg.rotation.x, 0.0, 6.0 * delta)
-		right_leg.rotation.x = lerp_angle(right_leg.rotation.x, 0.0, 6.0 * delta)
+func _handle_blink(delta: float) -> void:
+	blink_timer -= delta
+	if blink_timer <= 0.0:
+		blink_timer = randf_range(2.5, 6.0)
+		_do_blink()
+
+func _do_blink() -> void:
+	var tween := create_tween()
+	tween.tween_method(_set_blink_weight, 0.0, 1.0, 0.06)
+	tween.tween_method(_set_blink_weight, 1.0, 0.0, 0.08)
+
+func _set_blink_weight(w: float) -> void:
+	eye_white_l.set("blend_shapes/Blink", w)
+	eye_white_r.set("blend_shapes/Blink", w)
 
 func _handle_attack(delta: float) -> void:
 	if attack_cooldown > 0.0:
@@ -118,13 +113,18 @@ func _handle_attack(delta: float) -> void:
 func _do_attack() -> void:
 	is_attacking = true
 	attack_cooldown = ATTACK_COOLDOWN
+	anim_player.play("Attack", 0.05)
+	await get_tree().create_timer(0.2).timeout
 	attack_area.monitoring = true
-	var tween := create_tween()
-	tween.tween_property(gada_pivot, "rotation:x", -2.2, 0.12)
-	tween.tween_property(gada_pivot, "rotation:x", 0.3, 0.18)
-	await tween.finished
+	await get_tree().create_timer(0.15).timeout
 	attack_area.monitoring = false
+	await anim_player.animation_finished
 	is_attacking = false
+
+func roar() -> void:
+	if not is_attacking:
+		anim_player.play("Roar", 0.1)
+		await anim_player.animation_finished
 
 func _on_gada_hit(body: Node3D) -> void:
 	if body.has_method("take_damage_3d"):

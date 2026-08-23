@@ -472,41 +472,144 @@ anklet_l = make_torus("AnkletL", 0.15, 0.022, (-0.18, 0.05, -0.10))
 anklet_r = make_torus("AnkletR", 0.15, 0.022, (0.18, 0.05, -0.10))
 waistband = make_torus("Waistband", 0.34, 0.03, (0, 0, 0.68), rot=(0, 0, 0))
 
-# ── Hierarchy: pivots for arms/legs/gada, decorations follow their limb ────
-model_root = make_empty("Model", (0, 0, 0))
-parent_keep_transform(torso, model_root)
+# ── Skeleton: real bones instead of empty pivots, for genuine skinned
+#    animation (Godot Skeleton3D + AnimationPlayer) rather than a script-
+#    driven sine-wave hack on Node3D pivots. ───────────────────────────────
+BONE_RESTS = {
+    "Hips": ((0, 0, 0), None),
+    "Head": ((0, 0.02, 1.55), "Hips"),
+    "Jaw": ((0, 0.22, 1.55), "Head"),
+    "UpperArmL": ((-0.5, 0.0, 1.45), "Hips"),
+    "UpperArmR": ((0.5, 0.0, 1.45), "Hips"),
+    "ThighL": ((-0.18, 0.0, 0.87), "Hips"),
+    "ThighR": ((0.18, 0.0, 0.87), "Hips"),
+    "Tail": ((0, -0.35, 1.0), "Hips"),
+}
+BONE_TAIL_OFFSET = (0, 0, 0.22)
 
-for obj in ([snout, chin, bpy.data.objects["EarL"], bpy.data.objects["EarR"],
+arm_data = bpy.data.armatures.new("HanumanSkeleton")
+armature_obj = bpy.data.objects.new("Skeleton", arm_data)
+bpy.context.collection.objects.link(armature_obj)
+bpy.context.view_layer.objects.active = armature_obj
+bpy.ops.object.mode_set(mode='EDIT')
+edit_bones = arm_data.edit_bones
+for name, (loc, parent_name) in BONE_RESTS.items():
+    b = edit_bones.new(name)
+    b.head = loc
+    b.tail = (loc[0] + BONE_TAIL_OFFSET[0], loc[1] + BONE_TAIL_OFFSET[1], loc[2] + BONE_TAIL_OFFSET[2])
+    b.use_connect = False
+for name, (loc, parent_name) in BONE_RESTS.items():
+    if parent_name:
+        edit_bones[name].parent = edit_bones[parent_name]
+bpy.ops.object.mode_set(mode='OBJECT')
+for pb in armature_obj.pose.bones:
+    pb.rotation_mode = 'XYZ'
+
+def rigid_bind(obj, bone_name):
+    vg = obj.vertex_groups.new(name=bone_name)
+    vg.add(range(len(obj.data.vertices)), 1.0, 'REPLACE')
+    mod = obj.modifiers.new(name="Armature", type='ARMATURE')
+    mod.object = armature_obj
+    obj.parent = armature_obj
+    obj.matrix_parent_inverse = armature_obj.matrix_world.inverted()
+
+BONE_GROUPS = {
+    "Hips": [torso, neck, cloth, waistband] + chest_hair,
+    "Head": [head, bpy.data.objects["EarL"], bpy.data.objects["EarR"],
              bpy.data.objects["EyeL"], bpy.data.objects["EyeR"],
              bpy.data.objects["EyeWhiteL"], bpy.data.objects["EyeWhiteR"],
-             bpy.data.objects["BrowL"], bpy.data.objects["BrowR"]] + beard_objs):
-    parent_keep_transform(obj, head)
-parent_keep_transform(head, torso)
+             bpy.data.objects["BrowL"], bpy.data.objects["BrowR"]] + beard_objs,
+    "Jaw": [chin, snout],
+    "UpperArmL": [deltoid_l, left_arm, armlet_l, wristlet_l] + forearm_hair_l + hand_l_parts,
+    "UpperArmR": [deltoid_r, right_arm, gada_head, gada_handle, armlet_r, wristlet_r] + forearm_hair_r + gada_rings + hand_r_parts,
+    "ThighL": [left_leg, foot_l, anklet_l] + toes_l + shin_hair_l,
+    "ThighR": [right_leg, foot_r, anklet_r] + toes_r + shin_hair_r,
+    "Tail": [tail_obj],
+}
+for bone_name, objs in BONE_GROUPS.items():
+    for obj in objs:
+        rigid_bind(obj, bone_name)
 
-for obj in chest_hair + [waistband, neck, cloth]:
-    parent_keep_transform(obj, torso)
+# Blink capability: a shape key morph target on each eye, driven at runtime
+for eyewhite_name in ("EyeWhiteL", "EyeWhiteR"):
+    eyewhite = bpy.data.objects[eyewhite_name]
+    eyewhite.shape_key_add(name="Basis", from_mix=False)
+    blink = eyewhite.shape_key_add(name="Blink", from_mix=False)
+    blink.value = 0.0
+    for v in eyewhite.data.vertices:
+        blink.data[v.index].co = (v.co.x, v.co.y, v.co.z * 0.05)
 
-left_arm_pivot = make_empty("LeftArmPivot", (-0.5, 0.0, 1.45))
-for obj in [left_arm, armlet_l, wristlet_l, deltoid_l] + forearm_hair_l + hand_l_parts:
-    parent_keep_transform(obj, left_arm_pivot)
-parent_keep_transform(left_arm_pivot, model_root)
+# ── Animations: bone-keyframed actions, exported as separate glTF clips ────
+def set_bone_rot(name, degrees_xyz, frame):
+    pb = armature_obj.pose.bones[name]
+    pb.rotation_euler = tuple(math.radians(d) for d in degrees_xyz)
+    pb.keyframe_insert(data_path="rotation_euler", frame=frame)
 
-gada_pivot = make_empty("GadaPivot", (0.5, 0.0, 1.45))
-for obj in [right_arm, gada_head, gada_handle, armlet_r, wristlet_r, deltoid_r] + forearm_hair_r + gada_rings + hand_r_parts:
-    parent_keep_transform(obj, gada_pivot)
-parent_keep_transform(gada_pivot, model_root)
+def set_bone_loc(name, xyz, frame):
+    pb = armature_obj.pose.bones[name]
+    pb.location = xyz
+    pb.keyframe_insert(data_path="location", frame=frame)
 
-left_leg_pivot = make_empty("LeftLegPivot", (-0.18, 0.0, 0.87))
-for obj in [left_leg, foot_l, anklet_l] + toes_l + shin_hair_l:
-    parent_keep_transform(obj, left_leg_pivot)
-parent_keep_transform(left_leg_pivot, model_root)
+def reset_pose():
+    for pb in armature_obj.pose.bones:
+        pb.rotation_euler = (0, 0, 0)
+        pb.location = (0, 0, 0)
 
-right_leg_pivot = make_empty("RightLegPivot", (0.18, 0.0, 0.87))
-for obj in [right_leg, foot_r, anklet_r] + toes_r + shin_hair_r:
-    parent_keep_transform(obj, right_leg_pivot)
-parent_keep_transform(right_leg_pivot, model_root)
+def push_action_to_nla(action):
+    track = armature_obj.animation_data.nla_tracks.new()
+    track.name = action.name
+    track.strips.new(action.name, int(action.frame_range[0]), action)
+    armature_obj.animation_data.action = None
 
-parent_keep_transform(tail_obj, model_root)
+armature_obj.animation_data_create()
+
+# Idle: gentle breathing sway
+reset_pose()
+action = bpy.data.actions.new("Idle")
+armature_obj.animation_data.action = action
+for frame in (1, 25, 49):
+    sway = 0.0 if frame != 25 else 1.0
+    set_bone_loc("Hips", (0, 0, 0.015 * sway), frame)
+    set_bone_rot("UpperArmL", (0, 0, -2 * sway), frame)
+    set_bone_rot("UpperArmR", (0, 0, 2 * sway), frame)
+    set_bone_rot("Head", (0, 0, 1.5 * sway), frame)
+push_action_to_nla(action)
+
+# Walk: alternating thigh swing with counter-swinging arms
+reset_pose()
+action = bpy.data.actions.new("Walk")
+armature_obj.animation_data.action = action
+for frame, phase in ((1, 0.0), (9, 1.0), (17, 0.0), (25, -1.0), (33, 0.0)):
+    set_bone_rot("ThighL", (phase * 28, 0, 0), frame)
+    set_bone_rot("ThighR", (-phase * 28, 0, 0), frame)
+    set_bone_rot("UpperArmL", (-phase * 20, 0, 0), frame)
+    set_bone_rot("UpperArmR", (phase * 20, 0, 0), frame)
+    set_bone_loc("Hips", (0, 0, abs(phase) * 0.03), frame)
+push_action_to_nla(action)
+
+# Attack: gada arm winds up and swings down
+reset_pose()
+action = bpy.data.actions.new("Attack")
+armature_obj.animation_data.action = action
+set_bone_rot("UpperArmR", (0, 0, 0), 1)
+set_bone_rot("UpperArmR", (-40, 0, 15), 6)
+set_bone_rot("UpperArmR", (110, 0, -20), 14)
+set_bone_rot("UpperArmR", (0, 0, 0), 20)
+push_action_to_nla(action)
+
+# Roar: jaw opens, head tilts back
+reset_pose()
+action = bpy.data.actions.new("Roar")
+armature_obj.animation_data.action = action
+set_bone_rot("Jaw", (0, 0, 0), 1)
+set_bone_rot("Head", (-8, 0, 0), 1)
+set_bone_rot("Jaw", (35, 0, 0), 10)
+set_bone_rot("Head", (-14, 0, 0), 10)
+set_bone_rot("Jaw", (0, 0, 0), 22)
+set_bone_rot("Head", (-8, 0, 0), 22)
+push_action_to_nla(action)
+
+reset_pose()
 
 # ── Export ───────────────────────────────────────────────────────────────
 bpy.ops.object.select_all(action='SELECT')
@@ -518,5 +621,8 @@ bpy.ops.export_scene.gltf(
     export_format='GLB',
     use_selection=True,
     export_apply=True,
+    export_animations=True,
+    export_nla_strips=True,
+    export_morph=True,
 )
 print("EXPORT_DONE:", export_path)

@@ -18,37 +18,39 @@ func _init():
 	col.owner = root
 
 	var glb_scene: PackedScene = load("res://assets/models/hanuman.glb")
-	var glb_root: Node3D = glb_scene.instantiate()
-	var found: Node3D = glb_root.find_child("Model", true, false)
-	var model: Node3D
-	if found == null:
-		model = glb_root
-		root.add_child(model)
-	else:
-		model = found.duplicate()
-		glb_root.queue_free()
-		model.name = "Model"
-		root.add_child(model)
+	var model: Node3D = glb_scene.instantiate()
 	model.name = "Model"
 	model.position.y = 0.2
+	root.add_child(model)
 	model.owner = root
 	_set_owner_recursive(model, root)
 
-	var gada_pivot: Node3D = model.get_node("GadaPivot")
+	var skeleton: Skeleton3D = _find_skeleton(model)
+	if skeleton == null:
+		print("FAILED: no Skeleton3D found in imported GLB")
+		quit(1)
+		return
+
+	var bone_attach := BoneAttachment3D.new()
+	bone_attach.name = "GadaAttach"
+	bone_attach.bone_name = "UpperArmR"
+	skeleton.add_child(bone_attach)
+	bone_attach.owner = root
+
 	var attack_area := Area3D.new()
 	attack_area.name = "AttackArea"
 	attack_area.collision_layer = 0
 	attack_area.collision_mask = 4
 	attack_area.monitoring = false
-	gada_pivot.add_child(attack_area)
+	attack_area.position = Vector3(0.28, 0.27, -0.05)
+	bone_attach.add_child(attack_area)
 	attack_area.owner = root
 
 	var attack_shape := CollisionShape3D.new()
 	attack_shape.name = "AttackShape"
-	attack_shape.position = Vector3(0, 0.7, 0)
 	var cap2 := CapsuleShape3D.new()
-	cap2.radius = 0.45
-	cap2.height = 1.8
+	cap2.radius = 0.3
+	cap2.height = 0.7
 	attack_shape.shape = cap2
 	attack_area.add_child(attack_shape)
 	attack_shape.owner = root
@@ -87,6 +89,15 @@ func _init():
 		return
 	print("SCENE_SAVED_OK")
 	quit()
+
+func _find_skeleton(node: Node) -> Skeleton3D:
+	if node is Skeleton3D:
+		return node
+	for child in node.get_children():
+		var r := _find_skeleton(child)
+		if r:
+			return r
+	return null
 
 func _set_owner_recursive(node: Node, owner: Node) -> void:
 	for child in node.get_children():
