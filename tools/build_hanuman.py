@@ -247,11 +247,9 @@ def build_limb(name, base_loc, length, radius_top, radius_bottom, bend_deg, mat,
         v.co.y *= scale
     interior = [v for v in bm.verts if abs(v.co.z) < half - 0.02]
     bmesh.ops.smooth_vert(bm, verts=interior, factor=0.25, use_axis_x=True, use_axis_y=True, use_axis_z=False)
-    cap_ends = [v for v in bm.verts if abs(v.co.z) >= half - 0.02]
-    bmesh.ops.bevel(bm, geom=cap_ends, offset=radius_top * 0.6, segments=3, affect='VERTICES')
     bm.to_mesh(me)
     bm.free()
-    add_subsurf(obj, 1)
+    add_subsurf(obj, 2)
     apply_all_modifiers(obj)
     shade_smooth(obj)
     obj.rotation_euler[0] = math.radians(bend_deg)
@@ -264,8 +262,53 @@ QUAD_CALF_BULGE = [(0.8, 0.15, 1.0), (0.35, 0.16, 0.85)]
 
 left_arm = build_limb("ArmL", (-0.5, 0, 1.10), 0.7, 0.15, 0.095, 8, skin_mat, bulges=BICEP_BULGE)
 right_arm = build_limb("ArmR", (0.5, 0, 1.10), 0.7, 0.15, 0.095, -8, skin_mat, bulges=BICEP_BULGE)
-left_leg = build_limb("LegL", (-0.18, 0, 0.45), 0.85, 0.19, 0.13, 0, skin_mat, bulges=QUAD_CALF_BULGE)
-right_leg = build_limb("LegR", (0.18, 0, 0.45), 0.85, 0.19, 0.13, 0, skin_mat, bulges=QUAD_CALF_BULGE)
+left_leg = build_limb("LegL", (-0.18, 0, 0.35), 1.05, 0.19, 0.13, 0, skin_mat, bulges=QUAD_CALF_BULGE)
+right_leg = build_limb("LegR", (0.18, 0, 0.35), 1.05, 0.19, 0.13, 0, skin_mat, bulges=QUAD_CALF_BULGE)
+
+# Hands: palm + four fingers + thumb, so the limbs end in human hands, not stumps
+def build_hand(name, wrist_pos, x_sign, mat):
+    wx, wy, wz = wrist_pos
+    bpy.ops.mesh.primitive_cube_add(size=1.0, location=(wx, wy, wz))
+    palm = bpy.context.object
+    palm.name = f"{name}Palm"
+    palm.scale = (0.1, 0.085, 0.13)
+    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    add_subsurf(palm, 1)
+    apply_all_modifiers(palm)
+    shade_smooth(palm)
+    palm.data.materials.append(mat)
+
+    parts = [palm]
+    for i in range(4):
+        fx = wx + (i - 1.5) * 0.032
+        fy = wy + 0.03
+        fz = wz - 0.075
+        bpy.ops.mesh.primitive_cylinder_add(vertices=8, radius=0.017, depth=0.11, location=(fx, fy, fz))
+        finger = bpy.context.object
+        finger.name = f"{name}Finger{i}"
+        finger.rotation_euler = (math.radians(25), 0, 0)
+        bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
+        add_subsurf(finger, 1)
+        apply_all_modifiers(finger)
+        shade_smooth(finger)
+        finger.data.materials.append(mat)
+        parts.append(finger)
+
+    bpy.ops.mesh.primitive_cylinder_add(vertices=8, radius=0.023, depth=0.09,
+                                         location=(wx + x_sign * 0.058, wy + 0.015, wz))
+    thumb = bpy.context.object
+    thumb.name = f"{name}Thumb"
+    thumb.rotation_euler = (math.radians(15), 0, math.radians(x_sign * 50))
+    bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
+    add_subsurf(thumb, 1)
+    apply_all_modifiers(thumb)
+    shade_smooth(thumb)
+    thumb.data.materials.append(mat)
+    parts.append(thumb)
+    return parts
+
+hand_l_parts = build_hand("HandL", (-0.5, 0.06, 0.6), -1, skin_mat)
+hand_r_parts = build_hand("HandR", (0.5, 0.06, 0.6), 1, skin_mat)
 
 # Deltoid caps at the shoulder sockets so the arms read as attached, not floating pillars
 deltoid_l = None
@@ -303,14 +346,14 @@ def add_hair_tufts(prefix, base_pos, count, spread, parent_hint):
     return objs
 
 chest_hair = add_hair_tufts("ChestHair", (0.0, 0.30, 1.15), 4, 0.10, "torso")
-forearm_hair_l = add_hair_tufts("ForearmHairL", (-0.5, 0.05, 0.85), 3, 0.06, "armL")
-forearm_hair_r = add_hair_tufts("ForearmHairR", (0.5, 0.05, 0.85), 3, 0.06, "armR")
-shin_hair_l = add_hair_tufts("ShinHairL", (-0.18, 0.10, 0.15), 3, 0.06, "legL")
-shin_hair_r = add_hair_tufts("ShinHairR", (0.18, 0.10, 0.15), 3, 0.06, "legR")
+forearm_hair_l = add_hair_tufts("ForearmHairL", (-0.5, 0.05, 0.95), 3, 0.05, "armL")
+forearm_hair_r = add_hair_tufts("ForearmHairR", (0.5, 0.05, 0.95), 3, 0.05, "armR")
+shin_hair_l = add_hair_tufts("ShinHairL", (-0.18, 0.10, -0.05), 3, 0.06, "legL")
+shin_hair_r = add_hair_tufts("ShinHairR", (0.18, 0.10, -0.05), 3, 0.06, "legR")
 
 # ── Big feet with toe definition ────────────────────────────────────────────
 def build_foot(name, x_sign):
-    bpy.ops.mesh.primitive_cube_add(size=1.0, location=(0.18 * x_sign, 0.18, 0.04))
+    bpy.ops.mesh.primitive_cube_add(size=1.0, location=(0.18 * x_sign, 0.18, -0.16))
     foot = bpy.context.object
     foot.name = name
     foot.scale = (0.26, 0.56, 0.17)
@@ -337,7 +380,7 @@ def build_foot(name, x_sign):
     for i in range(5):
         tx = (0.18 * x_sign) + (i - 2) * 0.052
         toe_r = 0.032 if i in (0, 4) else 0.04
-        bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=2, radius=toe_r, location=(tx, 0.40, 0.02))
+        bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=2, radius=toe_r, location=(tx, 0.40, -0.18))
         toe = bpy.context.object
         toe.name = f"{name}Toe{i}"
         toe.scale = (0.8, 1.15, 0.65)
@@ -423,10 +466,10 @@ def make_torus(name, major_r, minor_r, location, rot=(0, 0, 0)):
 
 armlet_l = make_torus("ArmletL", 0.155, 0.025, (-0.5, 0.0, 1.30))
 armlet_r = make_torus("ArmletR", 0.155, 0.025, (0.5, 0.0, 1.30))
-wristlet_l = make_torus("WristletL", 0.11, 0.02, (-0.5, 0.0, 0.76))
-wristlet_r = make_torus("WristletR", 0.11, 0.02, (0.5, 0.0, 0.76))
-anklet_l = make_torus("AnkletL", 0.15, 0.022, (-0.18, 0.05, 0.10))
-anklet_r = make_torus("AnkletR", 0.15, 0.022, (0.18, 0.05, 0.10))
+wristlet_l = make_torus("WristletL", 0.11, 0.02, (-0.5, 0.0, 0.68))
+wristlet_r = make_torus("WristletR", 0.11, 0.02, (0.5, 0.0, 0.68))
+anklet_l = make_torus("AnkletL", 0.15, 0.022, (-0.18, 0.05, -0.10))
+anklet_r = make_torus("AnkletR", 0.15, 0.022, (0.18, 0.05, -0.10))
 waistband = make_torus("Waistband", 0.34, 0.03, (0, 0, 0.68), rot=(0, 0, 0))
 
 # ── Hierarchy: pivots for arms/legs/gada, decorations follow their limb ────
@@ -444,12 +487,12 @@ for obj in chest_hair + [waistband, neck, cloth]:
     parent_keep_transform(obj, torso)
 
 left_arm_pivot = make_empty("LeftArmPivot", (-0.5, 0.0, 1.45))
-for obj in [left_arm, armlet_l, wristlet_l, deltoid_l] + forearm_hair_l:
+for obj in [left_arm, armlet_l, wristlet_l, deltoid_l] + forearm_hair_l + hand_l_parts:
     parent_keep_transform(obj, left_arm_pivot)
 parent_keep_transform(left_arm_pivot, model_root)
 
 gada_pivot = make_empty("GadaPivot", (0.5, 0.0, 1.45))
-for obj in [right_arm, gada_head, gada_handle, armlet_r, wristlet_r, deltoid_r] + forearm_hair_r + gada_rings:
+for obj in [right_arm, gada_head, gada_handle, armlet_r, wristlet_r, deltoid_r] + forearm_hair_r + gada_rings + hand_r_parts:
     parent_keep_transform(obj, gada_pivot)
 parent_keep_transform(gada_pivot, model_root)
 

@@ -9,10 +9,10 @@ func _init():
 
 	var col := CollisionShape3D.new()
 	col.name = "CollisionShape3D"
-	col.position = Vector3(0, 0.9, 0)
+	col.position = Vector3(0, 1.1, 0)
 	var cap := CapsuleShape3D.new()
 	cap.radius = 0.45
-	cap.height = 1.8
+	cap.height = 2.2
 	col.shape = cap
 	root.add_child(col)
 	col.owner = root
@@ -30,6 +30,7 @@ func _init():
 		model.name = "Model"
 		root.add_child(model)
 	model.name = "Model"
+	model.position.y = 0.2
 	model.owner = root
 	_set_owner_recursive(model, root)
 
