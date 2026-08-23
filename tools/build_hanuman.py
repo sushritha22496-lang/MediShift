@@ -381,19 +381,23 @@ for side, sign in [("L", -1), ("R", 1)]:
     shade_smooth(cornea)
     cornea.data.materials.append(cornea_mat)
 
-# Light beard tufts along the jaw/chin
+# Beard hair cards along the jaw/chin
 beard_objs = []
 beard_points = [(-0.09, 0.24, 1.51), (0.0, 0.27, 1.48), (0.09, 0.24, 1.51), (-0.04, 0.26, 1.53), (0.04, 0.26, 1.53)]
+hair_card_mat = add_material("BeardCard", (0.04, 0.03, 0.02), roughness=0.68)
 for i, (bx, by, bz) in enumerate(beard_points):
-    bpy.ops.mesh.primitive_cone_add(vertices=6, radius1=0.025, radius2=0.004, depth=0.09,
-                                     location=(bx, by + 0.02, bz - 0.04))
-    tuft = bpy.context.object
-    tuft.name = f"BeardTuft{i}"
-    tuft.rotation_euler = (math.radians(100 + random.uniform(-8, 8)), 0, random.uniform(-0.2, 0.2))
-    bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
-    shade_smooth(tuft)
-    tuft.data.materials.append(hair_mat)
-    beard_objs.append(tuft)
+    for j in range(2):
+        angle_rot = random.uniform(0, math.pi * 2)
+        angle_tilt = math.radians(85 + random.uniform(-12, 12))
+        bpy.ops.mesh.primitive_plane_add(size=0.06, location=(bx, by + 0.02, bz - 0.04))
+        card = bpy.context.object
+        card.name = f"BeardCard{i}_{j}"
+        card.scale = (0.025, 0.035, 1.0)
+        card.rotation_euler = (angle_tilt, 0, angle_rot)
+        bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
+        shade_smooth(card)
+        card.data.materials.append(hair_card_mat)
+        beard_objs.append(card)
 
 # ── Limb builder (tapered + muscle bulges) ──────────────────────────────────
 def build_limb(name, base_loc, length, radius_top, radius_bottom, bend_deg, mat, bulges=None):
@@ -649,33 +653,36 @@ for side, sign in [("L", -1), ("R", 1)]:
     pec.data.materials.append(skin_mat)
 
 # Sparse forearm / shin hair tufts ("light hair on body")
-def add_hair_tufts(prefix, base_pos, count, spread, parent_hint):
+def add_hair_cards(prefix, base_pos, count, spread, parent_hint):
     objs = []
+    hair_card_mat = add_material("HairCard", (0.06, 0.04, 0.02), roughness=0.7)
     for i in range(count):
         ox = random.uniform(-spread, spread)
         oy = random.uniform(-0.02, 0.06)
         oz = random.uniform(-spread, spread)
-        bpy.ops.mesh.primitive_cone_add(vertices=5, radius1=0.014, radius2=0.002, depth=0.05,
-                                         location=(base_pos[0] + ox, base_pos[1] + 0.08 + oy, base_pos[2] + oz))
-        t = bpy.context.object
-        t.name = f"{prefix}{i}"
-        t.rotation_euler = (math.radians(80 + random.uniform(-15, 15)), 0, random.uniform(-0.3, 0.3))
-        bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
-        shade_smooth(t)
-        t.data.materials.append(hair_mat)
-        objs.append(t)
+        angle_rot = random.uniform(0, math.pi * 2)
+        angle_tilt = math.radians(70 + random.uniform(-15, 15))
+        bpy.ops.mesh.primitive_plane_add(size=0.08, location=(base_pos[0] + ox, base_pos[1] + 0.08 + oy, base_pos[2] + oz))
+        card = bpy.context.object
+        card.name = f"{prefix}{i}"
+        card.scale = (0.04, 0.05, 1.0)
+        card.rotation_euler = (angle_tilt, 0, angle_rot)
+        bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
+        shade_smooth(card)
+        card.data.materials.append(hair_card_mat)
+        objs.append(card)
     return objs
 
-chest_hair = add_hair_tufts("ChestHair", (0.0, 0.30, 1.15), 6, 0.12, "torso")
-chest_hair_upper = add_hair_tufts("ChestHairUpper", (0.0, 0.28, 1.35), 4, 0.08, "torso")
-shoulder_hair_l = add_hair_tufts("ShoulderHairL", (-0.35, 0.12, 1.40), 3, 0.08, "armL")
-shoulder_hair_r = add_hair_tufts("ShoulderHairR", (0.35, 0.12, 1.40), 3, 0.08, "armR")
-forearm_hair_l = add_hair_tufts("ForearmHairL", (-0.5, 0.05, 0.95), 4, 0.06, "armL")
-forearm_hair_r = add_hair_tufts("ForearmHairR", (0.5, 0.05, 0.95), 4, 0.06, "armR")
-thigh_hair_l = add_hair_tufts("ThighHairL", (-0.18, 0.08, 0.40), 3, 0.07, "legL")
-thigh_hair_r = add_hair_tufts("ThighHairR", (0.18, 0.08, 0.40), 3, 0.07, "legR")
-shin_hair_l = add_hair_tufts("ShinHairL", (-0.18, 0.10, -0.05), 4, 0.07, "legL")
-shin_hair_r = add_hair_tufts("ShinHairR", (0.18, 0.10, -0.05), 4, 0.07, "legR")
+chest_hair = add_hair_cards("ChestHair", (0.0, 0.30, 1.15), 6, 0.12, "torso")
+chest_hair_upper = add_hair_cards("ChestHairUpper", (0.0, 0.28, 1.35), 4, 0.08, "torso")
+shoulder_hair_l = add_hair_cards("ShoulderHairL", (-0.35, 0.12, 1.40), 3, 0.08, "armL")
+shoulder_hair_r = add_hair_cards("ShoulderHairR", (0.35, 0.12, 1.40), 3, 0.08, "armR")
+forearm_hair_l = add_hair_cards("ForearmHairL", (-0.5, 0.05, 0.95), 4, 0.06, "armL")
+forearm_hair_r = add_hair_cards("ForearmHairR", (0.5, 0.05, 0.95), 4, 0.06, "armR")
+thigh_hair_l = add_hair_cards("ThighHairL", (-0.18, 0.08, 0.40), 3, 0.07, "legL")
+thigh_hair_r = add_hair_cards("ThighHairR", (0.18, 0.08, 0.40), 3, 0.07, "legR")
+shin_hair_l = add_hair_cards("ShinHairL", (-0.18, 0.10, -0.05), 4, 0.07, "legL")
+shin_hair_r = add_hair_cards("ShinHairR", (0.18, 0.10, -0.05), 4, 0.07, "legR")
 
 # Calf muscles for leg definition
 for side, sign in [("L", -1), ("R", 1)]:
