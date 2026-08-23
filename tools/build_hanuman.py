@@ -241,6 +241,16 @@ for side, sign in [("L", -1), ("R", 1)]:
     shade_smooth(brow)
     brow.data.materials.append(face_mat)
 
+# Cheekbones for face definition
+for side, sign in [("L", -1), ("R", 1)]:
+    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=0.095, location=(sign * 0.22, 0.18, 1.72))
+    cheek = bpy.context.object
+    cheek.name = f"Cheek{side}"
+    cheek.scale = (1.2, 0.7, 0.65)
+    apply_all_modifiers(cheek)
+    shade_smooth(cheek)
+    cheek.data.materials.append(face_mat)
+
 # Ears
 for side, sign in [("L", -1), ("R", 1)]:
     bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=2, radius=0.13, location=(sign * 0.32, 0.0, 1.91))
@@ -426,6 +436,16 @@ def build_hand(name, wrist_pos, x_sign, mat):
         finger.data.materials.append(mat)
         parts.append(finger)
 
+        # Finger joint details for articulation definition
+        for joint_i in range(2):
+            jz = fz - 0.04 - joint_i * 0.045
+            bpy.ops.mesh.primitive_uv_sphere_add(segments=6, ring_count=5, radius=0.0125, location=(fx, fy, jz))
+            joint = bpy.context.object
+            joint.name = f"{name}Finger{i}Joint{joint_i}"
+            shade_smooth(joint)
+            joint.data.materials.append(mat)
+            parts.append(joint)
+
     bpy.ops.mesh.primitive_cylinder_add(vertices=8, radius=0.026, depth=0.10,
                                          location=(wx + x_sign * 0.062, wy + 0.015, wz + 0.02))
     thumb = bpy.context.object
@@ -598,12 +618,14 @@ for side, sign in [("L", -1), ("R", 1)]:
 curve_data = bpy.data.curves.new('TailCurve', type='CURVE')
 curve_data.dimensions = '3D'
 spline = curve_data.splines.new('BEZIER')
-spline.bezier_points.add(3)
+spline.bezier_points.add(5)
 pts = [
-    (0, -0.35, 1.0, 0.09),
-    (0, -0.75, 1.15, 0.075),
-    (0, -0.95, 1.55, 0.05),
-    (0, -0.85, 1.95, 0.02),
+    (0, -0.35, 1.0, 0.095),
+    (0.08, -0.55, 1.10, 0.088),
+    (0, -0.78, 1.28, 0.075),
+    (0, -0.95, 1.62, 0.052),
+    (-0.05, -1.05, 1.95, 0.025),
+    (0, -0.88, 2.15, 0.015),
 ]
 for i, (x, y, z, r) in enumerate(pts):
     bp = spline.bezier_points[i]
@@ -611,8 +633,8 @@ for i, (x, y, z, r) in enumerate(pts):
     bp.handle_left_type = 'AUTO'
     bp.handle_right_type = 'AUTO'
     bp.radius = r / 0.09
-curve_data.bevel_depth = 0.09
-curve_data.bevel_resolution = 4
+curve_data.bevel_depth = 0.095
+curve_data.bevel_resolution = 6
 curve_data.use_fill_caps = True
 tail_obj = bpy.data.objects.new("Tail", curve_data)
 bpy.context.collection.objects.link(tail_obj)
@@ -722,6 +744,7 @@ BONE_GROUPS = {
              bpy.data.objects["IrisL"], bpy.data.objects["IrisR"],
              bpy.data.objects["PupilL"], bpy.data.objects["PupilR"],
              bpy.data.objects["BrowL"], bpy.data.objects["BrowR"],
+             bpy.data.objects["CheekL"], bpy.data.objects["CheekR"],
              bpy.data.objects["Nose"], bpy.data.objects["NostrilL"], bpy.data.objects["NostrilR"]] + beard_objs,
     "Jaw": [chin, snout, bpy.data.objects["LowerLip"], bpy.data.objects["UpperLip"]],
     "UpperArmL": [deltoid_l, left_arm, bpy.data.objects["TricepL"], bpy.data.objects["ForearmMuscleL"], armlet_l, wristlet_l] + forearm_hair_l + hand_l_parts,
