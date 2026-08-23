@@ -21,13 +21,19 @@ func _ready() -> void:
 	_show_title("Chapter I — Rishyamukha Mountain")
 
 func _spawn_enemies() -> void:
-	var scene := load("res://scenes3d/enemies/demon_guard_3d.tscn")
-	if not scene:
-		_spawn_boss()
-		return
+	var enemy_variations := [
+		"res://scenes3d/enemies/demon_guard_new.tscn",
+		"res://scenes3d/enemies/demon_guard_var2.tscn",
+		"res://scenes3d/enemies/demon_guard_var3.tscn"
+	]
+
 	var markers := enemy_spawns.get_children()
 	guards_alive = markers.size()
 	for marker in markers:
+		var variation = enemy_variations[randi() % enemy_variations.size()]
+		var scene := load(variation)
+		if not scene:
+			continue
 		var enemy = scene.instantiate()
 		add_child(enemy)
 		enemy.global_position = marker.global_position
@@ -41,7 +47,7 @@ func _on_guard_died(_enemy) -> void:
 		_spawn_boss()
 
 func _spawn_boss() -> void:
-	var scene := load("res://scenes3d/enemies/boss_dundhubi_3d.tscn")
+	var scene := load("res://scenes3d/enemies/boss_dundhubi_new.tscn")
 	if not scene:
 		return
 	var boss = scene.instantiate()

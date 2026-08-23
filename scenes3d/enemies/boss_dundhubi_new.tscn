@@ -1,0 +1,13 @@
+[gd_scene load_steps=2 format=3 uid="uid://n5cj6mg7p16p"]
+
+[ext_resource type="PackedScene" path="res://assets/models/characters/processed/dundhubi_boss.glb" id="1"]
+
+[node name="DundhuBoss" type="Node3D"]
+
+[node name="dundhubi_boss" parent="." instance=ExtResource("1")]
+transform = Transform3D(2, 0, 0, 0, 2, 0, 0, 0, 2, 0, 1, 0)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+shape = CapsuleShape3D(radius=1.0, height=4.0)
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="."]

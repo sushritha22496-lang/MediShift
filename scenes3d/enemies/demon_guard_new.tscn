@@ -1,0 +1,13 @@
+[gd_scene load_steps=2 format=3 uid="uid://cr8xlhc74g0mq"]
+
+[ext_resource type="PackedScene" path="res://assets/models/characters/processed/demon_guard_1.glb" id="1"]
+
+[node name="DemonGuard" type="Node3D"]
+
+[node name="demon_guard" parent="." instance=ExtResource("1")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+shape = CapsuleShape3D(radius=0.5, height=1.8)
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="."]
