@@ -1068,6 +1068,25 @@ for cheek_name in ("CheekL", "CheekR"):
         else:
             frown_cheek.data[v.index].co = v.co
 
+# Muscle flexion shapes for arms
+for muscle_name in ("TricepL", "TricepR"):
+    muscle = bpy.data.objects[muscle_name]
+    muscle.shape_key_add(name="Basis", from_mix=False)
+
+    flex_key = muscle.shape_key_add(name="Flex", from_mix=False)
+    flex_key.value = 0.0
+    for v in muscle.data.vertices:
+        flex_key.data[v.index].co = (v.co.x * 1.15, v.co.y + 0.08, v.co.z)
+
+for muscle_name in ("ForearmMuscleL", "ForearmMuscleR"):
+    muscle = bpy.data.objects[muscle_name]
+    muscle.shape_key_add(name="Basis", from_mix=False)
+
+    flex_key = muscle.shape_key_add(name="Flex", from_mix=False)
+    flex_key.value = 0.0
+    for v in muscle.data.vertices:
+        flex_key.data[v.index].co = (v.co.x * 1.12, v.co.y + 0.06, v.co.z)
+
 # ── Animations: bone-keyframed actions, exported as separate glTF clips ────
 def set_bone_rot(name, degrees_xyz, frame):
     pb = armature_obj.pose.bones[name]
