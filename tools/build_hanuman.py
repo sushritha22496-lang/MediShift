@@ -1117,6 +1117,34 @@ for muscle_name in ("CalfL", "CalfR"):
     for v in muscle.data.vertices:
         flex_key.data[v.index].co = (v.co.x * 1.14, v.co.y - 0.05, v.co.z)
 
+# Tail shape keys for dynamic movement
+tail = bpy.data.objects["Tail"]
+tail.shape_key_add(name="Basis", from_mix=False)
+
+swish_left = tail.shape_key_add(name="SwishLeft", from_mix=False)
+swish_left.value = 0.0
+for v in tail.data.vertices:
+    if v.co.z > 1.2:
+        swish_left.data[v.index].co = (v.co.x - 0.15 * (v.co.z - 1.2) / 1.0, v.co.y, v.co.z)
+    else:
+        swish_left.data[v.index].co = v.co
+
+swish_right = tail.shape_key_add(name="SwishRight", from_mix=False)
+swish_right.value = 0.0
+for v in tail.data.vertices:
+    if v.co.z > 1.2:
+        swish_right.data[v.index].co = (v.co.x + 0.15 * (v.co.z - 1.2) / 1.0, v.co.y, v.co.z)
+    else:
+        swish_right.data[v.index].co = v.co
+
+wrap = tail.shape_key_add(name="Wrap", from_mix=False)
+wrap.value = 0.0
+for v in tail.data.vertices:
+    if v.co.z > 1.5:
+        wrap.data[v.index].co = (v.co.x * 0.85, v.co.y - 0.12, v.co.z)
+    else:
+        wrap.data[v.index].co = v.co
+
 # ── Animations: bone-keyframed actions, exported as separate glTF clips ────
 def set_bone_rot(name, degrees_xyz, frame):
     pb = armature_obj.pose.bones[name]
