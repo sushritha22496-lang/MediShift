@@ -88,9 +88,11 @@ for v in bm.verts:
     scale *= 1.0 + 0.45 * chest_t * front * sternum_dip
     if -0.30 <= z < 0.04:
         ridge = 0.5 + 0.5 * math.cos((z - 0.04) * 22.0)
-        scale *= 1.0 - 0.13 * ridge * front
+        scale *= 1.0 - 0.15 * ridge * front
+    ab_t = max(0.0, 1.0 - abs(z - (-0.08)) / 0.12)
+    scale *= 1.0 + 0.08 * ab_t * front
     back_t = max(0.0, 1.0 - abs(z - 0.05) / 0.4)
-    scale *= 1.0 + 0.2 * back_t * back
+    scale *= 1.0 + 0.25 * back_t * back
     # shoulder-blade hints + spine groove, back only
     blade_t = max(0.0, 1.0 - abs(z - 0.18) / 0.12) * max(0.0, back - 0.35) * 1.5
     scale *= 1.0 + 0.16 * min(blade_t, 1.0)
@@ -168,11 +170,60 @@ apply_all_modifiers(chin)
 shade_smooth(chin)
 chin.data.materials.append(face_mat)
 
-# Snout / muzzle
-bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=2, radius=0.15, location=(0, 0.32, 1.67))
+# Nose with nostrils and bridge definition
+bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=2, radius=0.11, location=(0, 0.36, 1.75))
+nose = bpy.context.object
+nose.name = "Nose"
+nose.scale = (0.7, 1.0, 0.9)
+me = nose.data
+bm = bmesh.new()
+bm.from_mesh(me)
+bm.verts.ensure_lookup_table()
+for v in bm.verts:
+    if v.co.y > 0.02:
+        v.co.y *= 1.2
+    if abs(v.co.x) < 0.04 and v.co.y > 0:
+        v.co.x *= 0.6
+bm.to_mesh(me)
+bm.free()
+add_subsurf(nose, 1)
+apply_all_modifiers(nose)
+shade_smooth(nose)
+nose.data.materials.append(face_mat)
+
+# Nostrils (small dark spheres)
+for side, sign in [("L", -1), ("R", 1)]:
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=5, ring_count=4, radius=0.015, location=(sign * 0.027, 0.37, 1.71))
+    nostril = bpy.context.object
+    nostril.name = f"Nostril{side}"
+    shade_smooth(nostril)
+    nostril.data.materials.append(eye_mat)
+
+# Mouth: lower lip and upper lip for expression
+bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=0.06, location=(0, 0.32, 1.60))
+lower_lip = bpy.context.object
+lower_lip.name = "LowerLip"
+lower_lip.scale = (1.2, 0.6, 0.7)
+add_subsurf(lower_lip, 1)
+apply_all_modifiers(lower_lip)
+shade_smooth(lower_lip)
+lip_mat = add_material("Lips", (0.75, 0.25, 0.15), roughness=0.4)
+lower_lip.data.materials.append(lip_mat)
+
+bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=0.052, location=(0, 0.33, 1.68))
+upper_lip = bpy.context.object
+upper_lip.name = "UpperLip"
+upper_lip.scale = (1.2, 0.5, 0.6)
+add_subsurf(upper_lip, 1)
+apply_all_modifiers(upper_lip)
+shade_smooth(upper_lip)
+upper_lip.data.materials.append(lip_mat)
+
+# Snout / muzzle (smaller now that nose is separated)
+bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=2, radius=0.12, location=(0, 0.34, 1.67))
 snout = bpy.context.object
 snout.name = "Snout"
-snout.scale = (0.85, 1.1, 0.8)
+snout.scale = (0.75, 0.95, 0.7)
 add_subsurf(snout, 1)
 apply_all_modifiers(snout)
 shade_smooth(snout)
@@ -180,10 +231,10 @@ snout.data.materials.append(face_mat)
 
 # Brow ridge (gives the face an expressive, human-like brow)
 for side, sign in [("L", -1), ("R", 1)]:
-    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=0.09, location=(sign * 0.13, 0.27, 1.88))
+    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=0.1, location=(sign * 0.14, 0.28, 1.88))
     brow = bpy.context.object
     brow.name = f"Brow{side}"
-    brow.scale = (1.3, 0.55, 0.5)
+    brow.scale = (1.4, 0.6, 0.55)
     apply_all_modifiers(brow)
     shade_smooth(brow)
     brow.data.materials.append(face_mat)
@@ -263,22 +314,43 @@ def build_limb(name, base_loc, length, radius_top, radius_bottom, bend_deg, mat,
     obj.data.materials.append(mat)
     return obj
 
-BICEP_BULGE = [(0.6, 0.17, 1.4)]
-QUAD_CALF_BULGE = [(0.8, 0.15, 1.0), (0.35, 0.16, 0.85)]
+BICEP_BULGE = [(0.6, 0.16, 1.6), (0.2, 0.12, 0.5)]
+TRICEP_BULGE = [(0.65, 0.15, 1.2)]
+QUAD_CALF_BULGE = [(0.8, 0.14, 1.15), (0.3, 0.15, 0.9)]
 
-left_arm = build_limb("ArmL", (-0.5, 0, 1.10), 0.7, 0.15, 0.095, 8, skin_mat, bulges=BICEP_BULGE)
-right_arm = build_limb("ArmR", (0.5, 0, 1.10), 0.7, 0.15, 0.095, -8, skin_mat, bulges=BICEP_BULGE)
-left_leg = build_limb("LegL", (-0.18, 0, 0.35), 1.05, 0.19, 0.13, 0, skin_mat, bulges=QUAD_CALF_BULGE)
-right_leg = build_limb("LegR", (0.18, 0, 0.35), 1.05, 0.19, 0.13, 0, skin_mat, bulges=QUAD_CALF_BULGE)
+left_arm = build_limb("ArmL", (-0.5, 0, 1.10), 0.7, 0.155, 0.10, 8, skin_mat, bulges=BICEP_BULGE)
+right_arm = build_limb("ArmR", (0.5, 0, 1.10), 0.7, 0.155, 0.10, -8, skin_mat, bulges=BICEP_BULGE)
+left_leg = build_limb("LegL", (-0.18, 0, 0.35), 1.05, 0.20, 0.135, 0, skin_mat, bulges=QUAD_CALF_BULGE)
+right_leg = build_limb("LegR", (0.18, 0, 0.35), 1.05, 0.20, 0.135, 0, skin_mat, bulges=QUAD_CALF_BULGE)
 
-# Hands: palm + four fingers + thumb, so the limbs end in human hands, not stumps
+# Arm muscle separation: triceps hint on back of arms
+for side, sign in [("L", -1), ("R", 1)]:
+    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=2, radius=0.13, location=(sign * 0.5, -0.06, 1.0))
+    tricep = bpy.context.object
+    tricep.name = f"Tricep{side}"
+    tricep.scale = (0.9, 0.65, 0.8)
+    add_subsurf(tricep, 1)
+    apply_all_modifiers(tricep)
+    shade_smooth(tricep)
+    tricep.data.materials.append(skin_mat)
+
+# Hands: palm + four fingers + thumb with better joint articulation
 def build_hand(name, wrist_pos, x_sign, mat):
     wx, wy, wz = wrist_pos
     bpy.ops.mesh.primitive_cube_add(size=1.0, location=(wx, wy, wz))
     palm = bpy.context.object
     palm.name = f"{name}Palm"
-    palm.scale = (0.1, 0.085, 0.13)
+    palm.scale = (0.115, 0.095, 0.14)
     bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    me = palm.data
+    bm = bmesh.new()
+    bm.from_mesh(me)
+    bm.verts.ensure_lookup_table()
+    for v in bm.verts:
+        if v.co.z < 0:
+            v.co.z *= 0.8
+    bm.to_mesh(me)
+    bm.free()
     add_subsurf(palm, 1)
     apply_all_modifiers(palm)
     shade_smooth(palm)
@@ -286,13 +358,25 @@ def build_hand(name, wrist_pos, x_sign, mat):
 
     parts = [palm]
     for i in range(4):
-        fx = wx + (i - 1.5) * 0.032
-        fy = wy + 0.03
-        fz = wz - 0.075
-        bpy.ops.mesh.primitive_cylinder_add(vertices=8, radius=0.017, depth=0.11, location=(fx, fy, fz))
+        fx = wx + (i - 1.5) * 0.035
+        fy = wy + 0.035
+        fz = wz - 0.085
+        radius = 0.018 if i in (0, 3) else 0.020
+        bpy.ops.mesh.primitive_cylinder_add(vertices=8, radius=radius, depth=0.125, location=(fx, fy, fz))
         finger = bpy.context.object
         finger.name = f"{name}Finger{i}"
-        finger.rotation_euler = (math.radians(25), 0, 0)
+        me = finger.data
+        bm = bmesh.new()
+        bm.from_mesh(me)
+        bm.verts.ensure_lookup_table()
+        for v in bm.verts:
+            t = (v.co.z + 0.0625) / 0.125
+            taper = 1.0 - 0.35 * t
+            v.co.x *= taper
+            v.co.y *= taper
+        bm.to_mesh(me)
+        bm.free()
+        finger.rotation_euler = (math.radians(30), 0, 0)
         bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
         add_subsurf(finger, 1)
         apply_all_modifiers(finger)
@@ -300,11 +384,22 @@ def build_hand(name, wrist_pos, x_sign, mat):
         finger.data.materials.append(mat)
         parts.append(finger)
 
-    bpy.ops.mesh.primitive_cylinder_add(vertices=8, radius=0.023, depth=0.09,
-                                         location=(wx + x_sign * 0.058, wy + 0.015, wz))
+    bpy.ops.mesh.primitive_cylinder_add(vertices=8, radius=0.026, depth=0.10,
+                                         location=(wx + x_sign * 0.062, wy + 0.015, wz + 0.02))
     thumb = bpy.context.object
     thumb.name = f"{name}Thumb"
-    thumb.rotation_euler = (math.radians(15), 0, math.radians(x_sign * 50))
+    me = thumb.data
+    bm = bmesh.new()
+    bm.from_mesh(me)
+    bm.verts.ensure_lookup_table()
+    for v in bm.verts:
+        t = (v.co.z + 0.05) / 0.10
+        taper = 1.0 - 0.3 * t
+        v.co.x *= taper
+        v.co.y *= taper
+    bm.to_mesh(me)
+    bm.free()
+    thumb.rotation_euler = (math.radians(20), 0, math.radians(x_sign * 55))
     bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
     add_subsurf(thumb, 1)
     apply_all_modifiers(thumb)
@@ -319,11 +414,22 @@ hand_r_parts = build_hand("HandR", (0.5, 0.06, 0.6), 1, skin_mat)
 # Deltoid caps at the shoulder sockets so the arms read as attached, not floating pillars
 deltoid_l = None
 deltoid_r = None
-for side, sign, sculptname in [("L", -1, "deltoid_l"), ("R", 1, "deltoid_r")]:
-    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=2, radius=0.19, location=(sign * 0.43, 0.0, 1.43))
+for side, sign in [("L", -1), ("R", 1)]:
+    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=3, radius=0.215, location=(sign * 0.45, 0.08, 1.42))
     delt = bpy.context.object
     delt.name = f"Deltoid{side}"
-    delt.scale = (1.0, 0.85, 0.9)
+    delt.scale = (1.15, 0.95, 1.0)
+    me = delt.data
+    bm = bmesh.new()
+    bm.from_mesh(me)
+    bm.verts.ensure_lookup_table()
+    for v in bm.verts:
+        if v.co.z > 0.05:
+            v.co.z *= 1.15
+        if abs(v.co.x * sign) > 0.08:
+            v.co.x *= 1.2
+    bm.to_mesh(me)
+    bm.free()
     add_subsurf(delt, 1)
     apply_all_modifiers(delt)
     shade_smooth(delt)
@@ -332,6 +438,17 @@ for side, sign, sculptname in [("L", -1, "deltoid_l"), ("R", 1, "deltoid_r")]:
         deltoid_l = delt
     else:
         deltoid_r = delt
+
+# Pectoral muscles: separated bulges on chest
+for side, sign in [("L", -1), ("R", 1)]:
+    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=2, radius=0.17, location=(sign * 0.20, 0.22, 1.25))
+    pec = bpy.context.object
+    pec.name = f"Pectoral{side}"
+    pec.scale = (1.1, 1.0, 0.85)
+    add_subsurf(pec, 1)
+    apply_all_modifiers(pec)
+    shade_smooth(pec)
+    pec.data.materials.append(skin_mat)
 
 # Sparse forearm / shin hair tufts ("light hair on body")
 def add_hair_tufts(prefix, base_pos, count, spread, parent_hint):
@@ -356,6 +473,28 @@ forearm_hair_l = add_hair_tufts("ForearmHairL", (-0.5, 0.05, 0.95), 3, 0.05, "ar
 forearm_hair_r = add_hair_tufts("ForearmHairR", (0.5, 0.05, 0.95), 3, 0.05, "armR")
 shin_hair_l = add_hair_tufts("ShinHairL", (-0.18, 0.10, -0.05), 3, 0.06, "legL")
 shin_hair_r = add_hair_tufts("ShinHairR", (0.18, 0.10, -0.05), 3, 0.06, "legR")
+
+# Calf muscles for leg definition
+for side, sign in [("L", -1), ("R", 1)]:
+    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=2, radius=0.14, location=(sign * 0.18, -0.08, -0.08))
+    calf = bpy.context.object
+    calf.name = f"Calf{side}"
+    calf.scale = (0.85, 0.95, 1.0)
+    add_subsurf(calf, 1)
+    apply_all_modifiers(calf)
+    shade_smooth(calf)
+    calf.data.materials.append(skin_mat)
+
+# Oblique muscles on sides of torso
+for side, sign in [("L", -1), ("R", 1)]:
+    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=2, radius=0.12, location=(sign * 0.32, 0.04, 0.85))
+    oblique = bpy.context.object
+    oblique.name = f"Oblique{side}"
+    oblique.scale = (0.7, 1.1, 0.75)
+    add_subsurf(oblique, 1)
+    apply_all_modifiers(oblique)
+    shade_smooth(oblique)
+    oblique.data.materials.append(skin_mat)
 
 # ── Big feet with toe definition ────────────────────────────────────────────
 def build_foot(name, x_sign):
@@ -520,16 +659,18 @@ def rigid_bind(obj, bone_name):
     obj.matrix_parent_inverse = armature_obj.matrix_world.inverted()
 
 BONE_GROUPS = {
-    "Hips": [torso, neck, cloth, waistband] + chest_hair,
+    "Hips": [torso, neck, cloth, waistband, bpy.data.objects["PectoralL"], bpy.data.objects["PectoralR"],
+             bpy.data.objects["ObliqueL"], bpy.data.objects["ObliqueR"]] + chest_hair,
     "Head": [head, bpy.data.objects["EarL"], bpy.data.objects["EarR"],
              bpy.data.objects["EyeL"], bpy.data.objects["EyeR"],
              bpy.data.objects["EyeWhiteL"], bpy.data.objects["EyeWhiteR"],
-             bpy.data.objects["BrowL"], bpy.data.objects["BrowR"]] + beard_objs,
-    "Jaw": [chin, snout],
-    "UpperArmL": [deltoid_l, left_arm, armlet_l, wristlet_l] + forearm_hair_l + hand_l_parts,
-    "UpperArmR": [deltoid_r, right_arm, gada_head, gada_handle, armlet_r, wristlet_r] + forearm_hair_r + gada_rings + hand_r_parts,
-    "ThighL": [left_leg, foot_l, anklet_l] + toes_l + shin_hair_l,
-    "ThighR": [right_leg, foot_r, anklet_r] + toes_r + shin_hair_r,
+             bpy.data.objects["BrowL"], bpy.data.objects["BrowR"],
+             bpy.data.objects["Nose"], bpy.data.objects["NostrilL"], bpy.data.objects["NostrilR"]] + beard_objs,
+    "Jaw": [chin, snout, bpy.data.objects["LowerLip"], bpy.data.objects["UpperLip"]],
+    "UpperArmL": [deltoid_l, left_arm, bpy.data.objects["TricepL"], armlet_l, wristlet_l] + forearm_hair_l + hand_l_parts,
+    "UpperArmR": [deltoid_r, right_arm, bpy.data.objects["TricepR"], gada_head, gada_handle, armlet_r, wristlet_r] + forearm_hair_r + gada_rings + hand_r_parts,
+    "ThighL": [left_leg, bpy.data.objects["CalfL"], foot_l, anklet_l] + toes_l + shin_hair_l,
+    "ThighR": [right_leg, bpy.data.objects["CalfR"], foot_r, anklet_r] + toes_r + shin_hair_r,
     "Tail": [tail_obj],
 }
 for bone_name, objs in BONE_GROUPS.items():
@@ -543,7 +684,21 @@ for eyewhite_name in ("EyeWhiteL", "EyeWhiteR"):
     blink = eyewhite.shape_key_add(name="Blink", from_mix=False)
     blink.value = 0.0
     for v in eyewhite.data.vertices:
-        blink.data[v.index].co = (v.co.x, v.co.y, v.co.z * 0.05)
+        blink.data[v.index].co = (v.co.x, v.co.y, v.co.z * 0.04)
+
+# Mouth opening via shape keys on lower lip and jaw
+for lip_name in ("LowerLip", "UpperLip"):
+    lip = bpy.data.objects[lip_name]
+    lip.shape_key_add(name="Basis", from_mix=False)
+    open_key = lip.shape_key_add(name="Open", from_mix=False)
+    open_key.value = 0.0
+    for v in lip.data.vertices:
+        if lip_name == "LowerLip" and v.co.y > 0.28:
+            open_key.data[v.index].co = (v.co.x, v.co.y - 0.06, v.co.z - 0.04)
+        elif lip_name == "UpperLip" and v.co.y > 0.30:
+            open_key.data[v.index].co = (v.co.x, v.co.y + 0.06, v.co.z + 0.04)
+        else:
+            open_key.data[v.index].co = v.co
 
 # ── Animations: bone-keyframed actions, exported as separate glTF clips ────
 def set_bone_rot(name, degrees_xyz, frame):
