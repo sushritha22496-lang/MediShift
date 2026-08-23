@@ -88,9 +88,11 @@ for v in bm.verts:
     scale *= 1.0 + 0.45 * chest_t * front * sternum_dip
     if -0.30 <= z < 0.04:
         ridge = 0.5 + 0.5 * math.cos((z - 0.04) * 22.0)
-        scale *= 1.0 - 0.15 * ridge * front
+        scale *= 1.0 - 0.16 * ridge * front
+        ab_seg = 0.7 * math.sin((z + 0.30) * 12.0)
+        scale *= 1.0 + 0.06 * max(ab_seg, 0.0) * front
     ab_t = max(0.0, 1.0 - abs(z - (-0.08)) / 0.12)
-    scale *= 1.0 + 0.08 * ab_t * front
+    scale *= 1.0 + 0.09 * ab_t * front
     back_t = max(0.0, 1.0 - abs(z - 0.05) / 0.4)
     scale *= 1.0 + 0.25 * back_t * back
     # shoulder-blade hints + spine groove, back only
@@ -250,21 +252,50 @@ for side, sign in [("L", -1), ("R", 1)]:
     shade_smooth(ear)
     ear.data.materials.append(face_mat)
 
+# Eye sockets: subtle indentation for depth
+for side, sign in [("L", -1), ("R", 1)]:
+    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=2, radius=0.068, location=(sign * 0.105, 0.26, 1.825))
+    socket = bpy.context.object
+    socket.name = f"EyeSocket{side}"
+    socket.scale = (1.0, 0.85, 0.9)
+    me = socket.data
+    bm = bmesh.new()
+    bm.from_mesh(me)
+    bm.verts.ensure_lookup_table()
+    for v in bm.verts:
+        if v.co.z < 0:
+            v.co.z *= 1.3
+        if abs(v.co.y) > 0.02:
+            v.co.y *= 0.8
+    bm.to_mesh(me)
+    bm.free()
+    add_subsurf(socket, 1)
+    apply_all_modifiers(socket)
+    shade_smooth(socket)
+    socket.data.materials.append(face_mat)
+
 # Eyes: sclera + pupil for a clearer, human-like gaze
 for side, sign in [("L", -1), ("R", 1)]:
-    bpy.ops.mesh.primitive_uv_sphere_add(segments=10, ring_count=8, radius=0.048, location=(sign * 0.105, 0.27, 1.815))
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=12, ring_count=10, radius=0.050, location=(sign * 0.105, 0.272, 1.820))
     sclera = bpy.context.object
     sclera.name = f"EyeWhite{side}"
-    sclera.scale = (0.9, 0.7, 1.0)
+    sclera.scale = (0.92, 0.75, 1.05)
     apply_all_modifiers(sclera)
     shade_smooth(sclera)
     sclera.data.materials.append(sclera_mat)
 
-    bpy.ops.mesh.primitive_uv_sphere_add(segments=8, ring_count=6, radius=0.026, location=(sign * 0.105, 0.305, 1.815))
-    eye = bpy.context.object
-    eye.name = f"Eye{side}"
-    shade_smooth(eye)
-    eye.data.materials.append(eye_mat)
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=10, ring_count=8, radius=0.028, location=(sign * 0.105, 0.312, 1.820))
+    iris = bpy.context.object
+    iris.name = f"Iris{side}"
+    iris_mat = add_material(f"Iris{side}", (0.15, 0.12, 0.08), roughness=0.3)
+    shade_smooth(iris)
+    iris.data.materials.append(iris_mat)
+
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=8, ring_count=6, radius=0.013, location=(sign * 0.105, 0.315, 1.823))
+    pupil = bpy.context.object
+    pupil.name = f"Pupil{side}"
+    shade_smooth(pupil)
+    pupil.data.materials.append(eye_mat)
 
 # Light beard tufts along the jaw/chin
 beard_objs = []
@@ -333,6 +364,17 @@ for side, sign in [("L", -1), ("R", 1)]:
     apply_all_modifiers(tricep)
     shade_smooth(tricep)
     tricep.data.materials.append(skin_mat)
+
+# Forearm muscles for arm definition
+for side, sign in [("L", -1), ("R", 1)]:
+    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=2, radius=0.11, location=(sign * 0.5, 0.05, 0.80))
+    forearm_muscle = bpy.context.object
+    forearm_muscle.name = f"ForearmMuscle{side}"
+    forearm_muscle.scale = (0.95, 0.75, 0.8)
+    add_subsurf(forearm_muscle, 1)
+    apply_all_modifiers(forearm_muscle)
+    shade_smooth(forearm_muscle)
+    forearm_muscle.data.materials.append(skin_mat)
 
 # Hands: palm + four fingers + thumb with better joint articulation
 def build_hand(name, wrist_pos, x_sign, mat):
@@ -496,12 +538,12 @@ for side, sign in [("L", -1), ("R", 1)]:
     shade_smooth(oblique)
     oblique.data.materials.append(skin_mat)
 
-# ── Big feet with toe definition ────────────────────────────────────────────
+# ── Big feet with toe and arch definition ────────────────────────────────────
 def build_foot(name, x_sign):
     bpy.ops.mesh.primitive_cube_add(size=1.0, location=(0.18 * x_sign, 0.18, -0.16))
     foot = bpy.context.object
     foot.name = name
-    foot.scale = (0.26, 0.56, 0.17)
+    foot.scale = (0.27, 0.58, 0.18)
     bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
     me = foot.data
     bm = bmesh.new()
@@ -509,11 +551,13 @@ def build_foot(name, x_sign):
     bm.verts.ensure_lookup_table()
     for v in bm.verts:
         if v.co.y > 0:
-            v.co.y *= 1.2
-            v.co.x *= 0.68
+            v.co.y *= 1.25
+            v.co.x *= 0.65
         if v.co.z < 0:
-            v.co.z *= 1.2
-    bmesh.ops.bevel(bm, geom=list(bm.verts), offset=0.04, segments=3, affect='VERTICES')
+            v.co.z *= 1.3
+            if abs(v.co.x) < 0.05:
+                v.co.z *= 0.7
+    bmesh.ops.bevel(bm, geom=list(bm.verts), offset=0.045, segments=4, affect='VERTICES')
     bm.to_mesh(me)
     bm.free()
     add_subsurf(foot, 1)
@@ -538,6 +582,17 @@ def build_foot(name, x_sign):
 
 foot_l, toes_l = build_foot("FootL", -1)
 foot_r, toes_r = build_foot("FootR", 1)
+
+# Foot arch detail
+for side, sign in [("L", -1), ("R", 1)]:
+    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=0.05, location=(0.18 * sign, 0.08, -0.20))
+    arch = bpy.context.object
+    arch.name = f"FootArch{side}"
+    arch.scale = (0.75, 0.4, 0.9)
+    add_subsurf(arch, 1)
+    apply_all_modifiers(arch)
+    shade_smooth(arch)
+    arch.data.materials.append(skin_mat)
 
 # ── Tail (curve with bevel, tapered) ────────────────────────────────────────
 curve_data = bpy.data.curves.new('TailCurve', type='CURVE')
@@ -662,15 +717,17 @@ BONE_GROUPS = {
     "Hips": [torso, neck, cloth, waistband, bpy.data.objects["PectoralL"], bpy.data.objects["PectoralR"],
              bpy.data.objects["ObliqueL"], bpy.data.objects["ObliqueR"]] + chest_hair,
     "Head": [head, bpy.data.objects["EarL"], bpy.data.objects["EarR"],
-             bpy.data.objects["EyeL"], bpy.data.objects["EyeR"],
+             bpy.data.objects["EyeSocketL"], bpy.data.objects["EyeSocketR"],
              bpy.data.objects["EyeWhiteL"], bpy.data.objects["EyeWhiteR"],
+             bpy.data.objects["IrisL"], bpy.data.objects["IrisR"],
+             bpy.data.objects["PupilL"], bpy.data.objects["PupilR"],
              bpy.data.objects["BrowL"], bpy.data.objects["BrowR"],
              bpy.data.objects["Nose"], bpy.data.objects["NostrilL"], bpy.data.objects["NostrilR"]] + beard_objs,
     "Jaw": [chin, snout, bpy.data.objects["LowerLip"], bpy.data.objects["UpperLip"]],
-    "UpperArmL": [deltoid_l, left_arm, bpy.data.objects["TricepL"], armlet_l, wristlet_l] + forearm_hair_l + hand_l_parts,
-    "UpperArmR": [deltoid_r, right_arm, bpy.data.objects["TricepR"], gada_head, gada_handle, armlet_r, wristlet_r] + forearm_hair_r + gada_rings + hand_r_parts,
-    "ThighL": [left_leg, bpy.data.objects["CalfL"], foot_l, anklet_l] + toes_l + shin_hair_l,
-    "ThighR": [right_leg, bpy.data.objects["CalfR"], foot_r, anklet_r] + toes_r + shin_hair_r,
+    "UpperArmL": [deltoid_l, left_arm, bpy.data.objects["TricepL"], bpy.data.objects["ForearmMuscleL"], armlet_l, wristlet_l] + forearm_hair_l + hand_l_parts,
+    "UpperArmR": [deltoid_r, right_arm, bpy.data.objects["TricepR"], bpy.data.objects["ForearmMuscleR"], gada_head, gada_handle, armlet_r, wristlet_r] + forearm_hair_r + gada_rings + hand_r_parts,
+    "ThighL": [left_leg, bpy.data.objects["CalfL"], foot_l, bpy.data.objects["FootArchL"], anklet_l] + toes_l + shin_hair_l,
+    "ThighR": [right_leg, bpy.data.objects["CalfR"], foot_r, bpy.data.objects["FootArchR"], anklet_r] + toes_r + shin_hair_r,
     "Tail": [tail_obj],
 }
 for bone_name, objs in BONE_GROUPS.items():
