@@ -1145,6 +1145,41 @@ for v in tail.data.vertices:
     else:
         wrap.data[v.index].co = v.co
 
+# Hand pose shape keys for finger animation
+for hand_name in ("HandLPalm", "HandRPalm"):
+    hand = bpy.data.objects.get(hand_name)
+    if hand:
+        hand.shape_key_add(name="Basis", from_mix=False)
+
+for finger_name_pattern in ["HandLFinger", "HandRFinger"]:
+    for i in range(4):
+        for j in range(5):
+            finger_obj_name = f"{finger_name_pattern}{i}"
+            finger = bpy.data.objects.get(finger_obj_name)
+            if finger and j == 0:
+                finger.shape_key_add(name="Basis", from_mix=False)
+
+                flex_key = finger.shape_key_add(name="Flex", from_mix=False)
+                flex_key.value = 0.0
+                for v in finger.data.vertices:
+                    if v.co.z < 0:
+                        flex_key.data[v.index].co = (v.co.x * 0.95, v.co.y + 0.008, v.co.z * 1.1)
+                    else:
+                        flex_key.data[v.index].co = v.co
+
+for thumb_name in ("HandLThumb", "HandRThumb"):
+    thumb = bpy.data.objects.get(thumb_name)
+    if thumb:
+        thumb.shape_key_add(name="Basis", from_mix=False)
+
+        flex_key = thumb.shape_key_add(name="Flex", from_mix=False)
+        flex_key.value = 0.0
+        for v in thumb.data.vertices:
+            if v.co.z < 0:
+                flex_key.data[v.index].co = (v.co.x * 0.92, v.co.y, v.co.z * 1.08)
+            else:
+                flex_key.data[v.index].co = v.co
+
 # ── Animations: bone-keyframed actions, exported as separate glTF clips ────
 def set_bone_rot(name, degrees_xyz, frame):
     pb = armature_obj.pose.bones[name]
