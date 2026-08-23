@@ -88,11 +88,14 @@ for v in bm.verts:
     scale *= 1.0 + 0.45 * chest_t * front * sternum_dip
     if -0.30 <= z < 0.04:
         ridge = 0.5 + 0.5 * math.cos((z - 0.04) * 22.0)
-        scale *= 1.0 - 0.16 * ridge * front
-        ab_seg = 0.7 * math.sin((z + 0.30) * 12.0)
-        scale *= 1.0 + 0.06 * max(ab_seg, 0.0) * front
+        scale *= 1.0 - 0.17 * ridge * front
+        ab_seg = 0.6 + 0.4 * math.sin((z + 0.30) * 13.0)
+        scale *= 1.0 + 0.08 * ab_seg * front
+        if -0.25 <= z <= 0.0:
+            groove = 0.5 + 0.5 * math.sin((z + 0.25) * 8.0)
+            scale *= 1.0 - 0.04 * groove * front
     ab_t = max(0.0, 1.0 - abs(z - (-0.08)) / 0.12)
-    scale *= 1.0 + 0.09 * ab_t * front
+    scale *= 1.0 + 0.10 * ab_t * front
     back_t = max(0.0, 1.0 - abs(z - 0.05) / 0.4)
     scale *= 1.0 + 0.25 * back_t * back
     # shoulder-blade hints + spine groove, back only
@@ -526,6 +529,17 @@ def build_hand(name, wrist_pos, x_sign, mat):
             joint.data.materials.append(mat)
             parts.append(joint)
 
+        # Fingernail detail on fingertip
+        nail_z = fz - 0.09
+        bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=0.0085, location=(fx, fy + 0.008, nail_z))
+        nail = bpy.context.object
+        nail.name = f"{name}Finger{i}Nail"
+        nail.scale = (radius * 2.1, 0.5, 0.45)
+        shade_smooth(nail)
+        nail_mat = add_material(f"{name}Nail{i}", (0.3, 0.28, 0.25), roughness=0.4)
+        nail.data.materials.append(nail_mat)
+        parts.append(nail)
+
     bpy.ops.mesh.primitive_cylinder_add(vertices=8, radius=0.026, depth=0.10,
                                          location=(wx + x_sign * 0.062, wy + 0.015, wz + 0.02))
     thumb = bpy.context.object
@@ -557,19 +571,21 @@ hand_r_parts = build_hand("HandR", (0.5, 0.06, 0.6), 1, skin_mat)
 deltoid_l = None
 deltoid_r = None
 for side, sign in [("L", -1), ("R", 1)]:
-    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=3, radius=0.215, location=(sign * 0.45, 0.08, 1.42))
+    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=3, radius=0.225, location=(sign * 0.46, 0.10, 1.41))
     delt = bpy.context.object
     delt.name = f"Deltoid{side}"
-    delt.scale = (1.15, 0.95, 1.0)
+    delt.scale = (1.20, 1.0, 1.05)
     me = delt.data
     bm = bmesh.new()
     bm.from_mesh(me)
     bm.verts.ensure_lookup_table()
     for v in bm.verts:
-        if v.co.z > 0.05:
-            v.co.z *= 1.15
-        if abs(v.co.x * sign) > 0.08:
-            v.co.x *= 1.2
+        if v.co.z > 0.08:
+            v.co.z *= 1.2
+        if abs(v.co.x * sign) > 0.10:
+            v.co.x *= 1.25
+        if v.co.y < -0.08:
+            v.co.y *= 1.1
     bm.to_mesh(me)
     bm.free()
     add_subsurf(delt, 1)
@@ -580,6 +596,17 @@ for side, sign in [("L", -1), ("R", 1)]:
         deltoid_l = delt
     else:
         deltoid_r = delt
+
+# Trapezius on top of shoulder/neck
+for side, sign in [("L", -1), ("R", 1)]:
+    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=2, radius=0.12, location=(sign * 0.25, -0.02, 1.65))
+    trap = bpy.context.object
+    trap.name = f"Trapezius{side}"
+    trap.scale = (1.1, 0.8, 0.9)
+    add_subsurf(trap, 1)
+    apply_all_modifiers(trap)
+    shade_smooth(trap)
+    trap.data.materials.append(skin_mat)
 
 # Pectoral muscles: separated bulges on chest
 for side, sign in [("L", -1), ("R", 1)]:
@@ -841,6 +868,7 @@ BONE_GROUPS = {
              bpy.data.objects["PupilL"], bpy.data.objects["PupilR"],
              bpy.data.objects["BrowL"], bpy.data.objects["BrowR"],
              bpy.data.objects["CheekL"], bpy.data.objects["CheekR"],
+             bpy.data.objects["TrapeziusL"], bpy.data.objects["TrapeziusR"],
              bpy.data.objects["Nose"], bpy.data.objects["NostrilL"], bpy.data.objects["NostrilR"]] + beard_objs,
     "Jaw": [chin, snout, bpy.data.objects["JawAngleL"], bpy.data.objects["JawAngleR"],
              bpy.data.objects["LowerLip"], bpy.data.objects["UpperLip"]],
@@ -866,6 +894,13 @@ for eyewhite_name in ("EyeWhiteL", "EyeWhiteR"):
     blink.value = 0.0
     for v in eyewhite.data.vertices:
         blink.data[v.index].co = (v.co.x, v.co.y, v.co.z * 0.04)
+
+    squint = eyewhite.shape_key_add(name="Squint", from_mix=False)
+    squint.value = 0.0
+    for v in eyewhite.data.vertices:
+        t = max(0.0, abs(v.co.x) - 0.02) / 0.05
+        compression = 1.0 - 0.4 * t
+        squint.data[v.index].co = (v.co.x * compression, v.co.y * (1.0 - 0.2 * t), v.co.z)
 
 # Mouth opening via shape keys on lower lip and jaw
 for lip_name in ("LowerLip", "UpperLip"):
