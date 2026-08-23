@@ -35,7 +35,15 @@ func _ready() -> void:
 	attack_area.body_entered.connect(_on_gada_hit)
 	health_changed.emit(health, max_health)
 	blink_timer = randf_range(2.0, 5.0)
-	anim_player.play("Idle")
+
+	# Load animations
+	var anim_loaded = CharacterAnimationSetup.load_animations_for_player(anim_player, "hanuman_final")
+	if anim_loaded and anim_player.has_animation("idle"):
+		anim_player.play("idle")
+	elif anim_player.has_animation("Idle"):
+		anim_player.play("Idle")
+	else:
+		push_warning("No suitable idle animation found")
 
 func _physics_process(delta: float) -> void:
 	_handle_gravity(delta)

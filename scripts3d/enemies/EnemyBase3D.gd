@@ -30,6 +30,11 @@ func _ready() -> void:
 		attack_area.body_entered.connect(_on_attack_landed)
 	health_changed.emit(health, max_health)
 
+	# Load character-specific animations if available
+	var anim_player = _get_animation_player()
+	if anim_player:
+		CharacterAnimationSetup.load_animations_for_player(anim_player, enemy_name)
+
 func _physics_process(delta: float) -> void:
 	if is_dead:
 		return
@@ -38,6 +43,24 @@ func _physics_process(delta: float) -> void:
 	_find_player()
 	_chase_and_attack(delta)
 	move_and_slide()
+
+func _get_animation_player() -> AnimationPlayer:
+	"""Find AnimationPlayer in the enemy model"""
+	if model and model.has_node("AnimationPlayer"):
+		return model.get_node("AnimationPlayer")
+	# Try finding recursively
+	for child in get_all_children(self):
+		if child is AnimationPlayer:
+			return child
+	return null
+
+func get_all_children(node: Node) -> Array:
+	"""Get all children recursively"""
+	var result = []
+	for child in node.get_children():
+		result.append(child)
+		result.append_array(get_all_children(child))
+	return result
 
 func _find_player() -> void:
 	if player and is_instance_valid(player):

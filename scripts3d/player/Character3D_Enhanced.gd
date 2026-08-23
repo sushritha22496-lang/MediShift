@@ -54,9 +54,27 @@ func _process(delta: float) -> void:
 	move_and_slide()
 
 # Animation Management
+var animation_mapping: Dictionary = {
+	AnimState.IDLE: "idle",
+	AnimState.WALK: "walk",
+	AnimState.RUN: "run",
+	AnimState.ATTACK: "attack",
+	AnimState.GET_HIT: "get_hit",
+	AnimState.DEAD: "death"
+}
+
 func _setup_animations() -> void:
-	"""Override in subclass to set up specific animations"""
-	pass
+	"""Load character-specific animations if available"""
+	if not anim_player:
+		return
+
+	# Try to load character-specific animation library
+	var anim_path = "res://assets/animations/humanoid/%s_animations.glb" % character_name.to_lower()
+	if ResourceLoader.exists(anim_path):
+		var anim_lib = load(anim_path)
+		if anim_lib:
+			anim_player.add_animation_library(character_name.to_lower(), anim_lib)
+			print("✅ Loaded animations for: %s" % character_name)
 
 func set_animation_state(state: AnimState) -> void:
 	"""Change character animation"""
@@ -65,20 +83,18 @@ func set_animation_state(state: AnimState) -> void:
 
 	current_anim_state = state
 
-	if anim_player:
-		match state:
-			AnimState.IDLE:
-				anim_player.play("idle")
-			AnimState.WALK:
-				anim_player.play("walk")
-			AnimState.RUN:
-				anim_player.play("run")
-			AnimState.ATTACK:
-				anim_player.play("attack")
-			AnimState.GET_HIT:
-				anim_player.play("get_hit")
-			AnimState.DEAD:
-				anim_player.play("death")
+	if anim_player and animation_mapping.has(state):
+		var anim_name = animation_mapping[state]
+
+		# Try to play with library prefix first, then fallback
+		var lib_anim_name = "%s/%s" % [character_name.to_lower(), anim_name]
+		if anim_player.has_animation(lib_anim_name):
+			anim_player.play(lib_anim_name)
+		elif anim_player.has_animation(anim_name):
+			anim_player.play(anim_name)
+		else:
+			# Silent fallback - animation may not be loaded yet
+			pass
 
 func move_character(input_vector: Vector3, is_sprinting: bool = false) -> void:
 	"""Move character with animation"""
