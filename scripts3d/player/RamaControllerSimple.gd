@@ -11,6 +11,7 @@ class_name RamaControllerSimple
 var is_calling: bool = false
 var call_cooldown: float = 0.0
 var call_intensity: float = 0.0
+var inventory: InventorySimple
 
 @onready var model: Node3D = $Model
 @onready var anim_player: AnimationPlayer = $Model/AnimationPlayer
@@ -18,12 +19,16 @@ var call_intensity: float = 0.0
 @onready var audio_player: AudioStreamPlayer3D = $CallAudio
 
 signal rama_called(intensity: float)
+signal inventory_updated
 
 func _ready() -> void:
 	add_to_group("player")
 	if not audio_player:
 		audio_player = AudioStreamPlayer3D.new()
 		add_child(audio_player)
+
+	inventory = InventorySimple.new()
+	add_child(inventory)
 
 	if anim_player:
 		_load_animations()
@@ -126,3 +131,11 @@ func get_character_name() -> String:
 
 func is_moving() -> bool:
 	return velocity.length() > 0.1
+
+func add_to_inventory(item_name: String, quantity: int = 1) -> void:
+	if inventory:
+		inventory.add_item(item_name, quantity)
+		inventory_updated.emit()
+
+func get_inventory_text() -> String:
+	return inventory.get_inventory_text() if inventory else "Inventory: Empty"
