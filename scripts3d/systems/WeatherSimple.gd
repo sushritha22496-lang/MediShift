@@ -1,71 +1,96 @@
-extends Node3D
+extends BaseSystemSimple
 
 class_name WeatherSimple
 
-enum WeatherType { CLEAR, RAIN, STORM, FOG, SNOW }
+@export var change_interval: float = 30.0
 
-@export var weather_change_interval: float = 30.0
-@export var world_environment: WorldEnvironment = null
+signal weather_changed(weather_type: String)
+signal storm_started
+signal storm_ended
 
-var current_weather: WeatherType = WeatherType.CLEAR
-var weather_timer: float = 0.0
-
-signal weather_changed(new_weather: WeatherType)
+var weather_types = ["clear", "cloudy", "rain", "storm", "snow"]
 
 func _ready() -> void:
-	if world_environment == null:
-		world_environment = get_node_or_null("../WorldEnvironment")
-
-	weather_timer = weather_change_interval
-	_update_weather_effects()
+	set_state("current_weather", "clear")
+	set_state("intensity", 0.0)
+	set_state("change_timer", 0.0)
 
 func _process(delta: float) -> void:
-	weather_timer -= delta
-	if weather_timer <= 0:
-		weather_timer = weather_change_interval
+	var timer = get_state("change_timer", 0.0)
+	timer += delta
+	if timer >= change_interval:
 		change_weather()
+		set_state("change_timer", 0.0)
+	else:
+		set_state("change_timer", timer)
 
 func change_weather() -> void:
-	var new_weather = WeatherType.values()[randi() % WeatherType.size()]
-	set_weather(new_weather)
+	var new_weather = weather_types[randi() % weather_types.size()]
+	var old_weather = get_state("current_weather", "clear")
+	
+	if new_weather != old_weather:
+		set_state("current_weather", new_weather)
+		set_state("intensity", randf() * 1.0)
+		weather_changed.emit(new_weather)
+		emit_event("weather_changed", new_weather)
 
-func set_weather(weather: WeatherType) -> void:
-	if weather == current_weather:
-		return
+		if new_weather == "storm":
+			storm_started.emit()
+			emit_event("storm_started", "")
+		elif old_weather == "storm":
+			storm_ended.emit()
+			emit_event("storm_ended", "")
 
-	current_weather = weather
-	_update_weather_effects()
-	weather_changed.emit(weather)
+func get_weather() -> String:
+	return get_state("current_weather", "clear")
 
-func _update_weather_effects() -> void:
-	match current_weather:
-		WeatherType.CLEAR:
-			print("🌞 Clear weather")
-		WeatherType.RAIN:
-			print("🌧️ Rain")
-		WeatherType.STORM:
-			print("⛈️ Thunderstorm")
-		WeatherType.FOG:
-			print("🌫️ Fog")
-		WeatherType.SNOW:
-			print("❄️ Snow")
+func get_intensity() -> float:
+	return get_state("intensity", 0.0)
 
-func get_weather_text() -> String:
-	match current_weather:
-		WeatherType.CLEAR:
-			return "Clear"
-		WeatherType.RAIN:
-			return "Rain"
-		WeatherType.STORM:
-			return "Thunderstorm"
-		WeatherType.FOG:
-			return "Fog"
-		WeatherType.SNOW:
-			return "Snow"
-	return "Unknown"
+func set_weather(weather_type: String) -> bool:
+	if weather_type in weather_types:
+		set_state("current_weather", weather_type)
+		set_state("intensity", randf() * 1.0)
+		weather_changed.emit(weather_type)
+		emit_event("weather_set", weather_type)
+		return true
+	return false
 
-func is_weather_harsh() -> bool:
-	return current_weather in [WeatherType.STORM, WeatherType.SNOW]
+func is_storming() -> bool:
+	return get_weather() == "storm"
 
-func affects_visibility() -> bool:
-	return current_weather in [WeatherType.FOG, WeatherType.STORM]
+func is_raining() -> bool:
+	var weather = get_weather()
+	return weather == "rain" or weather == "storm"
+
+func get_visibility_modifier() -> float:
+	var weather = get_weather()
+	match weather:
+		"clear":
+			return 1.0
+		"cloudy":
+			return 0.8
+		"rain":
+			return 0.6
+		"storm":
+			return 0.4
+		"snow":
+			return 0.5
+	return 1.0
+
+func get_weather_effects() -> String:
+	var weather = get_weather()
+	var intensity = get_intensity()
+	return "%s (%.0f%%)" % [weather.capitalize(), intensity * 100.0]
+
+func get_movement_penalty() -> float:
+	var weather = get_weather()
+	var intensity = get_intensity()
+	match weather:
+		"rain":
+			return 0.1 * intensity
+		"storm":
+			return 0.3 * intensity
+		"snow":
+			return 0.15 * intensity
+	return 0.0
