@@ -1,4 +1,4 @@
-extends Node
+extends BaseSystemSimple
 
 class_name EquipmentSimple
 
@@ -10,13 +10,11 @@ class Equipment:
 	var defense: float = 0.0
 	var durability: float = 100.0
 	var rarity: String = "common"
-
 	func _init(p_id: String, p_name: String, p_slot: String) -> void:
 		id = p_id
 		name = p_name
 		slot = p_slot
 
-var equipped: Dictionary = {}
 var available_slots: Array[String] = ["head", "body", "hands", "legs", "feet", "weapon", "shield"]
 
 signal equipment_equipped(equipment: Equipment)
@@ -24,34 +22,39 @@ signal equipment_unequipped(slot: String)
 signal durability_changed(equipment: Equipment)
 
 func _ready() -> void:
+	var equipped = {}
 	for slot in available_slots:
 		equipped[slot] = null
+	set_state("equipped", equipped)
 
 func equip(equipment: Equipment) -> bool:
+	var equipped = get_state("equipped", {})
 	if not equipment.slot in equipped:
 		return false
-
 	var old_equipment = equipped[equipment.slot]
 	equipped[equipment.slot] = equipment
 	equipment_equipped.emit(equipment)
-
 	if old_equipment:
 		equipment_unequipped.emit(equipment.slot)
-
+	emit_event("equipped", equipment.name)
 	return true
 
 func unequip(slot: String) -> bool:
+	var equipped = get_state("equipped", {})
 	if slot in equipped and equipped[slot] != null:
 		var equipment = equipped[slot]
 		equipped[slot] = null
 		equipment_unequipped.emit(slot)
+		emit_event("unequipped", slot)
 		return true
 	return false
 
 func get_equipped(slot: String) -> Equipment:
+	var equipped = get_state("equipped", {})
 	return equipped.get(slot, null)
 
 func get_total_damage() -> float:
+	var equipped = get_state("equipped", {})
 	var total = 0.0
 	for slot in equipped:
 		if equipped[slot] != null:
@@ -59,6 +62,7 @@ func get_total_damage() -> float:
 	return total
 
 func get_total_defense() -> float:
+	var equipped = get_state("equipped", {})
 	var total = 0.0
 	for slot in equipped:
 		if equipped[slot] != null:
@@ -66,19 +70,21 @@ func get_total_defense() -> float:
 	return total
 
 func reduce_durability(slot: String, amount: float = 1.0) -> void:
+	var equipped = get_state("equipped", {})
 	if slot in equipped and equipped[slot] != null:
 		equipped[slot].durability -= amount
 		durability_changed.emit(equipped[slot])
-
 		if equipped[slot].durability <= 0:
 			unequip(slot)
 
 func repair(slot: String, amount: float = 50.0) -> void:
+	var equipped = get_state("equipped", {})
 	if slot in equipped and equipped[slot] != null:
 		equipped[slot].durability = minf(equipped[slot].durability + amount, 100.0)
 		durability_changed.emit(equipped[slot])
 
 func get_equipment_text() -> String:
+	var equipped = get_state("equipped", {})
 	var text = "Equipment:\n"
 	for slot in available_slots:
 		if equipped[slot] != null:
