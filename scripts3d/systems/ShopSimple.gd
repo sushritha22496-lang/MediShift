@@ -6,14 +6,22 @@ class ShopItem:
 	var id: String
 	var name: String
 	var price: float
+	var base_price: float
 	var stock: int
+	var max_stock: int
 	var item_type: String
+	var demand: float
+	var restock_timer: float
 	func _init(p_id: String, p_name: String, p_price: float, p_stock: int = -1, p_type: String = "item") -> void:
 		id = p_id
 		name = p_name
+		base_price = p_price
 		price = p_price
 		stock = p_stock
+		max_stock = p_stock if p_stock > 0 else 50
 		item_type = p_type
+		demand = 1.0
+		restock_timer = 0.0
 
 var shops: Dictionary = {}
 var current_shop: String = ""
@@ -62,30 +70,35 @@ func close_shop() -> void:
 	shop_closed.emit()
 	emit_event("shop_closed", "")
 
-func purchase_item(shop_id: String, item_id: String, gold: float) -> bool:
+func purchase_item(shop_id: String, item_id: String, gold: float, reputation: float = 1.0) -> bool:
 	var shop_items = shops.get(shop_id, [])
 	for item in shop_items:
 		if item.id == item_id:
-			if gold >= item.price:
+			var adjusted_price = calculate_dynamic_price(item, reputation)
+			if gold >= adjusted_price:
 				if item.stock != -1:
 					if item.stock > 0:
 						item.stock -= 1
+						item.demand += 0.1
 					else:
 						return false
-				_log_transaction("purchase", shop_id, item_id, item.price)
-				item_purchased.emit(shop_id, item_id, item.price)
+				else:
+					item.demand += 0.1
+				_log_transaction("purchase", shop_id, item_id, adjusted_price)
+				item_purchased.emit(shop_id, item_id, adjusted_price)
 				emit_event("item_purchased", item_id)
 				return true
 			return false
 	return false
 
-func sell_item(shop_id: String, item_id: String) -> float:
+func sell_item(shop_id: String, item_id: String, reputation: float = 1.0) -> float:
 	var shop_items = shops.get(shop_id, [])
 	for item in shop_items:
 		if item.id == item_id:
-			var sell_price = item.price * 0.5
+			var sell_price = item.base_price * 0.5 * (0.8 + (reputation * 0.2))
 			if item.stock != -1:
-				item.stock += 1
+				item.stock = mini(item.stock + 1, item.max_stock)
+			item.demand *= 0.95
 			_log_transaction("sell", shop_id, item_id, sell_price)
 			item_sold.emit(shop_id, item_id, sell_price)
 			emit_event("item_sold", item_id)
@@ -107,8 +120,27 @@ func get_shop_text(shop_id: String) -> String:
 	var items = get_shop_items(shop_id)
 	for item in items:
 		var stock_str = "✓" if item.stock == -1 or item.stock > 0 else "✗"
-		text += "%s %s - %.0f gold\n" % [stock_str, item.name, item.price]
+		var price_indicator = " [+%d%%]" % int((item.demand - 1.0) * 100) if item.demand > 1.0 else ""
+		text += "%s %s - %.0f gold%s\n" % [stock_str, item.name, item.price, price_indicator]
 	return text
+
+func calculate_dynamic_price(item: ShopItem, reputation: float = 1.0) -> float:
+	var stock_factor = 1.0 + ((1.0 - (float(item.stock) / item.max_stock)) * 0.3) if item.stock > 0 else 1.0
+	var demand_factor = item.demand
+	var reputation_factor = 1.0 - ((reputation - 1.0) * 0.1)
+	var final_price = item.base_price * stock_factor * demand_factor * reputation_factor
+	item.price = final_price
+	return final_price
+
+func update_stock_and_demand(delta: float) -> void:
+	for shop in shops.values():
+		for item in shop:
+			if item.stock > 0 and item.stock < item.max_stock:
+				item.restock_timer += delta
+				if item.restock_timer > 30.0:
+					item.stock = mini(item.stock + 1, item.max_stock)
+					item.restock_timer = 0.0
+			item.demand = lerpf(item.demand, 1.0, 0.01)
 
 func _log_transaction(type: String, shop_id: String, item_id: String, amount: float) -> void:
 	var history = get_state("transaction_history", [])

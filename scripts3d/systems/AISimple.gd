@@ -8,12 +8,18 @@ class AIBehavior:
 	var behavior_type: String
 	var priority: int
 	var enabled: bool
-	func _init(p_id: String, p_name: String, p_type: String, p_priority: int = 0) -> void:
+	var energy_cost: float
+	var conditions: Dictionary
+	var weight: float
+	func _init(p_id: String, p_name: String, p_type: String, p_priority: int = 0, p_cost: float = 10.0) -> void:
 		id = p_id
 		name = p_name
 		behavior_type = p_type
 		priority = p_priority
 		enabled = true
+		energy_cost = p_cost
+		conditions = {}
+		weight = 1.0
 
 var behaviors: Dictionary = {}
 
@@ -23,19 +29,25 @@ signal decision_made(behavior_id: String, decision: String)
 
 func _ready() -> void:
 	set_state("active_behavior", "")
+	set_state("energy", 100.0)
+	set_state("emotional_state", "neutral")
+	set_state("threat_level", 0.0)
+	set_state("memory", {})
 	_initialize_behaviors()
 
 func _initialize_behaviors() -> void:
 	behaviors = {
-		"wander": AIBehavior.new("wander", "Wander", "movement", 1),
-		"patrol": AIBehavior.new("patrol", "Patrol", "movement", 2),
-		"chase": AIBehavior.new("chase", "Chase Target", "combat", 3),
-		"flee": AIBehavior.new("flee", "Flee", "survival", 3),
-		"attack": AIBehavior.new("attack", "Attack", "combat", 4),
-		"defend": AIBehavior.new("defend", "Defend", "defensive", 3),
-		"rest": AIBehavior.new("rest", "Rest", "utility", 1),
-		"socialise": AIBehavior.new("socialise", "Socialise", "social", 1)
+		"wander": AIBehavior.new("wander", "Wander", "movement", 1, 5.0),
+		"patrol": AIBehavior.new("patrol", "Patrol", "movement", 2, 15.0),
+		"chase": AIBehavior.new("chase", "Chase Target", "combat", 3, 30.0),
+		"flee": AIBehavior.new("flee", "Flee", "survival", 5, 40.0),
+		"attack": AIBehavior.new("attack", "Attack", "combat", 4, 25.0),
+		"defend": AIBehavior.new("defend", "Defend", "defensive", 3, 20.0),
+		"rest": AIBehavior.new("rest", "Rest", "utility", 0, -20.0),
+		"socialise": AIBehavior.new("socialise", "Socialise", "social", 1, 10.0)
 	}
+	for b in behaviors.values():
+		b.weight = 1.0 + randf_range(-0.2, 0.2)
 
 func activate_behavior(behavior_id: String) -> bool:
 	if behavior_id in behaviors:
@@ -93,5 +105,61 @@ func get_ai_text() -> String:
 		text += "Active: %s (Priority: %d)\n" % [active.name, active.priority]
 	else:
 		text += "Active: None\n"
-	text += "Behaviors: %d" % behaviors.size()
+	var energy = get_state("energy", 100.0)
+	text += "Energy: %.0f | Mood: %s\n" % [energy, get_state("emotional_state", "neutral")]
+	text += "Threat: %.0f" % get_state("threat_level", 0.0)
 	return text
+
+func evaluate_behavior(behavior_id: String) -> float:
+	if behavior_id not in behaviors:
+		return 0.0
+	var behavior = behaviors[behavior_id]
+	if not behavior.enabled:
+		return 0.0
+	var score = float(behavior.priority) * behavior.weight
+	var energy = get_state("energy", 100.0)
+	if energy < behavior.energy_cost:
+		score *= 0.5
+	var threat = get_state("threat_level", 0.0)
+	if behavior.behavior_type == "survival" and threat > 50.0:
+		score *= 2.0
+	return score
+
+func select_best_behavior() -> AIBehavior:
+	var best_id = ""
+	var best_score = -1.0
+	for behavior_id in behaviors.keys():
+		var score = evaluate_behavior(behavior_id)
+		if score > best_score:
+			best_score = score
+			best_id = behavior_id
+	return get_behavior(best_id) if best_id != "" else null
+
+func update_emotional_state(trigger: String, intensity: float) -> void:
+	var state = "neutral"
+	if intensity > 75.0:
+		state = "aggressive" if trigger == "threat" else "excited"
+	elif intensity > 50.0:
+		state = "alert" if trigger == "threat" else "cautious"
+	elif intensity < 25.0:
+		state = "calm"
+	set_state("emotional_state", state)
+	emit_event("emotion_changed", state)
+
+func update_threat_level(threat: float) -> void:
+	var current = get_state("threat_level", 0.0)
+	var new_threat = lerpf(current, threat, 0.1)
+	set_state("threat_level", new_threat)
+	update_emotional_state("threat", new_threat)
+
+func spend_energy(amount: float) -> void:
+	var energy = get_state("energy", 100.0)
+	energy = maxf(0.0, energy - amount)
+	set_state("energy", energy)
+	if energy < 30.0:
+		activate_behavior("rest")
+
+func restore_energy(amount: float) -> void:
+	var energy = get_state("energy", 100.0)
+	energy = minf(100.0, energy + amount)
+	set_state("energy", energy)

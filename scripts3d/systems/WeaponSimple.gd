@@ -10,7 +10,12 @@ class Weapon:
 	var attack_speed: float
 	var weight: float
 	var rarity: String
-	func _init(p_id: String, p_name: String, p_type: String, p_damage: float, p_speed: float, p_weight: float, p_rarity: String = "common") -> void:
+	var durability: float
+	var max_durability: float
+	var crit_chance: float
+	var element: String
+	var level_requirement: int
+	func _init(p_id: String, p_name: String, p_type: String, p_damage: float, p_speed: float, p_weight: float, p_rarity: String = "common", p_crit: float = 0.05, p_element: String = "none", p_req: int = 1) -> void:
 		id = p_id
 		name = p_name
 		type = p_type
@@ -18,11 +23,18 @@ class Weapon:
 		attack_speed = p_speed
 		weight = p_weight
 		rarity = p_rarity
+		crit_chance = p_crit
+		element = p_element
+		level_requirement = p_req
+		max_durability = 100.0 + (p_damage * 2.0)
+		durability = max_durability
 
 var weapons: Array[Weapon] = []
 
 signal weapon_equipped(weapon: Weapon)
 signal weapon_unequipped
+signal weapon_durability_changed(weapon_id: String, durability: float)
+signal weapon_broken(weapon_id: String)
 
 func _ready() -> void:
 	set_state("equipped", null)
@@ -30,16 +42,16 @@ func _ready() -> void:
 
 func _initialize_weapons() -> void:
 	weapons = [
-		Weapon.new("wooden_sword", "Wooden Sword", "sword", 5.0, 1.2, 2.0, "common"),
-		Weapon.new("iron_sword", "Iron Sword", "sword", 15.0, 1.0, 5.0, "uncommon"),
-		Weapon.new("steel_sword", "Steel Sword", "sword", 25.0, 0.9, 6.0, "rare"),
-		Weapon.new("wooden_bow", "Wooden Bow", "bow", 8.0, 1.5, 1.5, "common"),
-		Weapon.new("longbow", "Longbow", "bow", 18.0, 1.3, 2.5, "uncommon"),
-		Weapon.new("wooden_staff", "Wooden Staff", "staff", 6.0, 0.8, 3.0, "common"),
-		Weapon.new("mage_staff", "Mage Staff", "staff", 20.0, 0.9, 2.5, "rare"),
-		Weapon.new("dagger", "Dagger", "dagger", 12.0, 1.8, 1.0, "common"),
-		Weapon.new("poisoned_dagger", "Poisoned Dagger", "dagger", 16.0, 1.7, 1.2, "rare"),
-		Weapon.new("great_sword", "Great Sword", "sword", 35.0, 0.7, 8.0, "epic")
+		Weapon.new("wooden_sword", "Wooden Sword", "sword", 5.0, 1.2, 2.0, "common", 0.05, "none", 1),
+		Weapon.new("iron_sword", "Iron Sword", "sword", 15.0, 1.0, 5.0, "uncommon", 0.08, "none", 3),
+		Weapon.new("steel_sword", "Steel Sword", "sword", 25.0, 0.9, 6.0, "rare", 0.12, "none", 5),
+		Weapon.new("wooden_bow", "Wooden Bow", "bow", 8.0, 1.5, 1.5, "common", 0.1, "none", 1),
+		Weapon.new("longbow", "Longbow", "bow", 18.0, 1.3, 2.5, "uncommon", 0.15, "pierce", 4),
+		Weapon.new("wooden_staff", "Wooden Staff", "staff", 6.0, 0.8, 3.0, "common", 0.0, "fire", 1),
+		Weapon.new("mage_staff", "Mage Staff", "staff", 20.0, 0.9, 2.5, "rare", 0.05, "frost", 6),
+		Weapon.new("dagger", "Dagger", "dagger", 12.0, 1.8, 1.0, "common", 0.2, "none", 2),
+		Weapon.new("poisoned_dagger", "Poisoned Dagger", "dagger", 16.0, 1.7, 1.2, "rare", 0.18, "poison", 4),
+		Weapon.new("great_sword", "Great Sword", "sword", 35.0, 0.7, 8.0, "epic", 0.15, "none", 8)
 	]
 
 func equip_weapon(weapon_id: String) -> bool:
@@ -79,4 +91,38 @@ func get_weapon_text() -> String:
 	var weapon = get_equipped_weapon()
 	if not weapon:
 		return "Weapon: None"
-	return "%s\nDamage: %.0f | Speed: %.1f | Weight: %.1f" % [weapon.name, weapon.damage, weapon.attack_speed, weapon.weight]
+	var dur_pct = (weapon.durability / weapon.max_durability) * 100.0
+	return "%s (Req: %d)\nDmg: %.0f | Spd: %.1f | Crit: %d%% | Dur: %.0f%%\nElement: %s" % [weapon.name, weapon.level_requirement, weapon.damage, weapon.attack_speed, int(weapon.crit_chance * 100), dur_pct, weapon.element.capitalize()]
+
+func damage_weapon(weapon_id: String, damage: float) -> bool:
+	var weapon = get_weapon(weapon_id)
+	if weapon:
+		weapon.durability = maxf(0.0, weapon.durability - damage)
+		weapon_durability_changed.emit(weapon_id, weapon.durability)
+		emit_event("weapon_damaged", weapon_id)
+		if weapon.durability <= 0:
+			weapon_broken.emit(weapon_id)
+			emit_event("weapon_broken", weapon_id)
+			return true
+	return false
+
+func repair_weapon(weapon_id: String, amount: float) -> void:
+	var weapon = get_weapon(weapon_id)
+	if weapon:
+		weapon.durability = minf(weapon.max_durability, weapon.durability + amount)
+		weapon_durability_changed.emit(weapon_id, weapon.durability)
+		emit_event("weapon_repaired", weapon_id)
+
+func get_effective_damage(weapon_id: String, str_bonus: float = 0.0) -> float:
+	var weapon = get_weapon(weapon_id)
+	if not weapon:
+		return 0.0
+	var dur_factor = weapon.durability / weapon.max_durability
+	var base = weapon.damage + str_bonus
+	return base * dur_factor * (1.0 + (randf_range(0.0, 0.15)))
+
+func get_crit_multiplier(weapon_id: String) -> float:
+	var weapon = get_weapon(weapon_id)
+	if weapon and randf() < weapon.crit_chance:
+		return 1.5 + (weapon.level_requirement * 0.1)
+	return 1.0
