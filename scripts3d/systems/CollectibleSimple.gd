@@ -17,10 +17,8 @@ func _ready() -> void:
 		area.body_entered.connect(_on_area_entered)
 
 func _on_area_entered(body: Node3D) -> void:
-	if body.is_in_group("player"):
-		var distance = global_position.distance_to(body.global_position)
-		if distance < pickup_range:
-			collect(body)
+	if body.is_in_group("player") and global_position.distance_to(body.global_position) < pickup_range:
+		collect(body)
 
 func collect(collector: Node3D) -> void:
 	if collector.has_method("add_to_inventory"):
