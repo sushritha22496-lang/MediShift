@@ -53,17 +53,51 @@ signal companion_acquired(companion: Companion)
 signal companion_leveled_up(companion: Companion)
 signal companion_defeated
 
+func _record_acquisition(companion_id: String, name: String, comp_type: String) -> void:
+	var history = get_state("acquisition_history", [])
+	history.append({"id": companion_id, "name": name, "type": comp_type, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("acquisition_history", history)
+
+func _record_level_progression(companion_id: String, new_level: int) -> void:
+	var history = get_state("level_progression", [])
+	history.append({"companion": companion_id, "level": new_level, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("level_progression", history)
+
+func _record_loyalty_change(companion_id: String, new_loyalty: float) -> void:
+	var history = get_state("loyalty_tracking", [])
+	history.append({"companion": companion_id, "loyalty": new_loyalty, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("loyalty_tracking", history)
+
+func _record_evolution(companion_id: String, new_stage: int) -> void:
+	var history = get_state("evolution_history", [])
+	history.append({"companion": companion_id, "stage": new_stage, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("evolution_history", history)
+
 func _ready() -> void:
 	set_state("companions", [])
 	set_state("active_id", "")
 	set_state("companion_bonds", {})
 	set_state("companion_memories", {})
 	set_state("synergy_bonuses", {})
+	set_state("acquisition_history", [])
+	set_state("level_progression", [])
+	set_state("loyalty_tracking", [])
+	set_state("evolution_history", [])
+	set_state("companion_statistics", {})
 
 func acquire_companion(name: String, comp_type: String) -> Companion:
 	var companions = get_state("companions", []) as Array[Companion]
 	var companion = Companion.new("comp_%d" % companions.size(), name, comp_type)
 	companions.append(companion)
+	_record_acquisition(companion.id, name, comp_type)
 	companion_acquired.emit(companion)
 	emit_event("companion_acquired", name)
 	return companion
@@ -93,6 +127,7 @@ func _level_up_companion(companion: Companion) -> void:
 	companion.attack += 2 + (companion.stat_points["strength"] * 0.5)
 	companion.defense += 1 + (companion.stat_points["agility"] * 0.3)
 	companion.experience = 0
+	_record_level_progression(companion.id, companion.level)
 	if companion.level % 5 == 0:
 		_check_bond_progression(companion)
 	companion_leveled_up.emit(companion)
@@ -133,6 +168,7 @@ func evolve_companion(companion_id: String) -> bool:
 				companion.health = companion.max_health
 				companion.attack *= 1.15
 				companion.defense *= 1.1
+				_record_evolution(companion_id, companion.evolution_stage)
 				emit_event("companion_evolved", {"companion": companion_id, "stage": companion.evolution_stage})
 				return true
 	return false
@@ -175,6 +211,7 @@ func increase_loyalty(amount: float) -> void:
 	for companion in companions:
 		if companion.id == active_id:
 			companion.loyalty = minf(companion.loyalty + amount, 100.0)
+			_record_loyalty_change(companion.id, companion.loyalty)
 
 func get_companion(companion_id: String) -> Companion:
 	var companions = get_state("companions", []) as Array[Companion]
@@ -194,3 +231,25 @@ func get_companion_text() -> String:
 		var bond_stars = "♥" * companion.bond_level
 		text += "%s %s [%s] Lvl %d E%d | HP: %.0f | Loyalty: %.0f%% | Morale: %.0f\n" % [status, companion.name, companion.personality, companion.level, companion.evolution_stage, companion.health, companion.loyalty, companion.morale]
 	return text
+
+func update_companion_statistics() -> void:
+	var stats = get_state("companion_statistics", {})
+	var companions = get_state("companions", []) as Array[Companion]
+	stats["total_acquired"] = get_state("acquisition_history", []).size()
+	stats["total_companions"] = companions.size()
+	stats["total_levelups"] = get_state("level_progression", []).size()
+	stats["total_evolutions"] = get_state("evolution_history", []).size()
+	stats["loyalty_events"] = get_state("loyalty_tracking", []).size()
+	if not companions.is_empty():
+		var avg_level = 0.0
+		var avg_loyalty = 0.0
+		for comp in companions:
+			avg_level += comp.level
+			avg_loyalty += comp.loyalty
+		stats["average_level"] = avg_level / float(companions.size())
+		stats["average_loyalty"] = avg_loyalty / float(companions.size())
+	set_state("companion_statistics", stats)
+
+func get_companion_statistics() -> Dictionary:
+	update_companion_statistics()
+	return get_state("companion_statistics", {})
