@@ -35,6 +35,11 @@ func _ready() -> void:
 	set_state("performance_metrics", {})
 	set_state("location_visits", {})
 	set_state("action_sequence", [])
+	set_state("session_start_history", [])
+	set_state("session_end_history", [])
+	set_state("event_log_history", [])
+	set_state("analytics_statistics", {})
+	_record_session_start()
 	session_started.emit()
 	emit_event("session_started", session_id)
 
@@ -49,6 +54,7 @@ func log_event(event_name: String, event_data: Dictionary = {}, category: String
 	set_state("events", events)
 	_track_event_category(category)
 	_track_action_sequence(event_name)
+	_record_event_log(event_name, category)
 	event_logged.emit(event_name)
 	emit_event("event_logged", {"name": event_name, "category": category})
 
@@ -89,12 +95,34 @@ func _track_action_sequence(action: String) -> void:
 		sequence.pop_front()
 	set_state("action_sequence", sequence)
 
+func _record_session_start() -> void:
+	var history = get_state("session_start_history", [])
+	history.append({"session_id": session_id, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("session_start_history", history)
+
+func _record_session_end(duration: float) -> void:
+	var history = get_state("session_end_history", [])
+	history.append({"session_id": session_id, "duration": duration, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("session_end_history", history)
+
+func _record_event_log(event_name: String, category: String) -> void:
+	var history = get_state("event_log_history", [])
+	history.append({"event": event_name, "category": category, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("event_log_history", history)
+
 func end_session() -> float:
 	var start = get_state("session_start", 0.0)
 	var duration = (Time.get_ticks_msec() - start) / 1000.0
 	var count = get_state("session_count", 0)
 	count += 1
 	set_state("session_count", count)
+	_record_session_end(duration)
 	session_ended.emit(duration)
 	emit_event("session_ended", {"duration": duration, "session_id": session_id})
 	return duration
@@ -147,3 +175,26 @@ func get_analytics_text() -> String:
 	for cat in top_cats:
 		text += "%s: %d  " % [cat["category"].left(4), cat["count"]]
 	return text
+
+func update_analytics_statistics() -> void:
+	var stats = get_state("analytics_statistics", {})
+	var start_hist = get_state("session_start_history", [])
+	var end_hist = get_state("session_end_history", [])
+	var event_hist = get_state("event_log_history", [])
+	stats["total_sessions_tracked"] = start_hist.size()
+	stats["total_sessions_ended"] = end_hist.size()
+	var total_duration = 0.0
+	for entry in end_hist:
+		total_duration += entry.get("duration", 0.0)
+	stats["total_session_duration"] = total_duration
+	stats["average_session_duration"] = (total_duration / float(end_hist.size())) if end_hist.size() > 0 else 0.0
+	stats["events_logged"] = get_event_count()
+	stats["unique_event_types"] = get_event_categories().size()
+	stats["crashes_recorded"] = get_crashes().size()
+	stats["locations_visited"] = get_location_visits().size()
+	stats["most_visited_location"] = get_most_visited_location()
+	set_state("analytics_statistics", stats)
+
+func get_analytics_statistics() -> Dictionary:
+	update_analytics_statistics()
+	return get_state("analytics_statistics", {})

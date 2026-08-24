@@ -11,6 +11,10 @@ signal achievement_unlocked(track: Track)
 signal milestone_reached(milestone: String)
 
 func _ready() -> void:
+	set_state("unlock_history", [])
+	set_state("reward_history", [])
+	set_state("category_progress", {})
+	set_state("achievement_statistics", {})
 	_initialize_achievements()
 
 func _initialize_achievements() -> void:
@@ -57,8 +61,29 @@ func _initialize_achievements() -> void:
 
 	all_achievements = active + completed
 
+func _record_achievement_unlock(ach_id: String, category: String) -> void:
+	var history = get_state("unlock_history", [])
+	history.append({"achievement_id": ach_id, "category": category, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("unlock_history", history)
+
+func _record_reward_grant(ach_id: String, reward: Dictionary) -> void:
+	var history = get_state("reward_history", [])
+	history.append({"achievement_id": ach_id, "reward": reward, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("reward_history", history)
+
 func unlock_achievement(ach_id: String) -> bool:
-	return complete(ach_id)
+	if complete(ach_id):
+		var category = achievement_categories.get(ach_id, "general")
+		_record_achievement_unlock(ach_id, category)
+		var reward = achievement_rewards.get(ach_id, {})
+		if reward:
+			_record_reward_grant(ach_id, reward)
+		return true
+	return false
 
 func is_achievement_unlocked(ach_id: String) -> bool:
 	for track in completed:
@@ -86,3 +111,28 @@ func get_achievements_text() -> String:
 func get_progress() -> float:
 	var total = active.size() + completed.size()
 	return float(completed.size()) / float(total) if total > 0 else 0.0
+
+func update_achievement_statistics() -> void:
+	var stats = get_state("achievement_statistics", {})
+	var unlock_hist = get_state("unlock_history", [])
+	var reward_hist = get_state("reward_history", [])
+	stats["total_unlocked"] = completed.size()
+	stats["total_active"] = active.size()
+	stats["total_achievements"] = active.size() + completed.size()
+	stats["completion_percent"] = (get_progress() * 100.0) if active.size() + completed.size() > 0 else 0.0
+	stats["total_unlock_events"] = unlock_hist.size()
+	stats["total_rewards_granted"] = reward_hist.size()
+	var total_gold = 0.0
+	var total_exp = 0.0
+	for entry in reward_hist:
+		var reward = entry.get("reward", {})
+		total_gold += reward.get("gold", 0)
+		total_exp += reward.get("exp", 0)
+	stats["total_gold_rewarded"] = total_gold
+	stats["total_exp_rewarded"] = total_exp
+	stats["secret_achievements"] = achievement_secrets.size()
+	set_state("achievement_statistics", stats)
+
+func get_achievement_statistics() -> Dictionary:
+	update_achievement_statistics()
+	return get_state("achievement_statistics", {})

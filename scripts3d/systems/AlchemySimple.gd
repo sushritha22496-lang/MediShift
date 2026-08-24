@@ -43,6 +43,10 @@ func _ready() -> void:
 	set_state("recipe_discoveries", [])
 	set_state("lab_upgrades", [])
 	set_state("breakthrough_count", 0)
+	set_state("formula_learn_history", [])
+	set_state("brewing_success_history", [])
+	set_state("brewing_failure_history", [])
+	set_state("alchemy_statistics", {})
 	_initialize_potions()
 
 func _initialize_potions() -> void:
@@ -65,6 +69,27 @@ func _initialize_potions() -> void:
 
 	known_potions = [p1, p2, p3]
 
+func _record_formula_learn(potion_id: String) -> void:
+	var history = get_state("formula_learn_history", [])
+	history.append({"potion": potion_id, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("formula_learn_history", history)
+
+func _record_brewing_success(potion_id: String, potency: int) -> void:
+	var history = get_state("brewing_success_history", [])
+	history.append({"potion": potion_id, "potency": potency, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("brewing_success_history", history)
+
+func _record_brewing_failure(potion_id: String) -> void:
+	var history = get_state("brewing_failure_history", [])
+	history.append({"potion": potion_id, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("brewing_failure_history", history)
+
 func learn_formula(potion_id: String) -> bool:
 	var learned = get_state("learned", [])
 	for potion in known_potions:
@@ -72,6 +97,7 @@ func learn_formula(potion_id: String) -> bool:
 			if not _check_formula_prerequisites(potion):
 				return false
 			learned.append(potion)
+			_record_formula_learn(potion_id)
 			potion_formula_learned.emit(potion)
 			emit_event("learned", potion_id)
 			return true
@@ -108,11 +134,13 @@ func brew_potion(potion_id: String, inventory: InventorySimple) -> bool:
 				inventory.add_item(item_name, 1)
 				_increase_mastery(potion_id, skill)
 				_increase_alchemy_skill(potion.difficulty)
+				_record_brewing_success(potion_id, potency)
 				potion_created.emit(potion)
 				emit_event("brewed", {"potion": potion_id, "potency": potency})
 				return true
 			else:
 				_increase_contamination()
+				_record_brewing_failure(potion_id)
 				brewing_failed.emit()
 				emit_event("brewing_failed", potion_id)
 				return false
@@ -250,3 +278,28 @@ func get_experiment_count() -> int:
 
 func get_breakthrough_count() -> int:
 	return get_state("breakthrough_count", 0)
+
+func update_alchemy_statistics() -> void:
+	var stats = get_state("alchemy_statistics", {})
+	var learn_hist = get_state("formula_learn_history", [])
+	var success_hist = get_state("brewing_success_history", [])
+	var failure_hist = get_state("brewing_failure_history", [])
+	var learned = get_state("learned", [])
+	stats["formulas_learned"] = learned.size()
+	stats["total_brews_attempted"] = success_hist.size() + failure_hist.size()
+	stats["successful_brews"] = success_hist.size()
+	stats["failed_brews"] = failure_hist.size()
+	var total_brews = success_hist.size() + failure_hist.size()
+	stats["success_rate"] = (float(success_hist.size()) / float(total_brews) * 100.0) if total_brews > 0 else 0.0
+	stats["alchemy_skill"] = get_state("alchemy_skill", 0.0)
+	stats["contamination_level"] = get_state("contamination", 0)
+	stats["total_potions_brewed"] = get_total_potions_brewed()
+	stats["experiments_conducted"] = get_experiment_count()
+	stats["recipes_discovered"] = get_state("recipe_discoveries", []).size()
+	stats["lab_upgrades_installed"] = get_lab_upgrades().size()
+	stats["breakthroughs_achieved"] = get_breakthrough_count()
+	set_state("alchemy_statistics", stats)
+
+func get_alchemy_statistics() -> Dictionary:
+	update_alchemy_statistics()
+	return get_state("alchemy_statistics", {})
