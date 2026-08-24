@@ -1,112 +1,82 @@
-extends Node
+extends BaseSystemSimple
 
 class_name SettingsSimple
 
-var settings: Dictionary = {
-	"graphics": {
-		"quality": "High",
-		"shadows": true,
-		"bloom": true,
-		"anti_aliasing": "FXAA",
-		"resolution": Vector2(1280, 720),
-		"vsync": true,
-		"target_fps": 60
-	},
-	"audio": {
-		"master_volume": 0.8,
-		"music_volume": 0.6,
+signal setting_changed(setting_name: String, value)
+signal settings_saved
+signal settings_reset
+
+func _ready() -> void:
+	set_state("settings", {
+		"master_volume": 1.0,
+		"music_volume": 0.8,
 		"sfx_volume": 0.8,
-		"dialogue_volume": 0.9
-	},
-	"gameplay": {
-		"difficulty": "Normal",
-		"auto_save": true,
-		"show_hints": true,
-		"camera_sensitivity": 0.5,
-		"invert_y": false
-	},
-	"controls": {
-		"movement_type": "WASD",
-		"controller_enabled": false,
-		"interact_key": "E",
-		"jump_key": "Space",
-		"sprint_key": "Shift"
-	}
-}
+		"brightness": 1.0,
+		"contrast": 1.0,
+		"field_of_view": 75,
+		"difficulty": "normal",
+		"subtitles": true,
+		"screen_shake": true,
+		"motion_blur": false,
+		"ray_tracing": false,
+		"fullscreen": true,
+		"resolution": "1920x1080",
+		"frame_rate_limit": 60
+	})
 
-signal setting_changed(category: String, key: String, value)
+func set_setting(setting_name: String, value) -> void:
+	var settings = get_state("settings", {})
+	if setting_name in settings:
+		settings[setting_name] = value
+		set_state("settings", settings)
+		setting_changed.emit(setting_name, value)
+		emit_event("setting_changed", setting_name)
 
-func set_setting(category: String, key: String, value) -> void:
-	if category in settings and key in settings[category]:
-		settings[category][key] = value
-		setting_changed.emit(category, key, value)
-		print("Setting %s.%s = %s" % [category, key, str(value)])
-
-func get_setting(category: String, key: String):
-	if category in settings and key in settings[category]:
-		return settings[category][key]
-	return null
-
-func get_graphics_quality() -> String:
-	return get_setting("graphics", "quality")
-
-func get_master_volume() -> float:
-	return get_setting("audio", "master_volume")
-
-func get_difficulty() -> String:
-	return get_setting("gameplay", "difficulty")
-
-func is_vsync_enabled() -> bool:
-	return get_setting("graphics", "vsync")
-
-func get_camera_sensitivity() -> float:
-	return get_setting("gameplay", "camera_sensitivity")
-
-func should_show_hints() -> bool:
-	return get_setting("gameplay", "show_hints")
-
-func get_resolution() -> Vector2:
-	return get_setting("graphics", "resolution")
-
-func set_resolution(res: Vector2) -> void:
-	set_setting("graphics", "resolution", res)
-	get_window().size = res
-
-func set_difficulty(difficulty: String) -> void:
-	set_setting("gameplay", "difficulty", difficulty)
+func get_setting(setting_name: String):
+	var settings = get_state("settings", {})
+	return settings.get(setting_name, null)
 
 func get_all_settings() -> Dictionary:
-	return settings
+	return get_state("settings", {})
+
+func save_settings() -> void:
+	settings_saved.emit()
+	emit_event("settings_saved", "")
 
 func reset_to_defaults() -> void:
-	settings = {
-		"graphics": {
-			"quality": "High",
-			"shadows": true,
-			"bloom": true,
-			"anti_aliasing": "FXAA",
-			"resolution": Vector2(1280, 720),
-			"vsync": true,
-			"target_fps": 60
-		},
-		"audio": {
-			"master_volume": 0.8,
-			"music_volume": 0.6,
-			"sfx_volume": 0.8,
-			"dialogue_volume": 0.9
-		},
-		"gameplay": {
-			"difficulty": "Normal",
-			"auto_save": true,
-			"show_hints": true,
-			"camera_sensitivity": 0.5,
-			"invert_y": false
-		},
-		"controls": {
-			"movement_type": "WASD",
-			"controller_enabled": false,
-			"interact_key": "E",
-			"jump_key": "Space",
-			"sprint_key": "Shift"
-		}
+	var defaults = {
+		"master_volume": 1.0,
+		"music_volume": 0.8,
+		"sfx_volume": 0.8,
+		"brightness": 1.0,
+		"contrast": 1.0,
+		"field_of_view": 75,
+		"difficulty": "normal",
+		"subtitles": true,
+		"screen_shake": true,
+		"motion_blur": false,
+		"ray_tracing": false,
+		"fullscreen": true,
+		"resolution": "1920x1080",
+		"frame_rate_limit": 60
 	}
+	set_state("settings", defaults)
+	settings_reset.emit()
+	emit_event("settings_reset", "")
+
+func is_subtitles_enabled() -> bool:
+	return get_setting("subtitles") as bool
+
+func get_difficulty() -> String:
+	return get_setting("difficulty") as String
+
+func get_volume(category: String) -> float:
+	return get_setting(category + "_volume") as float
+
+func get_settings_text() -> String:
+	var text = "Settings\n"
+	text += "Volume: %.0f%%\n" % (get_volume("master") * 100.0)
+	text += "Brightness: %.0f%%\n" % (get_setting("brightness") as float * 100.0)
+	text += "Difficulty: %s\n" % get_difficulty()
+	text += "Subtitles: %s\n" % ("On" if is_subtitles_enabled() else "Off")
+	return text
