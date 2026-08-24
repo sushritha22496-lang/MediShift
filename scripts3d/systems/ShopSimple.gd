@@ -33,6 +33,11 @@ signal shop_closed
 
 func _ready() -> void:
 	set_state("transaction_history", [])
+	set_state("price_history", [])
+	set_state("shop_statistics", {})
+	set_state("inventory_tracking", {})
+	set_state("demand_history", [])
+	set_state("shop_visit_count", {})
 	_initialize_shops()
 
 func _initialize_shops() -> void:
@@ -60,6 +65,7 @@ func _initialize_shops() -> void:
 func open_shop(shop_id: String) -> bool:
 	if shop_id in shops:
 		current_shop = shop_id
+		_record_shop_visit(shop_id)
 		shop_opened.emit(shop_id)
 		emit_event("shop_opened", shop_id)
 		return true
@@ -85,6 +91,8 @@ func purchase_item(shop_id: String, item_id: String, gold: float, reputation: fl
 				else:
 					item.demand += 0.1
 				_log_transaction("purchase", shop_id, item_id, adjusted_price)
+				_record_price_history(item_id, adjusted_price, shop_id)
+				_record_demand_history(item_id, item.demand)
 				item_purchased.emit(shop_id, item_id, adjusted_price)
 				emit_event("item_purchased", item_id)
 				return true
@@ -100,6 +108,8 @@ func sell_item(shop_id: String, item_id: String, reputation: float = 1.0) -> flo
 				item.stock = mini(item.stock + 1, item.max_stock)
 			item.demand *= 0.95
 			_log_transaction("sell", shop_id, item_id, sell_price)
+			_record_price_history(item_id, sell_price, shop_id)
+			_record_demand_history(item_id, item.demand)
 			item_sold.emit(shop_id, item_id, sell_price)
 			emit_event("item_sold", item_id)
 			return sell_price
@@ -151,4 +161,53 @@ func _log_transaction(type: String, shop_id: String, item_id: String, amount: fl
 		"amount": amount,
 		"timestamp": get_tree().get_frame()
 	})
+	if history.size() > 50:
+		history.pop_front()
 	set_state("transaction_history", history)
+
+func _record_price_history(item_id: String, price: float, shop_id: String) -> void:
+	var history = get_state("price_history", [])
+	history.append({"item": item_id, "price": price, "shop": shop_id, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("price_history", history)
+
+func _record_demand_history(item_id: String, demand: float) -> void:
+	var history = get_state("demand_history", [])
+	history.append({"item": item_id, "demand": demand, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("demand_history", history)
+
+func _record_shop_visit(shop_id: String) -> void:
+	var visits = get_state("shop_visit_count", {})
+	visits[shop_id] = visits.get(shop_id, 0) + 1
+	set_state("shop_visit_count", visits)
+
+func get_transaction_history() -> Array:
+	return get_state("transaction_history", [])
+
+func get_shop_visit_count(shop_id: String) -> int:
+	var visits = get_state("shop_visit_count", {})
+	return visits.get(shop_id, 0)
+
+func get_most_visited_shop() -> String:
+	var visits = get_state("shop_visit_count", {})
+	var max_shop = ""
+	var max_visits = 0
+	for shop_id in visits:
+		if visits[shop_id] > max_visits:
+			max_visits = visits[shop_id]
+			max_shop = shop_id
+	return max_shop
+
+func update_shop_statistics() -> void:
+	var stats = get_state("shop_statistics", {})
+	stats["total_transactions"] = get_state("transaction_history", []).size()
+	stats["most_visited"] = get_most_visited_shop()
+	stats["price_history_size"] = get_state("price_history", []).size()
+	set_state("shop_statistics", stats)
+
+func get_shop_statistics() -> Dictionary:
+	update_shop_statistics()
+	return get_state("shop_statistics", {})
