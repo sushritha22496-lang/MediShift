@@ -23,6 +23,11 @@ signal milestone_reached(milestone: String)
 func _ready() -> void:
 	set_state("character_records", [])
 	set_state("milestones_reached", [])
+	set_state("record_history", [])
+	set_state("milestone_tracking", [])
+	set_state("legacy_statistics", {})
+	set_state("value_progression", [])
+	set_state("record_categories", {})
 
 func create_record(title: String, description: String, value: float = 1.0) -> Record:
 	var id = "rec_%d" % randi()
@@ -36,6 +41,8 @@ func create_record(title: String, description: String, value: float = 1.0) -> Re
 		"timestamp": record.timestamp
 	})
 	set_state("character_records", char_records)
+	_record_history_entry(title, value)
+	_track_value_progression()
 	record_created.emit(record)
 	emit_event("record_created", id)
 	return record
@@ -45,6 +52,7 @@ func reach_milestone(milestone: String) -> void:
 	if milestone not in milestones:
 		milestones.append(milestone)
 		set_state("milestones_reached", milestones)
+		_record_milestone_tracking(milestone)
 		milestone_reached.emit(milestone)
 		emit_event("milestone_reached", milestone)
 
@@ -78,3 +86,55 @@ func get_legacy_summary() -> String:
 	for milestone in get_milestones().slice(-5):
 		summary += "✓ %s\n" % milestone
 	return summary
+
+func _record_history_entry(title: String, value: float) -> void:
+	var history = get_state("record_history", [])
+	history.append({"title": title, "value": value, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("record_history", history)
+
+func _record_milestone_tracking(milestone: String) -> void:
+	var tracking = get_state("milestone_tracking", [])
+	tracking.append({"milestone": milestone, "time": Time.get_ticks_msec()})
+	if tracking.size() > 50:
+		tracking.pop_front()
+	set_state("milestone_tracking", tracking)
+
+func _track_value_progression() -> void:
+	var progression = get_state("value_progression", [])
+	progression.append({"value": get_total_value(), "time": Time.get_ticks_msec()})
+	if progression.size() > 50:
+		progression.pop_front()
+	set_state("value_progression", progression)
+
+func categorize_record(record_title: String, category: String) -> void:
+	var categories = get_state("record_categories", {})
+	categories[record_title] = category
+	set_state("record_categories", categories)
+
+func get_records_by_category(category: String) -> Array:
+	var categories = get_state("record_categories", {})
+	var result = []
+	for title in categories:
+		if categories[title] == category:
+			result.append(title)
+	return result
+
+func get_record_history() -> Array:
+	return get_state("record_history", [])
+
+func get_milestone_tracking() -> Array:
+	return get_state("milestone_tracking", [])
+
+func update_legacy_statistics() -> void:
+	var stats = get_state("legacy_statistics", {})
+	stats["records"] = get_record_count()
+	stats["milestones"] = get_milestones().size()
+	stats["total_value"] = get_total_value()
+	stats["categories"] = get_state("record_categories", {}).size()
+	set_state("legacy_statistics", stats)
+
+func get_legacy_statistics() -> Dictionary:
+	update_legacy_statistics()
+	return get_state("legacy_statistics", {})

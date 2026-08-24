@@ -26,6 +26,14 @@ signal game_lost(game_id: String)
 func _ready() -> void:
 	set_state("games_played", {})
 	set_state("total_winnings", 0.0)
+	set_state("game_play_history", [])
+	set_state("win_loss_ratio", {})
+	set_state("game_performance", [])
+	set_state("difficulty_progression", [])
+	set_state("win_streak", 0)
+	set_state("loss_streak", 0)
+	set_state("rewards_history", [])
+	set_state("minigame_statistics", {})
 	_initialize_minigames()
 
 func _initialize_minigames() -> void:
@@ -43,6 +51,7 @@ func play_game(game_id: String) -> bool:
 	if not game:
 		return false
 	game.play_count += 1
+	_record_play_history(game_id)
 	game_started.emit(game_id)
 	emit_event("game_started", game_id)
 	return true
@@ -58,6 +67,9 @@ func win_game(game_id: String) -> float:
 	var games_played = get_state("games_played", {})
 	games_played[game_id] = games_played.get(game_id, 0) + 1
 	set_state("games_played", games_played)
+	_record_win_loss(game_id, true)
+	_update_win_streak()
+	_record_rewards(game_id, reward)
 	game_won.emit(game_id, reward)
 	emit_event("game_won", game_id)
 	return reward
@@ -65,6 +77,8 @@ func win_game(game_id: String) -> float:
 func lose_game(game_id: String) -> void:
 	var game = _get_game(game_id)
 	if game:
+		_record_win_loss(game_id, false)
+		_update_loss_streak()
 		game_lost.emit(game_id)
 		emit_event("game_lost", game_id)
 
@@ -99,3 +113,81 @@ func _get_game(game_id: String) -> Minigame:
 		if game.id == game_id:
 			return game
 	return null
+
+func _record_play_history(game_id: String) -> void:
+	var history = get_state("game_play_history", [])
+	history.append({"game": game_id, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("game_play_history", history)
+
+func _record_win_loss(game_id: String, won: bool) -> void:
+	var ratio = get_state("win_loss_ratio", {})
+	if game_id not in ratio:
+		ratio[game_id] = {"wins": 0, "losses": 0}
+	if won:
+		ratio[game_id]["wins"] += 1
+	else:
+		ratio[game_id]["losses"] += 1
+	set_state("win_loss_ratio", ratio)
+	var perf = get_state("game_performance", [])
+	perf.append({"game": game_id, "result": "win" if won else "loss", "time": Time.get_ticks_msec()})
+	if perf.size() > 50:
+		perf.pop_front()
+	set_state("game_performance", perf)
+
+func _update_win_streak() -> void:
+	var streak = get_state("win_streak", 0) + 1
+	set_state("win_streak", streak)
+	set_state("loss_streak", 0)
+
+func _update_loss_streak() -> void:
+	var streak = get_state("loss_streak", 0) + 1
+	set_state("loss_streak", streak)
+	set_state("win_streak", 0)
+
+func _record_rewards(game_id: String, amount: float) -> void:
+	var history = get_state("rewards_history", [])
+	history.append({"game": game_id, "reward": amount, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("rewards_history", history)
+
+func get_game_win_rate(game_id: String) -> float:
+	var ratio = get_state("win_loss_ratio", {})
+	if game_id not in ratio:
+		return 0.0
+	var data = ratio[game_id]
+	var total = data["wins"] + data["losses"]
+	return float(data["wins"]) / float(total) if total > 0 else 0.0
+
+func get_current_win_streak() -> int:
+	return get_state("win_streak", 0)
+
+func get_current_loss_streak() -> int:
+	return get_state("loss_streak", 0)
+
+func record_difficulty_progression(game_id: String, difficulty: int) -> void:
+	var progression = get_state("difficulty_progression", [])
+	progression.append({"game": game_id, "difficulty": difficulty, "time": Time.get_ticks_msec()})
+	if progression.size() > 50:
+		progression.pop_front()
+	set_state("difficulty_progression", progression)
+
+func get_play_history() -> Array:
+	return get_state("game_play_history", [])
+
+func get_rewards_history() -> Array:
+	return get_state("rewards_history", [])
+
+func update_minigame_statistics() -> void:
+	var stats = get_state("minigame_statistics", {})
+	stats["total_plays"] = get_state("game_play_history", []).size()
+	stats["total_winnings"] = get_total_winnings()
+	stats["win_streak"] = get_current_win_streak()
+	stats["loss_streak"] = get_current_loss_streak()
+	set_state("minigame_statistics", stats)
+
+func get_minigame_statistics() -> Dictionary:
+	update_minigame_statistics()
+	return get_state("minigame_statistics", {})
