@@ -35,11 +35,16 @@ signal enchantment_applied(equipment: String, enchantment: Enchantment)
 signal enchantment_failed(reason: String)
 signal enchantment_upgraded(item: String, enchantment_id: String, new_level: int)
 signal synergy_triggered(items: Array)
+signal enchantment_decayed(enchantment_id: String)
+signal cascading_effect_triggered(effect: String)
 
 func _ready() -> void:
 	set_state("items", {})
 	set_state("enchantment_slots", {})
 	set_state("enchantment_history", [])
+	set_state("enchantment_decay", {})
+	set_state("cascade_chains", [])
+	set_state("failure_consequences", {})
 	_initialize_enchantments()
 
 func _initialize_enchantments() -> void:
@@ -144,3 +149,40 @@ func get_enchantment_effectiveness(item_name: String) -> float:
 	for ench in enchantments:
 		total_effectiveness *= 1.0 + (ench.level * 0.05)
 	return total_effectiveness
+
+func update_enchantment_decay(delta: float) -> void:
+	var decay = get_state("enchantment_decay", {})
+	var items = get_state("items", {})
+	for item_name in items:
+		if item_name not in decay:
+			decay[item_name] = 0.0
+		decay[item_name] += delta * 0.1
+		if decay[item_name] >= 100.0:
+			decay[item_name] = 0.0
+			enchantment_decayed.emit(item_name)
+			emit_event("enchantment_decayed", item_name)
+	set_state("enchantment_decay", decay)
+
+func trigger_cascading_effect(initial_effect: String, power: float = 1.0) -> void:
+	var cascades = get_state("cascade_chains", [])
+	cascades.append({"initial": initial_effect, "power": power, "triggered_at": Time.get_ticks_msec()})
+	if cascades.size() > 50:
+		cascades.pop_front()
+	set_state("cascade_chains", cascades)
+	cascading_effect_triggered.emit(initial_effect)
+	emit_event("cascade_triggered", initial_effect)
+
+func record_failure_consequence(item_name: String, consequence: String) -> void:
+	var consequences = get_state("failure_consequences", {})
+	if item_name not in consequences:
+		consequences[item_name] = []
+	consequences[item_name].append({"type": consequence, "time": Time.get_ticks_msec()})
+	set_state("failure_consequences", consequences)
+	emit_event("failure_recorded", item_name)
+
+func get_enchantment_decay_rate(item_name: String) -> float:
+	var decay = get_state("enchantment_decay", {})
+	return decay.get(item_name, 0.0)
+
+func get_cascading_effects() -> Array:
+	return get_state("cascade_chains", [])

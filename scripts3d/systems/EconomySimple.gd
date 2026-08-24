@@ -18,10 +18,15 @@ var prices: Dictionary = {}
 signal price_changed(item: String, new_price: float)
 signal inflation_occurred(rate: float)
 signal deflation_occurred(rate: float)
+signal market_trend_changed(trend: String)
+signal scarcity_alert(item: String, level: float)
 
 func _ready() -> void:
 	set_state("global_inflation", 0.0)
 	set_state("market_stability", 1.0)
+	set_state("price_history", {})
+	set_state("market_trends", {})
+	set_state("scarcity_levels", {})
 	_initialize_prices()
 
 func _initialize_prices() -> void:
@@ -96,3 +101,44 @@ func get_economy_text() -> String:
 		var change = ((current - base) / base) * 100.0
 		text += "%s: %.0f (%.0f%%)\n" % [item.capitalize(), current, change]
 	return text
+
+func record_price_history(item: String) -> void:
+	var history = get_state("price_history", {})
+	if item not in history:
+		history[item] = []
+	if item in prices:
+		history[item].append({"price": prices[item].current_price, "time": Time.get_ticks_msec()})
+		if history[item].size() > 100:
+			history[item].pop_front()
+	set_state("price_history", history)
+
+func set_market_trend(trend_type: String) -> void:
+	var trends = get_state("market_trends", {})
+	var current = trends.get("active_trend", "stable")
+	if current != trend_type:
+		trends["active_trend"] = trend_type
+		trends["trend_changed_at"] = Time.get_ticks_msec()
+		set_state("market_trends", trends)
+		market_trend_changed.emit(trend_type)
+		emit_event("trend_changed", trend_type)
+
+func get_market_trend() -> String:
+	var trends = get_state("market_trends", {})
+	return trends.get("active_trend", "stable")
+
+func set_scarcity_level(item: String, level: float) -> void:
+	var scarcity = get_state("scarcity_levels", {})
+	level = clampf(level, 0.0, 1.0)
+	scarcity[item] = level
+	set_state("scarcity_levels", scarcity)
+	if level > 0.7:
+		scarcity_alert.emit(item, level)
+		emit_event("scarcity_high", item)
+
+func get_scarcity_level(item: String) -> float:
+	var scarcity = get_state("scarcity_levels", {})
+	return scarcity.get(item, 0.0)
+
+func get_price_history(item: String) -> Array:
+	var history = get_state("price_history", {})
+	return history.get(item, [])

@@ -20,6 +20,8 @@ class DialogueNode:
 signal dialogue_started(speaker: String, text: String)
 signal dialogue_ended
 signal choice_made(choice_id: String)
+signal dialogue_branch_triggered(branch_id: String)
+signal emotion_changed(speaker: String, emotion: String)
 
 func _ready() -> void:
 	var dialogues = {
@@ -48,6 +50,9 @@ func _ready() -> void:
 	set_state("dialogue_history", [])
 	set_state("current_dialogue_node", "")
 	set_state("dialogue_choices", [])
+	set_state("speaker_emotions", {})
+	set_state("dialogue_branches", {})
+	set_state("dialogue_outcomes", [])
 
 func get_dialogue(speaker: String, index: int = 0) -> String:
 	var dialogues = get_state("dialogues", {})
@@ -120,3 +125,39 @@ func add_dialogue(speaker: String, text: String) -> void:
 		dialogues[speaker] = []
 	dialogues[speaker].append(text)
 	emit_event("dialogue_added", speaker)
+
+func set_speaker_emotion(speaker: String, emotion: String) -> void:
+	var emotions = get_state("speaker_emotions", {})
+	emotions[speaker] = emotion
+	set_state("speaker_emotions", emotions)
+	emotion_changed.emit(speaker, emotion)
+	emit_event("emotion_changed", {"speaker": speaker, "emotion": emotion})
+
+func get_speaker_emotion(speaker: String) -> String:
+	var emotions = get_state("speaker_emotions", {})
+	return emotions.get(speaker, "neutral")
+
+func trigger_dialogue_branch(branch_id: String, conditions: Dictionary = {}) -> bool:
+	var branches = get_state("dialogue_branches", {})
+	if branch_id not in branches:
+		branches[branch_id] = {"triggered": true, "conditions_met": conditions}
+		set_state("dialogue_branches", branches)
+		dialogue_branch_triggered.emit(branch_id)
+		emit_event("branch_triggered", branch_id)
+		return true
+	return false
+
+func record_dialogue_outcome(outcome_id: String, success: bool, impact: float = 0.0) -> void:
+	var outcomes = get_state("dialogue_outcomes", [])
+	outcomes.append({"id": outcome_id, "success": success, "impact": impact, "timestamp": Time.get_ticks_msec()})
+	if outcomes.size() > 100:
+		outcomes.pop_front()
+	set_state("dialogue_outcomes", outcomes)
+	emit_event("outcome_recorded", outcome_id)
+
+func get_dialogue_branches_triggered() -> Array:
+	var branches = get_state("dialogue_branches", {})
+	return branches.keys()
+
+func get_dialogue_outcomes() -> Array:
+	return get_state("dialogue_outcomes", [])
