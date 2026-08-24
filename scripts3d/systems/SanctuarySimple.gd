@@ -25,6 +25,13 @@ signal player_healed(amount: float)
 func _ready() -> void:
 	set_state("active_sanctuary", "")
 	set_state("discovered_sanctuaries", [])
+	set_state("heal_history", [])
+	set_state("sanctuary_visits", {})
+	set_state("healing_effectiveness", {})
+	set_state("sanctuary_popularity", {})
+	set_state("rest_duration_tracking", [])
+	set_state("sanctuary_statistics", {})
+	set_state("total_healing_received", 0.0)
 	_initialize_sanctuaries()
 
 func _initialize_sanctuaries() -> void:
@@ -43,6 +50,7 @@ func discover_sanctuary(sanctuary_id: String) -> bool:
 		var discovered = get_state("discovered_sanctuaries", [])
 		discovered.append(sanctuary_id)
 		set_state("discovered_sanctuaries", discovered)
+		_initialize_sanctuary_tracking(sanctuary_id)
 		sanctuary_discovered.emit(sanctuary)
 		emit_event("sanctuary_discovered", sanctuary_id)
 		return true
@@ -52,12 +60,17 @@ func enter_sanctuary(sanctuary_id: String) -> bool:
 	var sanctuary = _get_sanctuary(sanctuary_id)
 	if sanctuary and sanctuary.discovered:
 		set_state("active_sanctuary", sanctuary_id)
+		_record_sanctuary_visit(sanctuary_id)
+		_increment_sanctuary_popularity(sanctuary_id)
 		sanctuary_entered.emit(sanctuary_id)
 		emit_event("sanctuary_entered", sanctuary_id)
 		return true
 	return false
 
 func exit_sanctuary() -> void:
+	var sanctuary_id = get_state("active_sanctuary", "")
+	if sanctuary_id != "":
+		_record_rest_duration(sanctuary_id)
 	set_state("active_sanctuary", "")
 	sanctuary_exited.emit("")
 	emit_event("sanctuary_exited", "")
@@ -71,6 +84,10 @@ func heal_in_sanctuary(player: Node, amount: float) -> void:
 		var total_heal = amount * sanctuary.healing_rate
 		if player.has_method("heal"):
 			player.heal(total_heal)
+		_record_heal_history(sanctuary_id, total_heal, amount)
+		_track_healing_effectiveness(sanctuary_id, total_heal)
+		var total = get_state("total_healing_received", 0.0) + total_heal
+		set_state("total_healing_received", total)
 		player_healed.emit(total_heal)
 		emit_event("player_healed", sanctuary_id)
 
@@ -100,3 +117,72 @@ func _get_sanctuary(sanctuary_id: String) -> Sanctuary:
 		if sanctuary.id == sanctuary_id:
 			return sanctuary
 	return null
+
+func _initialize_sanctuary_tracking(sanctuary_id: String) -> void:
+	var visits = get_state("sanctuary_visits", {})
+	visits[sanctuary_id] = 0
+	set_state("sanctuary_visits", visits)
+	var effectiveness = get_state("healing_effectiveness", {})
+	effectiveness[sanctuary_id] = 0.0
+	set_state("healing_effectiveness", effectiveness)
+	var popularity = get_state("sanctuary_popularity", {})
+	popularity[sanctuary_id] = 0
+	set_state("sanctuary_popularity", popularity)
+
+func _record_heal_history(sanctuary_id: String, total_heal: float, base_amount: float) -> void:
+	var history = get_state("heal_history", [])
+	history.append({"sanctuary": sanctuary_id, "healed": total_heal, "base": base_amount, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("heal_history", history)
+
+func _record_sanctuary_visit(sanctuary_id: String) -> void:
+	var visits = get_state("sanctuary_visits", {})
+	visits[sanctuary_id] = visits.get(sanctuary_id, 0) + 1
+	set_state("sanctuary_visits", visits)
+
+func _increment_sanctuary_popularity(sanctuary_id: String) -> void:
+	var popularity = get_state("sanctuary_popularity", {})
+	popularity[sanctuary_id] = popularity.get(sanctuary_id, 0) + 1
+	set_state("sanctuary_popularity", popularity)
+
+func _track_healing_effectiveness(sanctuary_id: String, amount: float) -> void:
+	var effectiveness = get_state("healing_effectiveness", {})
+	effectiveness[sanctuary_id] = effectiveness.get(sanctuary_id, 0.0) + amount
+	set_state("healing_effectiveness", effectiveness)
+
+func _record_rest_duration(sanctuary_id: String) -> void:
+	var rest = get_state("rest_duration_tracking", [])
+	rest.append({"sanctuary": sanctuary_id, "time": Time.get_ticks_msec()})
+	if rest.size() > 50:
+		rest.pop_front()
+	set_state("rest_duration_tracking", rest)
+
+func get_sanctuary_visit_count(sanctuary_id: String) -> int:
+	var visits = get_state("sanctuary_visits", {})
+	return visits.get(sanctuary_id, 0)
+
+func get_most_visited_sanctuary() -> String:
+	var visits = get_state("sanctuary_visits", {})
+	var max_sanctuary = ""
+	var max_visits = 0
+	for sanctuary_id in visits:
+		if visits[sanctuary_id] > max_visits:
+			max_visits = visits[sanctuary_id]
+			max_sanctuary = sanctuary_id
+	return max_sanctuary
+
+func get_total_healing_received() -> float:
+	return get_state("total_healing_received", 0.0)
+
+func update_sanctuary_statistics() -> void:
+	var stats = get_state("sanctuary_statistics", {})
+	stats["discovered"] = get_discovered_sanctuaries().size()
+	stats["total_healing"] = get_total_healing_received()
+	stats["heal_count"] = get_state("heal_history", []).size()
+	stats["total_visits"] = get_state("sanctuary_visits", {})
+	set_state("sanctuary_statistics", stats)
+
+func get_sanctuary_statistics() -> Dictionary:
+	update_sanctuary_statistics()
+	return get_state("sanctuary_statistics", {})
