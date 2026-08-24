@@ -1,4 +1,4 @@
-extends Node
+extends BaseSystemSimple
 
 class_name AlchemySimple
 
@@ -8,14 +8,12 @@ class Potion:
 	var effect: String
 	var ingredients: Dictionary = {}
 	var brewing_time: float = 1.0
-
 	func _init(p_id: String, p_name: String, p_effect: String) -> void:
 		id = p_id
 		name = p_name
 		effect = p_effect
 
 var known_potions: Array[Potion] = []
-var brewing_queue: Array[Potion] = []
 
 signal potion_formula_learned(potion: Potion)
 signal brewing_started(potion: Potion)
@@ -23,6 +21,7 @@ signal potion_created(potion: Potion)
 signal brewing_failed
 
 func _ready() -> void:
+	set_state("learned", [])
 	_initialize_potions()
 
 func _initialize_potions() -> void:
@@ -41,30 +40,30 @@ func _initialize_potions() -> void:
 	known_potions = [p1, p2, p3]
 
 func learn_formula(potion_id: String) -> bool:
+	var learned = get_state("learned", [])
 	for potion in known_potions:
 		if potion.id == potion_id:
+			learned.append(potion)
 			potion_formula_learned.emit(potion)
-			print("📖 Learned potion: %s" % potion.name)
+			emit_event("learned", potion_id)
 			return true
 	return false
 
 func brew_potion(potion_id: String, inventory: InventorySimple) -> bool:
-	for potion in known_potions:
+	var learned = get_state("learned", [])
+	for potion in learned:
 		if potion.id == potion_id:
 			if not _has_ingredients(potion, inventory):
 				brewing_failed.emit()
 				return false
-
 			for ingredient in potion.ingredients:
 				inventory.remove_item(ingredient, potion.ingredients[ingredient])
-
 			brewing_started.emit(potion)
 			await get_tree().create_timer(potion.brewing_time).timeout
 			inventory.add_item(potion.name, 1)
 			potion_created.emit(potion)
-			print("✓ Brewed: %s" % potion.name)
+			emit_event("brewed", potion_id)
 			return true
-
 	return false
 
 func _has_ingredients(potion: Potion, inventory: InventorySimple) -> bool:
@@ -73,11 +72,12 @@ func _has_ingredients(potion: Potion, inventory: InventorySimple) -> bool:
 			return false
 	return true
 
-func get_known_potions() -> Array[Potion]:
-	return known_potions
+func get_known_potions() -> Array:
+	return get_state("learned", [])
 
 func get_potions_text() -> String:
-	var text = "Known Potions [%d]:\n" % known_potions.size()
-	for potion in known_potions:
+	var learned = get_state("learned", [])
+	var text = "Known Potions [%d]:\n" % learned.size()
+	for potion in learned:
 		text += "%s (%s)\n" % [potion.name, potion.effect]
 	return text

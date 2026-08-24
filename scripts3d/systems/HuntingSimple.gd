@@ -1,4 +1,4 @@
-extends Node
+extends BaseSystemSimple
 
 class_name HuntingSimple
 
@@ -8,7 +8,6 @@ class Game:
 	var meat_value: float
 	var pelt_value: float
 	var bones_count: int
-
 	func _init(p_name: String, p_difficulty: String, p_meat: float, p_pelt: float, p_bones: int) -> void:
 		name = p_name
 		difficulty = p_difficulty
@@ -17,13 +16,13 @@ class Game:
 		bones_count = p_bones
 
 var game_types: Array[Game] = []
-var hunting_level: int = 1
-var total_hunts: int = 0
 
 signal animal_hunted(game: Game)
 signal level_up(new_level: int)
 
 func _ready() -> void:
+	set_state("level", 1)
+	set_state("hunts", 0)
 	_initialize_game()
 
 func _initialize_game() -> void:
@@ -34,36 +33,29 @@ func _initialize_game() -> void:
 
 func hunt(location: Vector3) -> Game:
 	var difficulty_roll = randf()
-	var selected_game: Game = null
-
-	if difficulty_roll < 0.4:
-		selected_game = game_types[0]
-	elif difficulty_roll < 0.7:
-		selected_game = game_types[1]
-	elif difficulty_roll < 0.9:
-		selected_game = game_types[2]
-	else:
-		selected_game = game_types[3]
-
-	total_hunts += 1
-
-	if total_hunts >= hunting_level * 8:
+	var idx = 0 if difficulty_roll < 0.4 else (1 if difficulty_roll < 0.7 else (2 if difficulty_roll < 0.9 else 3))
+	var selected_game = game_types[idx]
+	var hunts = get_state("hunts", 0) + 1
+	set_state("hunts", hunts)
+	if hunts >= get_state("level", 1) * 8:
 		_level_up()
-
 	animal_hunted.emit(selected_game)
-	print("🏹 Hunted: %s (%s)" % [selected_game.name, selected_game.difficulty])
+	emit_event("hunted", selected_game.name)
 	return selected_game
 
 func _level_up() -> void:
-	hunting_level += 1
-	level_up.emit(hunting_level)
-	print("🏹 Hunting level: %d" % hunting_level)
+	var level = get_state("level", 1) + 1
+	set_state("level", level)
+	level_up.emit(level)
+	emit_event("level_up", level)
 
 func get_hunting_level() -> int:
-	return hunting_level
+	return get_state("level", 1)
 
 func get_total_hunts() -> int:
-	return total_hunts
+	return get_state("hunts", 0)
 
 func get_hunting_text() -> String:
-	return "Hunting Level: %d | Hunts: %d" % [hunting_level, total_hunts]
+	var level = get_state("level", 1)
+	var hunts = get_state("hunts", 0)
+	return "Hunting Level: %d | Hunts: %d" % [level, hunts]
