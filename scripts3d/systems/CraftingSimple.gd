@@ -1,4 +1,4 @@
-extends Node
+extends BaseSystemSimple
 
 class_name CraftingSimple
 
@@ -8,15 +8,12 @@ class Recipe:
 	var result_item: String
 	var ingredients: Dictionary = {}
 	var crafting_time: float = 1.0
-
 	func _init(p_id: String, p_name: String, p_result: String) -> void:
 		id = p_id
 		name = p_name
 		result_item = p_result
 
 var recipes: Array[Recipe] = []
-var learned_recipes: Array[Recipe] = []
-var crafting_queue: Array[Recipe] = []
 
 signal recipe_learned(recipe: Recipe)
 signal crafting_started(recipe: Recipe)
@@ -24,6 +21,7 @@ signal crafting_completed(item: String)
 signal not_enough_materials(recipe: Recipe)
 
 func _ready() -> void:
+	set_state("learned", [])
 	_initialize_recipes()
 
 func _initialize_recipes() -> void:
@@ -48,31 +46,30 @@ func _initialize_recipes() -> void:
 	recipes.append(recipe4)
 
 func learn_recipe(recipe_id: String) -> bool:
+	var learned = get_state("learned", [])
 	for recipe in recipes:
-		if recipe.id == recipe_id and not recipe in learned_recipes:
-			learned_recipes.append(recipe)
+		if recipe.id == recipe_id and not recipe in learned:
+			learned.append(recipe)
 			recipe_learned.emit(recipe)
-			print("📖 Learned: %s" % recipe.name)
+			emit_event("recipe_learned", recipe_id)
 			return true
 	return false
 
 func craft(recipe_id: String, inventory: InventorySimple) -> bool:
-	for recipe in learned_recipes:
+	var learned = get_state("learned", [])
+	for recipe in learned:
 		if recipe.id == recipe_id:
 			if not _has_materials(recipe, inventory):
 				not_enough_materials.emit(recipe)
 				return false
-
 			for ingredient in recipe.ingredients:
 				inventory.remove_item(ingredient, recipe.ingredients[ingredient])
-
 			crafting_started.emit(recipe)
 			await get_tree().create_timer(recipe.crafting_time).timeout
 			inventory.add_item(recipe.result_item, 1)
 			crafting_completed.emit(recipe.result_item)
-			print("✓ Crafted: %s" % recipe.name)
+			emit_event("crafted", recipe_id)
 			return true
-
 	return false
 
 func _has_materials(recipe: Recipe, inventory: InventorySimple) -> bool:
@@ -81,8 +78,8 @@ func _has_materials(recipe: Recipe, inventory: InventorySimple) -> bool:
 			return false
 	return true
 
-func get_learned_recipes() -> Array[Recipe]:
-	return learned_recipes
+func get_learned_recipes() -> Array:
+	return get_state("learned", [])
 
 func get_recipe(recipe_id: String) -> Recipe:
 	for recipe in recipes:
@@ -91,7 +88,8 @@ func get_recipe(recipe_id: String) -> Recipe:
 	return null
 
 func get_recipes_text() -> String:
-	var text = "Recipes [%d]:\n" % learned_recipes.size()
-	for recipe in learned_recipes:
+	var learned = get_state("learned", [])
+	var text = "Recipes [%d]:\n" % learned.size()
+	for recipe in learned:
 		text += "%s\n" % recipe.name
 	return text

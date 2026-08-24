@@ -1,4 +1,4 @@
-extends Node
+extends BaseSystemSimple
 
 class_name FishingSimple
 
@@ -7,7 +7,6 @@ class Fish:
 	var rarity: String
 	var weight: float
 	var value: float
-
 	func _init(p_name: String, p_rarity: String, p_weight: float, p_value: float) -> void:
 		name = p_name
 		rarity = p_rarity
@@ -29,45 +28,41 @@ var fish_types: Dictionary = {
 	]
 }
 
-var fishing_level: int = 1
-var total_catches: int = 0
-
 signal fish_caught(fish: Fish)
 signal level_up(new_level: int)
 
+func _ready() -> void:
+	set_state("level", 1)
+	set_state("catches", 0)
+
 func start_fishing(location: Vector3) -> Fish:
 	var rarity_roll = randf()
-	var rarity = "common"
-
-	if rarity_roll > 0.7:
-		rarity = "rare"
-	elif rarity_roll > 0.4:
-		rarity = "uncommon"
-
+	var rarity = "common" if rarity_roll <= 0.4 else ("uncommon" if rarity_roll <= 0.7 else "rare")
 	var fish_list = fish_types.get(rarity, [])
 	if fish_list.is_empty():
 		return null
-
 	var fish = fish_list[randi() % fish_list.size()]
-	total_catches += 1
-
-	if total_catches >= fishing_level * 10:
+	var catches = get_state("catches", 0) + 1
+	set_state("catches", catches)
+	if catches >= get_state("level", 1) * 10:
 		_level_up()
-
 	fish_caught.emit(fish)
-	print("🎣 Caught: %s (%s)" % [fish.name, fish.rarity])
+	emit_event("fish_caught", fish.name)
 	return fish
 
 func _level_up() -> void:
-	fishing_level += 1
-	level_up.emit(fishing_level)
-	print("🎣 Fishing level: %d" % fishing_level)
+	var level = get_state("level", 1) + 1
+	set_state("level", level)
+	level_up.emit(level)
+	emit_event("level_up", level)
 
 func get_fishing_level() -> int:
-	return fishing_level
+	return get_state("level", 1)
 
 func get_total_catches() -> int:
-	return total_catches
+	return get_state("catches", 0)
 
 func get_fishing_text() -> String:
-	return "Fishing Level: %d | Catches: %d" % [fishing_level, total_catches]
+	var level = get_state("level", 1)
+	var catches = get_state("catches", 0)
+	return "Fishing Level: %d | Catches: %d" % [level, catches]
