@@ -19,6 +19,14 @@ var proficiencies: Dictionary = {}
 signal stat_changed(stat: String)
 signal level_up(new_level: int)
 signal skill_points_gained(amount: int)
+signal achievement_unlocked(achievement: String)
+signal milestone_reached(milestone: String)
+
+func _ready() -> void:
+	set_state("achievements", [])
+	set_state("milestones", {})
+	set_state("stat_history", [])
+	set_state("total_exp_gained", 0.0)
 
 func take_damage(amount: float) -> void:
 	set_stat("hp", maxf(get_stat("hp") - amount, 0))
@@ -123,3 +131,45 @@ func to_text(prefix: String = "") -> String:
 	return "%sLv %d | HP: %.0f/%.0f | SP: %d | Gold: %.0f | Exp: %.0f/%.0f (%.0f%%)" % [
 		prefix, level, get_stat("hp"), get_stat("max_hp"), skill_points, gold, exp, exp_req, exp_pct
 	]
+
+func unlock_achievement(achievement_id: String) -> void:
+	var achievements = get_state("achievements", [])
+	if achievement_id not in achievements:
+		achievements.append(achievement_id)
+		set_state("achievements", achievements)
+		achievement_unlocked.emit(achievement_id)
+		emit_event("achievement_unlocked", achievement_id)
+
+func get_achievements() -> Array:
+	return get_state("achievements", [])
+
+func set_milestone(milestone_id: String, value: Variant) -> void:
+	var milestones = get_state("milestones", {})
+	milestones[milestone_id] = value
+	set_state("milestones", milestones)
+	milestone_reached.emit(milestone_id)
+	emit_event("milestone_reached", milestone_id)
+
+func get_milestone(milestone_id: String) -> Variant:
+	var milestones = get_state("milestones", {})
+	return milestones.get(milestone_id, null)
+
+func add_exp(amount: float) -> void:
+	exp += amount
+	var total_exp = get_state("total_exp_gained", 0.0)
+	set_state("total_exp_gained", total_exp + amount)
+	_track_stat_history()
+	var exp_requirement = get_exp_requirement(level)
+	if exp >= exp_requirement:
+		level_up_character()
+
+func _track_stat_history() -> void:
+	var history = get_state("stat_history", [])
+	var snapshot = {"level": level, "exp": exp, "hp": get_stat("hp"), "timestamp": Time.get_ticks_msec()}
+	history.append(snapshot)
+	if history.size() > 100:
+		history.pop_front()
+	set_state("stat_history", history)
+
+func get_stat_history() -> Array:
+	return get_state("stat_history", [])

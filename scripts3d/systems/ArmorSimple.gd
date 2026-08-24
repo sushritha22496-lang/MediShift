@@ -23,9 +23,15 @@ var armors: Array[Armor] = []
 
 signal armor_equipped(slot: String, armor: Armor)
 signal armor_unequipped(slot: String)
+signal armor_broken(armor_id: String)
+signal set_bonus_activated(set_name: String)
 
 func _ready() -> void:
 	set_state("equipped", {})
+	set_state("armor_durability", {})
+	set_state("enchantments", {})
+	set_state("armor_upgrades", {})
+	set_state("armor_sets", {})
 	_initialize_armors()
 
 func _initialize_armors() -> void:
@@ -98,3 +104,71 @@ func get_armor_text() -> String:
 		if slot in equipped:
 			text += "%s: %s\n" % [slot.capitalize(), equipped[slot].name]
 	return text
+
+func damage_armor(armor_id: String, damage: float) -> bool:
+	var durability = get_state("armor_durability", {})
+	if armor_id not in durability:
+		durability[armor_id] = 100.0
+	durability[armor_id] = maxf(0.0, durability[armor_id] - damage)
+	set_state("armor_durability", durability)
+	if durability[armor_id] <= 0:
+		armor_broken.emit(armor_id)
+		emit_event("armor_broken", armor_id)
+		return true
+	return false
+
+func repair_armor(armor_id: String, amount: float = 50.0) -> void:
+	var durability = get_state("armor_durability", {})
+	durability[armor_id] = minf(100.0, durability.get(armor_id, 100.0) + amount)
+	set_state("armor_durability", durability)
+	emit_event("armor_repaired", armor_id)
+
+func upgrade_armor(armor_id: String) -> bool:
+	var armor = get_armor(armor_id)
+	if not armor:
+		return false
+	var upgrades = get_state("armor_upgrades", {})
+	var level = upgrades.get(armor_id, 0)
+	if level >= 5:
+		return false
+	armor.defense *= 1.1
+	armor.magic_defense *= 1.1
+	upgrades[armor_id] = level + 1
+	set_state("armor_upgrades", upgrades)
+	emit_event("armor_upgraded", armor_id)
+	return true
+
+func add_enchantment(armor_id: String, enchant: String) -> void:
+	var enchants = get_state("enchantments", {})
+	if armor_id not in enchants:
+		enchants[armor_id] = []
+	enchants[armor_id].append(enchant)
+	set_state("enchantments", enchants)
+
+func register_armor_set(set_name: String, armor_ids: Array) -> void:
+	var sets = get_state("armor_sets", {})
+	sets[set_name] = armor_ids
+	set_state("armor_sets", sets)
+
+func check_set_bonus(set_name: String) -> bool:
+	var sets = get_state("armor_sets", {})
+	var equipped = get_state("equipped", {})
+	if set_name not in sets:
+		return false
+	var required = sets[set_name]
+	var equipped_armors = equipped.values()
+	var count = 0
+	for req_id in required:
+		for equip in equipped_armors:
+			if equip.id == req_id:
+				count += 1
+				break
+	if count == required.size():
+		set_bonus_activated.emit(set_name)
+		emit_event("set_bonus_active", set_name)
+		return true
+	return false
+
+func get_armor_durability(armor_id: String) -> float:
+	var durability = get_state("armor_durability", {})
+	return durability.get(armor_id, 100.0)

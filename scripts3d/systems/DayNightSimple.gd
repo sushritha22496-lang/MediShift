@@ -10,6 +10,8 @@ signal day_started
 signal night_started
 signal hour_changed(hour: int)
 signal day_changed(day: int)
+signal weather_changed(weather: String)
+signal celestial_event(event: String)
 
 func _ready() -> void:
 	set_state("hour", 6)
@@ -20,6 +22,10 @@ func _ready() -> void:
 	set_state("temperature", 20.0)
 	set_state("pollution", 0.0)
 	set_state("scheduled_events", {})
+	set_state("weather", "clear")
+	set_state("weather_duration", 0.0)
+	set_state("time_events", [])
+	set_state("moon_phase", 0)
 
 func _process(delta: float) -> void:
 	var time = get_state("time_elapsed", 0.0)
@@ -168,3 +174,49 @@ func get_time_of_day_atmosphere() -> Dictionary:
 		"night": {"light": 0.1, "fog": 0.2, "visibility": 0.3}
 	}
 	return atmospheres.get(time_of_day, {})
+
+func set_weather(weather_type: String, duration: float = 120.0) -> void:
+	var valid = ["clear", "rainy", "stormy", "snowy", "foggy"]
+	if weather_type in valid:
+		set_state("weather", weather_type)
+		set_state("weather_duration", duration)
+		weather_changed.emit(weather_type)
+		emit_event("weather_changed", weather_type)
+
+func get_weather() -> String:
+	return get_state("weather", "clear")
+
+func update_moon_phase(delta: float = 1.0) -> void:
+	var phase = get_state("moon_phase", 0)
+	phase = (phase + int(delta)) % 29
+	set_state("moon_phase", phase)
+	if phase == 0 or phase == 14:
+		celestial_event.emit("full_moon" if phase == 14 else "new_moon")
+		emit_event("lunar_event", phase)
+
+func get_moon_phase_name() -> String:
+	var phase = get_state("moon_phase", 0)
+	if phase < 3:
+		return "new_moon"
+	elif phase < 8:
+		return "waxing_crescent"
+	elif phase < 11:
+		return "first_quarter"
+	elif phase < 16:
+		return "waxing_gibbous"
+	elif phase < 19:
+		return "full_moon"
+	elif phase < 24:
+		return "waning_gibbous"
+	else:
+		return "waning_crescent"
+
+func record_time_event(event_type: String, description: String) -> void:
+	var events = get_state("time_events", [])
+	events.append({"type": event_type, "description": description, "day": get_day(), "hour": get_hour()})
+	set_state("time_events", events)
+	emit_event("time_event_recorded", event_type)
+
+func get_time_events_in_range(start_day: int, end_day: int) -> Array:
+	var events = get_state("time_events", [])
+	return events.filter(func(e): return e["day"] >= start_day and e["day"] <= end_day)

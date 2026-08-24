@@ -26,6 +26,8 @@ var behaviors: Dictionary = {}
 signal behavior_activated(behavior_id: String)
 signal behavior_deactivated(behavior_id: String)
 signal decision_made(behavior_id: String, decision: String)
+signal behavior_tree_changed(path: String)
+signal ai_state_updated(state: String)
 
 func _ready() -> void:
 	set_state("active_behavior", "")
@@ -33,6 +35,10 @@ func _ready() -> void:
 	set_state("emotional_state", "neutral")
 	set_state("threat_level", 0.0)
 	set_state("memory", {})
+	set_state("decision_history", [])
+	set_state("behavior_log", [])
+	set_state("threat_sources", {})
+	set_state("memory_events", [])
 	_initialize_behaviors()
 
 func _initialize_behaviors() -> void:
@@ -163,3 +169,52 @@ func restore_energy(amount: float) -> void:
 	var energy = get_state("energy", 100.0)
 	energy = minf(100.0, energy + amount)
 	set_state("energy", energy)
+
+func record_memory(event_type: String, details: Dictionary) -> void:
+	var events = get_state("memory_events", [])
+	events.append({"type": event_type, "details": details, "timestamp": Time.get_ticks_msec()})
+	if events.size() > 50:
+		events.pop_front()
+	set_state("memory_events", events)
+	emit_event("memory_recorded", event_type)
+
+func record_decision(behavior_id: String, decision: String, outcome: float) -> void:
+	var history = get_state("decision_history", [])
+	history.append({"behavior": behavior_id, "decision": decision, "outcome": outcome, "time": Time.get_ticks_msec()})
+	if history.size() > 100:
+		history.pop_front()
+	set_state("decision_history", history)
+
+func add_threat_source(source: String, intensity: float) -> void:
+	var threats = get_state("threat_sources", {})
+	threats[source] = intensity
+	set_state("threat_sources", threats)
+	update_threat_level(get_total_threat())
+
+func get_total_threat() -> float:
+	var threats = get_state("threat_sources", {})
+	var total = 0.0
+	for threat_value in threats.values():
+		total += threat_value
+	return total
+
+func log_behavior_execution(behavior_id: String, duration: float, success: bool) -> void:
+	var log = get_state("behavior_log", [])
+	log.append({"behavior": behavior_id, "duration": duration, "success": success, "time": Time.get_ticks_msec()})
+	if log.size() > 100:
+		log.pop_front()
+	set_state("behavior_log", log)
+
+func get_behavior_success_rate(behavior_id: String) -> float:
+	var log = get_state("behavior_log", [])
+	var successes = 0.0
+	var total = 0.0
+	for entry in log:
+		if entry["behavior"] == behavior_id:
+			total += 1.0
+			if entry["success"]:
+				successes += 1.0
+	return (successes / total * 100.0) if total > 0 else 0.0
+
+func get_memory_events() -> Array:
+	return get_state("memory_events", [])
