@@ -34,6 +34,10 @@ func _ready() -> void:
 	set_state("portal_links", {})
 	set_state("portal_malfunctions", [])
 	set_state("destination_safety_levels", {})
+	set_state("portal_discovery_history", [])
+	set_state("activation_history", [])
+	set_state("cooldown_history", [])
+	set_state("teleport_statistics", {})
 	_initialize_portals()
 
 func _initialize_portals() -> void:
@@ -45,6 +49,27 @@ func _initialize_portals() -> void:
 		Portal.new("cave_portal", "Cave Portal", Vector3(50, 0, 50), Vector3(50, 5, 50))
 	]
 
+func _record_portal_discovery(portal_id: String, portal_name: String) -> void:
+	var history = get_state("portal_discovery_history", [])
+	history.append({"portal": portal_id, "name": portal_name, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("portal_discovery_history", history)
+
+func _record_portal_activation(portal_id: String, portal_name: String) -> void:
+	var history = get_state("activation_history", [])
+	history.append({"portal": portal_id, "name": portal_name, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("activation_history", history)
+
+func _record_cooldown_set(portal_id: String, duration_ms: int) -> void:
+	var history = get_state("cooldown_history", [])
+	history.append({"portal": portal_id, "duration": duration_ms, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("cooldown_history", history)
+
 func discover_portal(portal_id: String) -> bool:
 	var portal = _get_portal(portal_id)
 	if portal and not portal.activated:
@@ -52,6 +77,7 @@ func discover_portal(portal_id: String) -> bool:
 		var active = get_state("active_portals", [])
 		active.append(portal_id)
 		set_state("active_portals", active)
+		_record_portal_discovery(portal_id, portal.name)
 		portal_discovered.emit(portal)
 		emit_event("portal_discovered", portal_id)
 		return true
@@ -65,6 +91,7 @@ func activate_portal(portal_id: String) -> bool:
 			if portal_id not in keys or not keys[portal_id]:
 				return false
 		discover_portal(portal_id)
+		_record_portal_activation(portal_id, portal.name)
 		portal_activated.emit(portal)
 		emit_event("portal_activated", portal_id)
 		return true
@@ -114,6 +141,7 @@ func set_portal_cooldown(portal_id: String, cooldown_ms: int) -> void:
 	var cooldowns = get_state("portal_cooldowns", {})
 	cooldowns[portal_id] = {"start": Time.get_ticks_msec(), "duration": cooldown_ms}
 	set_state("portal_cooldowns", cooldowns)
+	_record_cooldown_set(portal_id, cooldown_ms)
 	emit_event("cooldown_set", portal_id)
 
 func is_portal_on_cooldown(portal_id: String) -> bool:
@@ -186,3 +214,21 @@ func get_teleport_success_rate() -> float:
 		return 0.0
 	var successes = history.filter(func(h): return h["success"]).size()
 	return float(successes) / float(history.size())
+
+func update_teleport_statistics() -> void:
+	var stats = get_state("teleport_statistics", {})
+	var discovery_history = get_state("portal_discovery_history", [])
+	var activation_history = get_state("activation_history", [])
+	var teleport_hist = get_state("teleport_history", [])
+	var active_portals = get_active_portals()
+	stats["total_portals_discovered"] = discovery_history.size()
+	stats["total_portals_activated"] = activation_history.size()
+	stats["total_teleports"] = teleport_hist.size()
+	stats["success_rate"] = get_teleport_success_rate()
+	stats["currently_active_portals"] = active_portals.size()
+	stats["malfunction_count"] = get_state("portal_malfunctions", []).size()
+	set_state("teleport_statistics", stats)
+
+func get_teleport_statistics() -> Dictionary:
+	update_teleport_statistics()
+	return get_state("teleport_statistics", {})
