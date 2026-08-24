@@ -26,6 +26,10 @@ func _ready() -> void:
 	set_state("weather_duration", 0.0)
 	set_state("time_events", [])
 	set_state("moon_phase", 0)
+	set_state("hour_change_history", [])
+	set_state("day_change_history", [])
+	set_state("weather_change_history", [])
+	set_state("day_night_statistics", {})
 
 func _process(delta: float) -> void:
 	var time = get_state("time_elapsed", 0.0)
@@ -37,6 +41,7 @@ func _process(delta: float) -> void:
 
 	if hour != prev_hour:
 		set_state("hour", hour)
+		_record_hour_change(hour)
 		hour_changed.emit(hour)
 		emit_event("hour_changed", hour)
 
@@ -57,8 +62,30 @@ func _process(delta: float) -> void:
 		day += 1
 		set_state("day", day)
 		set_state("time_elapsed", 0.0)
+		_record_day_change(day)
 		day_changed.emit(day)
 		emit_event("day_changed", day)
+
+func _record_hour_change(hour: int) -> void:
+	var history = get_state("hour_change_history", [])
+	history.append({"hour": hour, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("hour_change_history", history)
+
+func _record_day_change(day: int) -> void:
+	var history = get_state("day_change_history", [])
+	history.append({"day": day, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("day_change_history", history)
+
+func _record_weather_change(weather: String) -> void:
+	var history = get_state("weather_change_history", [])
+	history.append({"weather": weather, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("weather_change_history", history)
 
 func get_hour() -> int:
 	return get_state("hour", 6)
@@ -220,3 +247,24 @@ func record_time_event(event_type: String, description: String) -> void:
 func get_time_events_in_range(start_day: int, end_day: int) -> Array:
 	var events = get_state("time_events", [])
 	return events.filter(func(e): return e["day"] >= start_day and e["day"] <= end_day)
+
+func update_day_night_statistics() -> void:
+	var stats = get_state("day_night_statistics", {})
+	var hour_hist = get_state("hour_change_history", [])
+	var day_hist = get_state("day_change_history", [])
+	var weather_hist = get_state("weather_change_history", [])
+	stats["current_hour"] = get_hour()
+	stats["current_day"] = get_day()
+	stats["is_daytime"] = is_daytime()
+	stats["current_season"] = get_season()
+	stats["current_temperature"] = get_state("temperature", 20.0)
+	stats["current_weather"] = get_weather()
+	stats["hour_changes"] = hour_hist.size()
+	stats["day_changes"] = day_hist.size()
+	stats["weather_changes"] = weather_hist.size()
+	stats["moon_phase"] = get_state("moon_phase", 0)
+	set_state("day_night_statistics", stats)
+
+func get_day_night_statistics() -> Dictionary:
+	update_day_night_statistics()
+	return get_state("day_night_statistics", {})

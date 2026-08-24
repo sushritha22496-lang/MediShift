@@ -27,6 +27,11 @@ func _ready() -> void:
 	set_state("combo_timeout", 0.0)
 	set_state("damage_log", [])
 	set_state("total_damage_dealt", 0.0)
+	set_state("damage_taken_log", [])
+	set_state("attack_history", [])
+	set_state("combo_history", [])
+	set_state("stance_change_history", [])
+	set_state("combat_statistics", {})
 
 func _physics_process(delta: float) -> void:
 	if not get_state("can_attack", true):
@@ -34,6 +39,34 @@ func _physics_process(delta: float) -> void:
 		set_state("cooldown_timer", timer)
 		if timer <= 0.0:
 			set_state("can_attack", true)
+
+func _record_attack(attack_type: String, damage: float, combo: int) -> void:
+	var history = get_state("attack_history", [])
+	history.append({"type": attack_type, "damage": damage, "combo": combo, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("attack_history", history)
+
+func _record_damage_taken(damage: float, attack_type: String, element: String) -> void:
+	var history = get_state("damage_taken_log", [])
+	history.append({"damage": damage, "type": attack_type, "element": element, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("damage_taken_log", history)
+
+func _record_combo_change(combo: int) -> void:
+	var history = get_state("combo_history", [])
+	history.append({"combo": combo, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("combo_history", history)
+
+func _record_stance_change(stance: String) -> void:
+	var history = get_state("stance_change_history", [])
+	history.append({"stance": stance, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("stance_change_history", history)
 
 func perform_attack(attacker: Node3D, target: Node3D, attack_type: String = "melee", multiplier: float = 1.0) -> bool:
 	if not get_state("can_attack", true):
@@ -44,6 +77,10 @@ func perform_attack(attacker: Node3D, target: Node3D, attack_type: String = "mel
 	var damage = attack_damage * multiplier
 	var combo = get_state("combo_counter", 0) + 1
 	set_state("combo_counter", combo)
+	var total = get_state("total_damage_dealt", 0.0)
+	set_state("total_damage_dealt", total + damage)
+	_record_attack(attack_type, damage, combo)
+	_record_combo_change(combo)
 	combo_changed.emit(combo)
 	if combo == 1:
 		combo_started.emit()
@@ -60,6 +97,7 @@ func take_damage(damage: float, attack_type: String = "physical", element: Strin
 	var reduction = armor * 0.05
 	var element_resist = resistance.get(element, 0.0)
 	var final_dmg = damage * (1.0 - reduction) * (1.0 - element_resist)
+	_record_damage_taken(final_dmg, attack_type, element)
 	damage_received.emit(null, final_dmg, false)
 	emit_event("damage_taken", final_dmg)
 	return final_dmg
@@ -70,6 +108,7 @@ func reset_cooldown() -> void:
 
 func reset_combo() -> void:
 	set_state("combo_counter", 0)
+	_record_combo_change(0)
 	emit_event("combo_reset", 0)
 
 func get_cooldown_remaining() -> float:
@@ -83,6 +122,7 @@ func set_stance(new_stance: String) -> void:
 	var valid = ["aggressive", "defensive", "balanced"]
 	if new_stance in valid:
 		set_state("current_stance", new_stance)
+		_record_stance_change(new_stance)
 		stance_changed.emit(new_stance)
 		emit_event("stance_changed", new_stance)
 
@@ -117,3 +157,25 @@ func log_damage(damage: float, target: String = "") -> void:
 	set_state("damage_log", log)
 	var total = get_state("total_damage_dealt", 0.0)
 	set_state("total_damage_dealt", total + damage)
+
+func update_combat_statistics() -> void:
+	var stats = get_state("combat_statistics", {})
+	var attack_hist = get_state("attack_history", [])
+	var damage_taken_hist = get_state("damage_taken_log", [])
+	var combo_hist = get_state("combo_history", [])
+	var stance_hist = get_state("stance_change_history", [])
+	stats["total_attacks"] = attack_hist.size()
+	stats["total_damage_dealt"] = get_state("total_damage_dealt", 0.0)
+	stats["total_damage_taken"] = 0.0
+	for entry in damage_taken_hist:
+		stats["total_damage_taken"] += entry["damage"]
+	stats["total_damage_taken_incidents"] = damage_taken_hist.size()
+	stats["combo_changes"] = combo_hist.size()
+	stats["stance_changes"] = stance_hist.size()
+	stats["current_stance"] = get_state("current_stance", "normal")
+	stats["current_combo"] = get_state("combo_counter", 0)
+	set_state("combat_statistics", stats)
+
+func get_combat_statistics() -> Dictionary:
+	update_combat_statistics()
+	return get_state("combat_statistics", {})
