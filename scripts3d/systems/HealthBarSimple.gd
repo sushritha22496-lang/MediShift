@@ -21,6 +21,9 @@ func _ready() -> void:
 	set_state("total_damage_taken", 0.0)
 	set_state("total_healing_done", 0.0)
 	set_state("last_damage_type", "")
+	set_state("health_restoration_history", [])
+	set_state("shield_history", [])
+	set_state("health_statistics", {})
 
 func _process(delta: float) -> void:
 	var regen_delay = get_state("health_regen_delay", 0.0)
@@ -59,6 +62,20 @@ func take_damage(amount: float, damage_type: String = "physical") -> void:
 		health_depleted.emit()
 		emit_event("health_depleted", "")
 
+func _record_health_restoration(amount: float, new_health: float) -> void:
+	var history = get_state("health_restoration_history", [])
+	history.append({"amount": amount, "new_health": new_health, "timestamp": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("health_restoration_history", history)
+
+func _record_shield_change(amount: float, new_shield: float) -> void:
+	var history = get_state("shield_history", [])
+	history.append({"amount": amount, "new_shield": new_shield, "timestamp": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("shield_history", history)
+
 func restore_health(amount: float) -> void:
 	var current = get_state("current_health", 100.0)
 	var max_hp = get_state("max_health", 100.0)
@@ -67,6 +84,7 @@ func restore_health(amount: float) -> void:
 	set_state("current_health", current)
 	var total_healing = get_state("total_healing_done", 0.0)
 	set_state("total_healing_done", total_healing + (current - old_health))
+	_record_health_restoration(amount, current)
 	health_changed.emit(current, max_hp)
 	health_restored.emit(amount)
 	emit_event("health_restored", {"amount": amount, "new_health": current})
@@ -76,6 +94,7 @@ func gain_shield(amount: float) -> void:
 	var max_shield = get_state("max_shield", 50.0)
 	shield = minf(max_shield, shield + amount)
 	set_state("shield_health", shield)
+	_record_shield_change(amount, shield)
 	shield_gained.emit(shield)
 	emit_event("shield_gained", {"amount": amount, "total_shield": shield})
 
@@ -160,3 +179,26 @@ func get_health_text() -> String:
 	if not effects.is_empty():
 		text += " | Effects: %d" % effects.size()
 	return text
+
+func update_health_statistics() -> void:
+	var stats = get_state("health_statistics", {})
+	var damage_hist = get_state("damage_history", [])
+	var restoration_hist = get_state("health_restoration_history", [])
+	var shield_hist = get_state("shield_history", [])
+	stats["total_damage_incidents"] = damage_hist.size()
+	stats["total_restoration_events"] = restoration_hist.size()
+	stats["total_shield_events"] = shield_hist.size()
+	stats["total_damage_taken"] = get_state("total_damage_taken", 0.0)
+	stats["total_healing_done"] = get_state("total_healing_done", 0.0)
+	stats["current_health"] = get_health()
+	stats["current_shield"] = get_shield()
+	if not damage_hist.is_empty():
+		var avg_damage = 0.0
+		for entry in damage_hist:
+			avg_damage += entry["amount"]
+		stats["average_damage_per_incident"] = avg_damage / float(damage_hist.size())
+	set_state("health_statistics", stats)
+
+func get_health_statistics() -> Dictionary:
+	update_health_statistics()
+	return get_state("health_statistics", {})

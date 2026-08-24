@@ -45,6 +45,11 @@ func _ready() -> void:
 	set_state("mastery", {})
 	set_state("perks", {})
 	set_state("element_intensity", {})
+	set_state("equipment_history", [])
+	set_state("durability_history", [])
+	set_state("upgrade_history", [])
+	set_state("enchantment_history", [])
+	set_state("weapon_statistics", {})
 	_initialize_weapons()
 
 func _initialize_weapons() -> void:
@@ -61,16 +66,48 @@ func _initialize_weapons() -> void:
 		Weapon.new("great_sword", "Great Sword", "sword", 35.0, 0.7, 8.0, "epic", 0.15, "none", 8)
 	]
 
+func _record_equipment_change(weapon_id: String, weapon_name: String, equipped: bool) -> void:
+	var history = get_state("equipment_history", [])
+	history.append({"weapon": weapon_id, "name": weapon_name, "equipped": equipped, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("equipment_history", history)
+
+func _record_durability_change(weapon_id: String, durability: float) -> void:
+	var history = get_state("durability_history", [])
+	history.append({"weapon": weapon_id, "durability": durability, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("durability_history", history)
+
+func _record_upgrade(weapon_id: String, new_level: int) -> void:
+	var history = get_state("upgrade_history", [])
+	history.append({"weapon": weapon_id, "level": new_level, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("upgrade_history", history)
+
+func _record_enchantment(weapon_id: String, enchant_id: String) -> void:
+	var history = get_state("enchantment_history", [])
+	history.append({"weapon": weapon_id, "enchantment": enchant_id, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("enchantment_history", history)
+
 func equip_weapon(weapon_id: String) -> bool:
 	for weapon in weapons:
 		if weapon.id == weapon_id:
 			set_state("equipped", weapon)
+			_record_equipment_change(weapon_id, weapon.name, true)
 			weapon_equipped.emit(weapon)
 			emit_event("equipped", weapon_id)
 			return true
 	return false
 
 func unequip_weapon() -> void:
+	var equipped = get_state("equipped", null)
+	if equipped:
+		_record_equipment_change(equipped.id, equipped.name, false)
 	set_state("equipped", null)
 	weapon_unequipped.emit()
 	emit_event("unequipped", "weapon")
@@ -105,6 +142,7 @@ func damage_weapon(weapon_id: String, damage: float) -> bool:
 	var weapon = get_weapon(weapon_id)
 	if weapon:
 		weapon.durability = maxf(0.0, weapon.durability - damage)
+		_record_durability_change(weapon_id, weapon.durability)
 		weapon_durability_changed.emit(weapon_id, weapon.durability)
 		emit_event("weapon_damaged", weapon_id)
 		if weapon.durability <= 0:
@@ -117,6 +155,7 @@ func repair_weapon(weapon_id: String, amount: float) -> void:
 	var weapon = get_weapon(weapon_id)
 	if weapon:
 		weapon.durability = minf(weapon.max_durability, weapon.durability + amount)
+		_record_durability_change(weapon_id, weapon.durability)
 		weapon_durability_changed.emit(weapon_id, weapon.durability)
 		emit_event("weapon_repaired", weapon_id)
 
@@ -149,6 +188,7 @@ func upgrade_weapon(weapon_id: String, materials: int = 1) -> bool:
 	weapon.crit_chance += 0.02
 	upgrades[weapon_id] = new_level
 	set_state("weapon_upgrades", upgrades)
+	_record_upgrade(weapon_id, new_level)
 	weapon_upgraded.emit(weapon_id, new_level)
 	emit_event("weapon_upgraded", {"weapon": weapon_id, "level": new_level})
 	return true
@@ -164,6 +204,7 @@ func add_enchantment(weapon_id: String, enchant_id: String, power: float = 1.0) 
 		return false
 	enchants[weapon_id].append({"id": enchant_id, "power": power, "active": true})
 	set_state("enchantments", enchants)
+	_record_enchantment(weapon_id, enchant_id)
 	enchantment_added.emit(weapon_id, enchant_id)
 	emit_event("enchantment_added", {"weapon": weapon_id, "enchant": enchant_id})
 	return true
@@ -197,3 +238,25 @@ func increase_element_intensity(weapon_id: String, intensity: float = 0.1) -> vo
 	elements[weapon_id] = elements.get(weapon_id, 0.0) + intensity
 	set_state("element_intensity", elements)
 	emit_event("element_increased", weapon_id)
+
+func update_weapon_statistics() -> void:
+	var stats = get_state("weapon_statistics", {})
+	var equipment_hist = get_state("equipment_history", [])
+	var durability_hist = get_state("durability_history", [])
+	var upgrade_hist = get_state("upgrade_history", [])
+	var enchant_hist = get_state("enchantment_history", [])
+	stats["total_equips"] = equipment_hist.size()
+	stats["total_durability_changes"] = durability_hist.size()
+	stats["total_upgrades"] = upgrade_hist.size()
+	stats["total_enchantments"] = enchant_hist.size()
+	stats["mastery_total"] = 0.0
+	var mastery = get_state("mastery", {})
+	for exp in mastery.values():
+		stats["mastery_total"] += exp
+	var equipped = get_state("equipped", null)
+	stats["currently_equipped"] = equipped.name if equipped else "None"
+	set_state("weapon_statistics", stats)
+
+func get_weapon_statistics() -> Dictionary:
+	update_weapon_statistics()
+	return get_state("weapon_statistics", {})
