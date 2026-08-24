@@ -10,6 +10,13 @@ class Treasure:
 	var discovered: bool
 	var locked: bool
 	var difficulty: int
+	var trapped: bool
+	var cursed: bool
+	var trap_type: String
+	var guardian: String
+	var unlock_requirement: String
+	var puzzle_required: bool
+	var security_layers: int
 	func _init(p_id: String, p_name: String, p_pos: Vector3, p_value: float, p_diff: int = 1) -> void:
 		id = p_id
 		name = p_name
@@ -18,12 +25,22 @@ class Treasure:
 		discovered = false
 		locked = true
 		difficulty = p_diff
+		trapped = difficulty > 1
+		cursed = difficulty > 3
+		trap_type = "poison" if trapped else ""
+		guardian = ""
+		unlock_requirement = ""
+		puzzle_required = difficulty > 2
+		security_layers = 1 + difficulty
 
 var treasures: Array[Treasure] = []
 
 signal treasure_discovered(treasure: Treasure)
 signal treasure_unlocked(treasure_id: String)
 signal treasure_looted(treasure_id: String, value: float)
+signal trap_triggered(treasure_id: String, trap_type: String)
+signal puzzle_triggered(treasure_id: String)
+signal curse_applied(treasure_id: String)
 
 func _ready() -> void:
 	set_state("discovered_treasures", [])
@@ -52,9 +69,15 @@ func discover_treasure(treasure_id: String) -> bool:
 		return true
 	return false
 
-func unlock_treasure(treasure_id: String) -> bool:
+func unlock_treasure(treasure_id: String, lockpicking_skill: float = 0.0) -> bool:
 	var treasure = _get_treasure(treasure_id)
 	if treasure and treasure.discovered and treasure.locked:
+		if lockpicking_skill < treasure.difficulty * 10.0:
+			return false
+		if treasure.puzzle_required:
+			puzzle_triggered.emit(treasure_id)
+			emit_event("puzzle_triggered", treasure_id)
+			return false
 		treasure.locked = false
 		treasure_unlocked.emit(treasure_id)
 		emit_event("treasure_unlocked", treasure_id)
@@ -66,6 +89,14 @@ func loot_treasure(treasure_id: String) -> float:
 	if treasure and treasure.discovered and not treasure.locked:
 		var looted = get_state("looted_treasures", [])
 		if treasure_id not in looted:
+			var damage = 0.0
+			if treasure.trapped and randf() < 0.5:
+				trap_triggered.emit(treasure_id, treasure.trap_type)
+				damage = (treasure.difficulty * 10.0)
+				emit_event("trap_triggered", treasure_id)
+			if treasure.cursed:
+				curse_applied.emit(treasure_id)
+				emit_event("curse_applied", treasure_id)
 			looted.append(treasure_id)
 			set_state("looted_treasures", looted)
 			var total = get_state("total_value_found", 0.0)
@@ -73,7 +104,7 @@ func loot_treasure(treasure_id: String) -> float:
 			set_state("total_value_found", total)
 			treasure_looted.emit(treasure_id, treasure.value)
 			emit_event("treasure_looted", treasure_id)
-			return treasure.value
+			return treasure.value - damage
 	return 0.0
 
 func get_treasure(treasure_id: String) -> Treasure:
@@ -101,6 +132,46 @@ func get_treasure_text() -> String:
 		var status = "🔓" if not treasure.locked else "🔒"
 		text += "%s %s (%.0f)\n" % [status, treasure.name, treasure.value]
 	return text
+
+func solve_puzzle(treasure_id: String) -> bool:
+	var treasure = _get_treasure(treasure_id)
+	if treasure and treasure.puzzle_required:
+		treasure.puzzle_required = false
+		emit_event("puzzle_solved", treasure_id)
+		return true
+	return false
+
+func disarm_trap(treasure_id: String, trap_skill: float = 0.0) -> bool:
+	var treasure = _get_treasure(treasure_id)
+	if treasure and treasure.trapped:
+		if trap_skill < treasure.difficulty * 5.0:
+			return false
+		treasure.trapped = false
+		emit_event("trap_disarmed", treasure_id)
+		return true
+	return false
+
+func remove_curse(treasure_id: String) -> bool:
+	var treasure = _get_treasure(treasure_id)
+	if treasure and treasure.cursed:
+		treasure.cursed = false
+		treasure.value *= 1.2
+		emit_event("curse_removed", treasure_id)
+		return true
+	return false
+
+func get_treasure_security_level(treasure_id: String) -> int:
+	var treasure = _get_treasure(treasure_id)
+	if treasure:
+		var level = treasure.security_layers
+		if treasure.trapped:
+			level += 1
+		if treasure.cursed:
+			level += 2
+		if treasure.puzzle_required:
+			level += 1
+		return level
+	return 0
 
 func _get_treasure(treasure_id: String) -> Treasure:
 	for treasure in treasures:

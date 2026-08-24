@@ -9,8 +9,17 @@ class Relationship:
 	var interactions: int = 0
 	var is_friend: bool = false
 	var is_lover: bool = false
+	var relationship_tier: int = 0
+	var memory: Array = []
+	var gifts_given: int = 0
+	var romance_level: int = 0
+	var rival: String = ""
+	var opinion_modifiers: Dictionary = {}
+	var last_interaction_time: float = 0.0
 	func _init(p_name: String) -> void:
 		npc_name = p_name
+		relationship_tier = 0
+		romance_level = 0
 
 signal affection_changed(npc: String, new_value: float)
 signal friendship_formed(npc: String)
@@ -23,16 +32,48 @@ func _ready() -> void:
 	relationships["Monk Scout"] = Relationship.new("Monk Scout")
 	set_state("relationships", relationships)
 
-func add_affection(npc_name: String, amount: float) -> void:
+func add_affection(npc_name: String, amount: float, event: String = "") -> void:
 	var relationships = get_state("relationships", {})
 	if npc_name in relationships:
-		relationships[npc_name].affection = clamp(relationships[npc_name].affection + amount, -100.0, 100.0)
-		relationships[npc_name].interactions += 1
-		affection_changed.emit(npc_name, relationships[npc_name].affection)
-		if relationships[npc_name].affection >= 50 and not relationships[npc_name].is_friend:
+		var rel = relationships[npc_name]
+		var modifier = _calculate_affection_modifier(rel)
+		var adjusted_amount = amount * modifier
+		rel.affection = clamp(rel.affection + adjusted_amount, -100.0, 100.0)
+		rel.interactions += 1
+		rel.last_interaction_time = Time.get_ticks_msec()
+		if event != "":
+			rel.memory.append({"event": event, "time": Time.get_ticks_msec()})
+		affection_changed.emit(npc_name, rel.affection)
+		_update_relationship_tier(npc_name)
+		if rel.affection >= 50 and not rel.is_friend:
 			_form_friendship(npc_name)
-		elif relationships[npc_name].affection >= 80 and not relationships[npc_name].is_lover:
+		elif rel.affection >= 80 and rel.romance_level >= 2:
 			_start_romance(npc_name)
+
+func _calculate_affection_modifier(rel: Relationship) -> float:
+	var modifier = 1.0
+	for opinion_key in rel.opinion_modifiers:
+		modifier += rel.opinion_modifiers[opinion_key] * 0.1
+	if rel.gifts_given > 5:
+		modifier *= 1.1
+	return modifier
+
+func _update_relationship_tier(npc_name: String) -> void:
+	var relationships = get_state("relationships", {})
+	if npc_name in relationships:
+		var rel = relationships[npc_name]
+		var new_tier = 0
+		if rel.affection >= 20:
+			new_tier = 1
+		if rel.affection >= 50:
+			new_tier = 2
+		if rel.affection >= 75:
+			new_tier = 3
+		if rel.affection >= 90:
+			new_tier = 4
+		if new_tier > rel.relationship_tier:
+			rel.relationship_tier = new_tier
+			emit_event("relationship_tier_increased", {"npc": npc_name, "tier": new_tier})
 
 func add_reputation(npc_name: String, amount: float) -> void:
 	var relationships = get_state("relationships", {})
@@ -69,11 +110,50 @@ func is_lover(npc_name: String) -> bool:
 	var relationships = get_state("relationships", {})
 	return relationships[npc_name].is_lover if npc_name in relationships else false
 
+func give_gift(npc_name: String, gift_quality: float = 1.0) -> bool:
+	var relationships = get_state("relationships", {})
+	if npc_name in relationships:
+		var rel = relationships[npc_name]
+		var affection_gain = (10.0 + (rel.relationship_tier * 5.0)) * gift_quality
+		add_affection(npc_name, affection_gain, "gift_received")
+		rel.gifts_given += 1
+		emit_event("gift_given", {"npc": npc_name, "quality": gift_quality})
+		return true
+	return false
+
+func advance_romance(npc_name: String) -> bool:
+	var relationships = get_state("relationships", {})
+	if npc_name in relationships:
+		var rel = relationships[npc_name]
+		if rel.affection >= (50 + rel.romance_level * 15):
+			rel.romance_level += 1
+			emit_event("romance_advanced", {"npc": npc_name, "level": rel.romance_level})
+			return true
+	return false
+
+func add_opinion_modifier(npc_name: String, opinion_key: String, value: float) -> void:
+	var relationships = get_state("relationships", {})
+	if npc_name in relationships:
+		var rel = relationships[npc_name]
+		rel.opinion_modifiers[opinion_key] = value
+		emit_event("opinion_modified", {"npc": npc_name, "key": opinion_key, "value": value})
+
+func get_memory_events(npc_name: String) -> Array:
+	var relationships = get_state("relationships", {})
+	if npc_name in relationships:
+		return relationships[npc_name].memory
+	return []
+
+func get_romance_level(npc_name: String) -> int:
+	var relationships = get_state("relationships", {})
+	return relationships[npc_name].romance_level if npc_name in relationships else 0
+
 func get_relationships_text() -> String:
 	var relationships = get_state("relationships", {})
 	var text = "Relationships:\n"
 	for npc_name in relationships:
 		var rel = relationships[npc_name]
 		var status = "💕" if rel.is_lover else ("💚" if rel.is_friend else "  ")
-		text += "%s %s (Aff: %.0f)\n" % [status, npc_name, rel.affection]
+		var tier = "T%d" % rel.relationship_tier
+		text += "%s %s [%s] (Aff: %.0f)\n" % [status, npc_name, tier, rel.affection]
 	return text
