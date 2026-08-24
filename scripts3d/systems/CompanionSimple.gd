@@ -1,0 +1,91 @@
+extends Node
+
+class_name CompanionSimple
+
+class Companion:
+	var id: String
+	var name: String
+	var type: String
+	var level: int = 1
+	var experience: float = 0.0
+	var health: float = 50.0
+	var max_health: float = 50.0
+	var attack: float = 5.0
+	var defense: float = 3.0
+	var loyalty: float = 50.0
+	var is_active: bool = false
+
+	func _init(p_id: String, p_name: String, p_type: String) -> void:
+		id = p_id
+		name = p_name
+		type = p_type
+
+var companions: Array[Companion] = []
+var active_companion: Companion = null
+
+signal companion_acquired(companion: Companion)
+signal companion_leveled_up(companion: Companion)
+signal companion_attacked(damage: float)
+signal companion_defeated
+
+func acquire_companion(name: String, comp_type: String) -> Companion:
+	var companion = Companion.new("comp_%d" % companions.size(), name, comp_type)
+	companions.append(companion)
+	companion_acquired.emit(companion)
+	print("🐾 Companion acquired: %s" % name)
+	return companion
+
+func set_active_companion(companion_id: String) -> bool:
+	for companion in companions:
+		if companion.id == companion_id:
+			active_companion = companion
+			companion.is_active = true
+			return true
+	return false
+
+func add_experience(amount: float) -> void:
+	if active_companion:
+		active_companion.experience += amount
+		if active_companion.experience >= active_companion.level * 100:
+			_level_up_companion()
+
+func _level_up_companion() -> void:
+	if active_companion:
+		active_companion.level += 1
+		active_companion.max_health += 10
+		active_companion.health = active_companion.max_health
+		active_companion.attack += 2
+		active_companion.defense += 1
+		active_companion.experience = 0
+		companion_leveled_up.emit(active_companion)
+		print("⭐ %s leveled up to %d!" % [active_companion.name, active_companion.level])
+
+func heal_companion(amount: float) -> void:
+	if active_companion:
+		active_companion.health = minf(active_companion.health + amount, active_companion.max_health)
+
+func damage_companion(amount: float) -> void:
+	if active_companion:
+		active_companion.health = maxf(active_companion.health - amount, 0.0)
+		if active_companion.health <= 0:
+			companion_defeated.emit()
+
+func increase_loyalty(amount: float) -> void:
+	if active_companion:
+		active_companion.loyalty = minf(active_companion.loyalty + amount, 100.0)
+
+func get_companion(companion_id: String) -> Companion:
+	for companion in companions:
+		if companion.id == companion_id:
+			return companion
+	return null
+
+func get_companions() -> Array[Companion]:
+	return companions
+
+func get_companion_text() -> String:
+	var text = "Companions [%d]:\n" % companions.size()
+	for companion in companions:
+		var status = "★" if companion.is_active else " "
+		text += "%s %s (Lvl %d, HP: %.0f)\n" % [status, companion.name, companion.level, companion.health]
+	return text
