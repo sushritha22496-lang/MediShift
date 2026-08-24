@@ -42,12 +42,38 @@ func _ready() -> void:
 	set_state("priority_queue", [])
 	set_state("grouped_notifications", {})
 	set_state("notification_actions", {})
+	set_state("notification_display_history", [])
+	set_state("action_history", [])
+	set_state("read_history", [])
+	set_state("notification_statistics", {})
+
+func _record_notification_display(notification_id: String, notification_type: String, category: String, priority: int) -> void:
+	var history = get_state("notification_display_history", [])
+	history.append({"id": notification_id, "type": notification_type, "category": category, "priority": priority, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("notification_display_history", history)
+
+func _record_notification_action(notification_id: String, action: String) -> void:
+	var history = get_state("action_history", [])
+	history.append({"id": notification_id, "action": action, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("action_history", history)
+
+func _record_notification_read(notification_id: String) -> void:
+	var history = get_state("read_history", [])
+	history.append({"id": notification_id, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("read_history", history)
 
 func show_notification(title: String, message: String, notification_type: String = "info", duration: float = 3.0, priority: int = 1, category: String = "general") -> Notification:
 	var id = "notif_%d" % randi()
 	var notif = Notification.new(id, title, message, notification_type, duration)
 	notif.priority = priority
 	notif.category = category
+	_record_notification_display(id, notification_type, category, priority)
 	_queue_notification(notif)
 	active_notifications.append(notif)
 	if active_notifications.size() > 20:
@@ -80,6 +106,7 @@ func mark_notification_read(notification_id: String) -> void:
 				notif.is_read = true
 				var unread = get_state("unread_count", 0)
 				set_state("unread_count", max(0, unread - 1))
+				_record_notification_read(notification_id)
 				notification_read.emit(notification_id)
 				emit_event("notification_read", notification_id)
 			break
@@ -87,6 +114,7 @@ func mark_notification_read(notification_id: String) -> void:
 func trigger_notification_action(notification_id: String, action: String) -> void:
 	for notif in active_notifications:
 		if notif.id == notification_id:
+			_record_notification_action(notification_id, action)
 			notification_actioned.emit(notification_id, action)
 			emit_event("notification_action", {"id": notification_id, "action": action})
 			break
@@ -159,3 +187,23 @@ func get_notification_text() -> String:
 		var marker = "✓" if notif.is_read else "●"
 		text += "%s [%s] %s\n" % [marker, notif.category.left(3).to_upper(), notif.title]
 	return text
+
+func update_notification_statistics() -> void:
+	var stats = get_state("notification_statistics", {})
+	var display_history = get_state("notification_display_history", [])
+	var action_history = get_state("action_history", [])
+	var read_history = get_state("read_history", [])
+	stats["total_notifications_displayed"] = display_history.size()
+	stats["total_actions_triggered"] = action_history.size()
+	stats["total_notifications_read"] = read_history.size()
+	stats["current_unread_count"] = get_unread_count()
+	stats["total_active_notifications"] = active_notifications.size()
+	var category_counts = {}
+	for notif in active_notifications:
+		category_counts[notif.category] = category_counts.get(notif.category, 0) + 1
+	stats["category_breakdown"] = category_counts
+	set_state("notification_statistics", stats)
+
+func get_notification_statistics() -> Dictionary:
+	update_notification_statistics()
+	return get_state("notification_statistics", {})
