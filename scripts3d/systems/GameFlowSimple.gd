@@ -9,6 +9,8 @@ signal game_started
 signal game_ended(victory: bool)
 signal checkpoint_reached(checkpoint_id: String)
 signal difficulty_changed(new_difficulty: int)
+signal run_completed(run_id: String, time: float)
+signal speedrun_achieved(run_id: String, time: float)
 
 var current_state: GameState = GameState.MENU
 var pause_reason: String = ""
@@ -29,6 +31,9 @@ func _ready() -> void:
 	set_state("tutorial_progress", 0.0)
 	set_state("victory_conditions_met", {})
 	set_state("milestones_reached", [])
+	set_state("run_history", [])
+	set_state("best_times", {})
+	set_state("victory_count", 0)
 
 func _process(delta: float) -> void:
 	if current_state == GameState.PLAYING:
@@ -141,3 +146,35 @@ func get_state_text() -> String:
 	var deaths = get_death_count()
 	var difficulty = get_difficulty()
 	return "State: %s | Time: %.1fs | Deaths: %d | Difficulty: %d" % [GameState.keys()[current_state], get_game_time(), deaths, difficulty]
+
+func record_run_completion(run_id: String) -> void:
+	var run_time = get_game_time()
+	var history = get_state("run_history", [])
+	history.append({"run_id": run_id, "time": run_time, "deaths": get_death_count(), "difficulty": get_difficulty(), "timestamp": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("run_history", history)
+	var best_times = get_state("best_times", {})
+	if run_id not in best_times or run_time < best_times[run_id]:
+		best_times[run_id] = run_time
+		set_state("best_times", best_times)
+		if run_time < 300.0:
+			speedrun_achieved.emit(run_id, run_time)
+			emit_event("speedrun", {"run": run_id, "time": run_time})
+	run_completed.emit(run_id, run_time)
+	emit_event("run_completed", run_id)
+
+func get_best_time(run_id: String) -> float:
+	var best_times = get_state("best_times", {})
+	return best_times.get(run_id, INF)
+
+func get_run_history() -> Array:
+	return get_state("run_history", [])
+
+func increment_victory_count() -> void:
+	var count = get_state("victory_count", 0)
+	set_state("victory_count", count + 1)
+	emit_event("victory_recorded", count + 1)
+
+func get_victory_count() -> int:
+	return get_state("victory_count", 0)

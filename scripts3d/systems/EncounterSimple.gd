@@ -23,8 +23,16 @@ var active_encounter: Encounter = null
 
 signal encounter_started(encounter: Encounter)
 signal encounter_completed(encounter: Encounter)
+signal encounter_chain_triggered(chain_id: String)
+signal rare_variant_encountered(variant_id: String)
 
 func _ready() -> void:
+	if not is_node_ready():
+		await tree_entered
+	set_state("encounter_variants", {})
+	set_state("encounter_rewards", {})
+	set_state("encounter_chains", {})
+	set_state("rare_encounters", [])
 	_initialize_encounters()
 
 func _initialize_encounters() -> void:
@@ -89,3 +97,37 @@ func get_total_encounters() -> int:
 
 func get_completed_encounters() -> int:
 	return encounters.filter(func(e): return e.encountered).size()
+
+func add_encounter_variant(encounter_id: String, variant_id: String, properties: Dictionary) -> void:
+	if not has_state("encounter_variants"):
+		return
+	var variants = get_state("encounter_variants", {})
+	if encounter_id not in variants:
+		variants[encounter_id] = []
+	variants[encounter_id].append({"id": variant_id, "properties": properties})
+	set_state("encounter_variants", variants)
+
+func trigger_encounter_chain(chain_id: String) -> void:
+	var chains = get_state("encounter_chains", {})
+	chains[chain_id] = true
+	set_state("encounter_chains", chains)
+	encounter_chain_triggered.emit(chain_id)
+
+func get_rare_variant() -> String:
+	if randf() < 0.1:
+		var variant_id = "rare_variant_%d" % randi()
+		var rare = get_state("rare_encounters", [])
+		rare.append(variant_id)
+		set_state("rare_encounters", rare)
+		rare_variant_encountered.emit(variant_id)
+		return variant_id
+	return ""
+
+func track_encounter_rewards(encounter_id: String, rewards: Dictionary) -> void:
+	var reward_tracking = get_state("encounter_rewards", {})
+	reward_tracking[encounter_id] = rewards
+	set_state("encounter_rewards", reward_tracking)
+
+func get_encounter_rewards(encounter_id: String) -> Dictionary:
+	var reward_tracking = get_state("encounter_rewards", {})
+	return reward_tracking.get(encounter_id, {})
