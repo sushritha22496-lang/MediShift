@@ -18,6 +18,13 @@ signal npc_moved(npc_id: String, location: String)
 
 func _ready() -> void:
 	set_state("current_activities", {})
+	set_state("npc_moods", {})
+	set_state("schedule_deviations", [])
+	set_state("location_preferences", {})
+	set_state("activity_patterns", {})
+	set_state("routine_efficiency", {})
+	set_state("schedule_modifications", [])
+	set_state("routine_interruptions", [])
 	_initialize_schedules()
 
 func _initialize_schedules() -> void:
@@ -93,3 +100,75 @@ func _get_entry_for_hour(schedule: Array[ScheduleEntry], hour: int) -> ScheduleE
 		else:
 			break
 	return best_entry
+
+func set_npc_mood(npc_id: String, mood: String) -> void:
+	var moods = get_state("npc_moods", {})
+	moods[npc_id] = mood
+	set_state("npc_moods", moods)
+	emit_event("mood_changed", npc_id)
+
+func track_schedule_deviation(npc_id: String, deviation_reason: String) -> void:
+	var deviations = get_state("schedule_deviations", [])
+	deviations.append({"npc": npc_id, "reason": deviation_reason, "time": Time.get_ticks_msec()})
+	if deviations.size() > 50:
+		deviations.pop_front()
+	set_state("schedule_deviations", deviations)
+	emit_event("deviation_tracked", npc_id)
+
+func record_location_preference(npc_id: String, location: String) -> void:
+	var prefs = get_state("location_preferences", {})
+	if npc_id not in prefs:
+		prefs[npc_id] = {}
+	prefs[npc_id][location] = prefs[npc_id].get(location, 0) + 1
+	set_state("location_preferences", prefs)
+	emit_event("preference_recorded", npc_id)
+
+func record_activity_pattern(npc_id: String, activity: String) -> void:
+	var patterns = get_state("activity_patterns", {})
+	if npc_id not in patterns:
+		patterns[npc_id] = []
+	patterns[npc_id].append(activity)
+	if patterns[npc_id].size() > 100:
+		patterns[npc_id].pop_front()
+	set_state("activity_patterns", patterns)
+
+func calculate_routine_efficiency(npc_id: String) -> float:
+	var deviations = get_state("schedule_deviations", [])
+	var dev_count = 0
+	for dev in deviations:
+		if dev["npc"] == npc_id:
+			dev_count += 1
+	return maxf(0.0, 1.0 - (float(dev_count) * 0.05))
+
+func record_routine_interruption(npc_id: String, interruption: String) -> void:
+	var interrupts = get_state("routine_interruptions", [])
+	interrupts.append({"npc": npc_id, "reason": interruption, "time": Time.get_ticks_msec()})
+	if interrupts.size() > 30:
+		interrupts.pop_front()
+	set_state("routine_interruptions", interrupts)
+	emit_event("routine_interrupted", npc_id)
+
+func modify_npc_schedule(npc_id: String, new_schedule: Array[ScheduleEntry]) -> void:
+	npc_schedules[npc_id] = new_schedule
+	var mods = get_state("schedule_modifications", [])
+	mods.append({"npc": npc_id, "time": Time.get_ticks_msec()})
+	if mods.size() > 50:
+		mods.pop_front()
+	set_state("schedule_modifications", mods)
+	emit_event("schedule_modified", npc_id)
+
+func get_npc_mood(npc_id: String) -> String:
+	var moods = get_state("npc_moods", {})
+	return moods.get(npc_id, "neutral")
+
+func get_most_preferred_location(npc_id: String) -> String:
+	var prefs = get_state("location_preferences", {})
+	if npc_id not in prefs or prefs[npc_id].is_empty():
+		return ""
+	var max_loc = ""
+	var max_count = 0
+	for loc in prefs[npc_id]:
+		if prefs[npc_id][loc] > max_count:
+			max_count = prefs[npc_id][loc]
+			max_loc = loc
+	return max_loc

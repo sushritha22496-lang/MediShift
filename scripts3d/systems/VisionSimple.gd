@@ -26,6 +26,14 @@ signal vision_completed(vision_id: String)
 func _ready() -> void:
 	set_state("active_visions", [])
 	set_state("completed_visions", [])
+	set_state("vision_interpretations", {})
+	set_state("vision_clarity_levels", {})
+	set_state("vision_side_effects", {})
+	set_state("vision_type_affinity", {})
+	set_state("prophecy_fulfillment", {})
+	set_state("vision_recall_events", [])
+	set_state("vision_failure_consequences", [])
+	set_state("vision_streak", 0)
 	_initialize_visions()
 
 func _initialize_visions() -> void:
@@ -102,3 +110,82 @@ func _get_vision(vision_id: String) -> Vision:
 		if vision.id == vision_id:
 			return vision
 	return null
+
+func set_vision_clarity(vision_id: String, clarity: float) -> void:
+	var levels = get_state("vision_clarity_levels", {})
+	levels[vision_id] = clampf(clarity, 0.0, 1.0)
+	set_state("vision_clarity_levels", levels)
+	emit_event("clarity_set", vision_id)
+
+func add_vision_interpretation(vision_id: String, interpretation: String) -> void:
+	var interpretations = get_state("vision_interpretations", {})
+	if vision_id not in interpretations:
+		interpretations[vision_id] = []
+	interpretations[vision_id].append(interpretation)
+	set_state("vision_interpretations", interpretations)
+	emit_event("interpretation_added", vision_id)
+
+func apply_vision_side_effect(vision_id: String, effect: String) -> void:
+	var effects = get_state("vision_side_effects", {})
+	if vision_id not in effects:
+		effects[vision_id] = []
+	effects[vision_id].append(effect)
+	set_state("vision_side_effects", effects)
+	emit_event("side_effect_applied", vision_id)
+
+func track_vision_type_affinity(vision_type: String) -> void:
+	var affinity = get_state("vision_type_affinity", {})
+	affinity[vision_type] = affinity.get(vision_type, 0) + 1
+	set_state("vision_type_affinity", affinity)
+	var streak = get_state("vision_streak", 0)
+	set_state("vision_streak", streak + 1)
+	emit_event("affinity_increased", vision_type)
+
+func record_prophecy_fulfillment(vision_id: String, fulfilled: bool) -> void:
+	var fulfillment = get_state("prophecy_fulfillment", {})
+	fulfillment[vision_id] = {"fulfilled": fulfilled, "time": Time.get_ticks_msec()}
+	set_state("prophecy_fulfillment", fulfillment)
+	emit_event("prophecy_checked", vision_id)
+
+func record_vision_recall(recall_data: Dictionary) -> void:
+	var recalls = get_state("vision_recall_events", [])
+	recalls.append({"data": recall_data, "timestamp": Time.get_ticks_msec()})
+	if recalls.size() > 50:
+		recalls.pop_front()
+	set_state("vision_recall_events", recalls)
+	emit_event("vision_recalled", recall_data)
+
+func record_failure_consequence(consequence: String) -> void:
+	var consequences = get_state("vision_failure_consequences", [])
+	consequences.append(consequence)
+	if consequences.size() > 20:
+		consequences.pop_front()
+	set_state("vision_failure_consequences", consequences)
+	set_state("vision_streak", 0)
+	emit_event("failure_recorded", consequence)
+
+func get_vision_clarity(vision_id: String) -> float:
+	var levels = get_state("vision_clarity_levels", {})
+	return levels.get(vision_id, 0.5)
+
+func get_dominant_vision_type() -> String:
+	var affinity = get_state("vision_type_affinity", {})
+	if affinity.is_empty():
+		return ""
+	var max_type = ""
+	var max_count = 0
+	for vtype in affinity:
+		if affinity[vtype] > max_count:
+			max_count = affinity[vtype]
+			max_type = vtype
+	return max_type
+
+func get_fulfillment_rate() -> float:
+	var fulfillment = get_state("prophecy_fulfillment", {})
+	if fulfillment.is_empty():
+		return 0.0
+	var fulfilled = 0
+	for v_id in fulfillment:
+		if fulfillment[v_id]["fulfilled"]:
+			fulfilled += 1
+	return float(fulfilled) / float(fulfillment.size())

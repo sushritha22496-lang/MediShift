@@ -44,6 +44,12 @@ func _ready() -> void:
 	set_state("member_affections", {})
 	set_state("total_battles", 0)
 	set_state("victories", 0)
+	set_state("member_fatigue", {})
+	set_state("combat_history", [])
+	set_state("skill_proficiency", {})
+	set_state("role_performance", {})
+	set_state("party_compatibility", {})
+	set_state("member_equipment_history", {})
 
 func add_member(member_id: String, name: String, level: int = 1, role: String = "warrior") -> bool:
 	for m in party:
@@ -215,3 +221,73 @@ func revive_member(member_id: String) -> void:
 		member.status = "active"
 		member.hp = member.max_hp
 		emit_event("member_revived", member_id)
+
+func apply_fatigue(member_id: String, fatigue_amount: float) -> void:
+	var fatigue = get_state("member_fatigue", {})
+	fatigue[member_id] = minf(fatigue.get(member_id, 0.0) + fatigue_amount, 1.0)
+	set_state("member_fatigue", fatigue)
+	emit_event("fatigue_applied", member_id)
+
+func reduce_fatigue(member_id: String, reduction: float) -> void:
+	var fatigue = get_state("member_fatigue", {})
+	fatigue[member_id] = maxf(fatigue.get(member_id, 0.0) - reduction, 0.0)
+	set_state("member_fatigue", fatigue)
+
+func record_combat_action(member_id: String, action_type: String, success: bool) -> void:
+	var history = get_state("combat_history", [])
+	history.append({"member": member_id, "action": action_type, "success": success, "time": Time.get_ticks_msec()})
+	if history.size() > 100:
+		history.pop_front()
+	set_state("combat_history", history)
+	emit_event("combat_action_recorded", member_id)
+
+func track_skill_proficiency(member_id: String, skill: String, usage_count: int = 1) -> void:
+	var profs = get_state("skill_proficiency", {})
+	if member_id not in profs:
+		profs[member_id] = {}
+	profs[member_id][skill] = profs[member_id].get(skill, 0) + usage_count
+	set_state("skill_proficiency", profs)
+
+func record_role_performance(member_id: String, role: String, damage_dealt: float, damage_taken: float) -> void:
+	var perf = get_state("role_performance", {})
+	if member_id not in perf:
+		perf[member_id] = []
+	perf[member_id].append({"role": role, "damage_dealt": damage_dealt, "damage_taken": damage_taken, "time": Time.get_ticks_msec()})
+	if perf[member_id].size() > 50:
+		perf[member_id].pop_front()
+	set_state("role_performance", perf)
+
+func calculate_compatibility(member1_id: String, member2_id: String) -> float:
+	var compat = get_state("party_compatibility", {})
+	var key = "%s_%s" % [minf(member1_id, member2_id), maxf(member1_id, member2_id)]
+	return compat.get(key, 0.5)
+
+func update_compatibility(member1_id: String, member2_id: String, compatibility: float) -> void:
+	var compat = get_state("party_compatibility", {})
+	var key = "%s_%s" % [minf(member1_id, member2_id), maxf(member1_id, member2_id)]
+	compat[key] = clampf(compatibility, 0.0, 1.0)
+	set_state("party_compatibility", compat)
+	emit_event("compatibility_updated", {"m1": member1_id, "m2": member2_id})
+
+func record_equipment_change(member_id: String, equipment_type: String, new_item: String) -> void:
+	var equip_hist = get_state("member_equipment_history", {})
+	if member_id not in equip_hist:
+		equip_hist[member_id] = []
+	equip_hist[member_id].append({"type": equipment_type, "item": new_item, "time": Time.get_ticks_msec()})
+	if equip_hist[member_id].size() > 30:
+		equip_hist[member_id].pop_front()
+	set_state("member_equipment_history", equip_hist)
+	emit_event("equipment_changed", member_id)
+
+func get_average_fatigue() -> float:
+	var fatigue = get_state("member_fatigue", {})
+	if fatigue.is_empty():
+		return 0.0
+	var total = 0.0
+	for f in fatigue.values():
+		total += f
+	return total / fatigue.size()
+
+func get_member_fatigue(member_id: String) -> float:
+	var fatigue = get_state("member_fatigue", {})
+	return fatigue.get(member_id, 0.0)
