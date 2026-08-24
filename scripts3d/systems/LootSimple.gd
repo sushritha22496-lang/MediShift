@@ -1,4 +1,4 @@
-extends Node
+extends BaseSystemSimple
 
 class_name LootSimple
 
@@ -7,7 +7,6 @@ class LootDrop:
 	var quantity: int
 	var rarity: String
 	var value: float
-
 	func _init(p_name: String, p_qty: int, p_rarity: String, p_value: float) -> void:
 		item_name = p_name
 		quantity = p_qty
@@ -41,28 +40,16 @@ signal loot_generated(drop: LootDrop)
 
 func generate_loot(enemy_level: int = 1) -> LootDrop:
 	var rarity_roll = randf()
-	var rarity = "common"
-
-	if rarity_roll > 0.8:
-		rarity = "epic"
-	elif rarity_roll > 0.6:
-		rarity = "rare"
-	elif rarity_roll > 0.3:
-		rarity = "uncommon"
-
+	var rarity = "epic" if rarity_roll > 0.8 else ("rare" if rarity_roll > 0.6 else ("uncommon" if rarity_roll > 0.3 else "common"))
 	var loot_list = loot_table.get(rarity, [])
-	if loot_list.is_empty():
-		return LootDrop.new("Gold Coin", 1, "common", 10)
-
-	var drop = loot_list[randi() % loot_list.size()]
+	var drop = loot_list[randi() % loot_list.size()] if not loot_list.is_empty() else LootDrop.new("Gold Coin", 1, "common", 10)
 	loot_generated.emit(drop)
+	emit_event("loot_generated", rarity)
 	return drop
 
 func get_loot_by_rarity(rarity: String) -> LootDrop:
 	var loot_list = loot_table.get(rarity, [])
-	if loot_list.is_empty():
-		return LootDrop.new("Gold Coin", 1, "common", 10)
-	return loot_list[randi() % loot_list.size()]
+	return loot_list[randi() % loot_list.size()] if not loot_list.is_empty() else LootDrop.new("Gold Coin", 1, "common", 10)
 
 func get_total_value(drops: Array[LootDrop]) -> float:
 	var total = 0.0
