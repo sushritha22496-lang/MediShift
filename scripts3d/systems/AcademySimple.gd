@@ -35,6 +35,11 @@ signal lesson_completed(lesson_id: String, skill: String)
 func _ready() -> void:
 	set_state("completed_lessons", [])
 	set_state("current_lesson", "")
+	set_state("lesson_history", [])
+	set_state("completion_history", [])
+	set_state("skill_progression_history", [])
+	set_state("practice_history", [])
+	set_state("academy_statistics", {})
 	_initialize_lessons()
 
 func _initialize_lessons() -> void:
@@ -63,6 +68,7 @@ func start_lesson(lesson_id: String) -> bool:
 		if not _check_prerequisites(lesson_id):
 			return false
 		set_state("current_lesson", lesson_id)
+		_record_lesson_start(lesson_id)
 		lesson_started.emit(lesson)
 		emit_event("lesson_started", lesson_id)
 		return true
@@ -78,6 +84,34 @@ func _check_prerequisites(lesson_id: String) -> bool:
 			return false
 	return true
 
+func _record_lesson_start(lesson_id: String) -> void:
+	var history = get_state("lesson_history", [])
+	history.append({"lesson": lesson_id, "action": "started", "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("lesson_history", history)
+
+func _record_lesson_completion(lesson_id: String, performance: float) -> void:
+	var history = get_state("completion_history", [])
+	history.append({"lesson": lesson_id, "performance": performance, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("completion_history", history)
+
+func _record_skill_progression(skill_id: String, new_value: float) -> void:
+	var history = get_state("skill_progression_history", [])
+	history.append({"skill": skill_id, "value": new_value, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("skill_progression_history", history)
+
+func _record_practice_session(skill_id: String, gain: float) -> void:
+	var history = get_state("practice_history", [])
+	history.append({"skill": skill_id, "gain": gain, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("practice_history", history)
+
 func complete_lesson(lesson_id: String, performance: float = 1.0) -> String:
 	var lesson = _get_lesson(lesson_id)
 	if lesson:
@@ -89,6 +123,8 @@ func complete_lesson(lesson_id: String, performance: float = 1.0) -> String:
 		set_state("lesson_proficiency", proficiency)
 		set_state("current_lesson", "")
 		lesson.instructor_affection += 10.0 * performance
+		_record_lesson_completion(lesson_id, performance)
+		_record_skill_progression(lesson.skill_reward, proficiency[lesson.skill_reward])
 		lesson_completed.emit(lesson_id, lesson.skill_reward)
 		emit_event("lesson_completed", {"lesson": lesson_id, "performance": performance})
 		return lesson.skill_reward
@@ -100,6 +136,7 @@ func practice_skill(skill_id: String) -> float:
 		var gain = randf_range(1.0, 3.0)
 		proficiency[skill_id] += gain
 		set_state("lesson_proficiency", proficiency)
+		_record_practice_session(skill_id, gain)
 		emit_event("skill_practiced", skill_id)
 		return proficiency[skill_id]
 	return 0.0
@@ -197,62 +234,21 @@ func get_average_performance() -> float:
 	var total = history.reduce(func(acc, entry): return acc + entry["performance"], 0.0)
 	return total / float(history.size())
 
-func record_lesson_attempt(lesson_id: String) -> void:
-	var attempts = get_state("lesson_attempt_count", {})
-	attempts[lesson_id] = attempts.get(lesson_id, 0) + 1
-	set_state("lesson_attempt_count", attempts)
+func update_academy_statistics() -> void:
+	var stats = get_state("academy_statistics", {})
+	var completed = get_state("completed_lessons", [])
+	stats["total_lessons_completed"] = completed.size()
+	stats["total_lesson_starts"] = get_state("lesson_history", []).size()
+	stats["total_practice_sessions"] = get_state("practice_history", []).size()
+	stats["average_performance"] = get_average_performance()
+	var proficiency = get_state("lesson_proficiency", {})
+	if not proficiency.is_empty():
+		var avg_prof = 0.0
+		for prof in proficiency.values():
+			avg_prof += prof
+		stats["average_proficiency"] = avg_prof / float(proficiency.size())
+	set_state("academy_statistics", stats)
 
-func update_instructor_reputation(instructor_name: String, change: float) -> void:
-	var reputation = get_state("instructor_reputation", {})
-	reputation[instructor_name] = reputation.get(instructor_name, 0.0) + change
-	set_state("instructor_reputation", reputation)
-	emit_event("instructor_reputation_changed", instructor_name)
-
-func record_performance_history(lesson_id: String, performance: float) -> void:
-	var history = get_state("student_performance_history", [])
-	history.append({"lesson": lesson_id, "performance": performance, "time": Time.get_ticks_msec()})
-	if history.size() > 50:
-		history.pop_front()
-	set_state("student_performance_history", history)
-
-func set_mastery_level(skill_id: String, level: int) -> void:
-	var mastery = get_state("mastery_levels", {})
-	mastery[skill_id] = level
-	set_state("mastery_levels", mastery)
-	emit_event("mastery_level_set", skill_id)
-
-func get_mastery_level(skill_id: String) -> int:
-	var mastery = get_state("mastery_levels", {})
-	return mastery.get(skill_id, 0)
-
-func apply_skill_combination_bonus(skill1: String, skill2: String, bonus: float) -> void:
-	var bonuses = get_state("skill_combination_bonuses", {})
-	var key = "%s_%s" % [minf(skill1, skill2), maxf(skill1, skill2)]
-	bonuses[key] = bonus
-	set_state("skill_combination_bonuses", bonuses)
-
-func get_combination_bonus(skill1: String, skill2: String) -> float:
-	var bonuses = get_state("skill_combination_bonuses", {})
-	var key = "%s_%s" % [minf(skill1, skill2), maxf(skill1, skill2)]
-	return bonuses.get(key, 0.0)
-
-func record_exam_score(exam_name: String, score: float) -> void:
-	var scores = get_state("exam_scores", {})
-	scores[exam_name] = score
-	set_state("exam_scores", scores)
-	emit_event("exam_completed", exam_name)
-
-func get_exam_score(exam_name: String) -> float:
-	var scores = get_state("exam_scores", {})
-	return scores.get(exam_name, 0.0)
-
-func get_instructor_reputation(instructor_name: String) -> float:
-	var reputation = get_state("instructor_reputation", {})
-	return reputation.get(instructor_name, 0.0)
-
-func get_average_performance() -> float:
-	var history = get_state("student_performance_history", [])
-	if history.is_empty():
-		return 0.0
-	var total = history.reduce(func(acc, entry): return acc + entry["performance"], 0.0)
-	return total / float(history.size())
+func get_academy_statistics() -> Dictionary:
+	update_academy_statistics()
+	return get_state("academy_statistics", {})
