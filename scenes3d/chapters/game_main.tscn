@@ -1,0 +1,184 @@
+[gd_scene load_steps=18 format=3 uid="uid://dfj5mxpwn0qo31"]
+
+[ext_resource type="Script" path="res://scripts3d/managers/ForestManager.gd" id="1"]
+[ext_resource type="PackedScene" path="res://scenes3d/characters/rama_character_3d.tscn" id="2"]
+[ext_resource type="PackedScene" path="res://scenes3d/npcs/hanuman_npc_3d.tscn" id="3"]
+
+[sub_resource type="ProceduralSkyMaterial" id="sky_mat"]
+sky_top_color = Color(0.35, 0.55, 0.8, 1)
+sky_horizon_color = Color(0.75, 0.65, 0.45, 1)
+ground_horizon_color = Color(0.45, 0.4, 0.3, 1)
+ground_bottom_color = Color(0.15, 0.1, 0.05, 1)
+sun_angle_max = 40.0
+sun_curve = 0.2
+
+[sub_resource type="Sky" id="sky"]
+sky_material = SubResource("sky_mat")
+
+[sub_resource type="Environment" id="env"]
+background_mode = 2
+sky = SubResource("sky")
+ambient_light_source = 2
+ambient_light_energy = 0.65
+tonemap_mode = 3
+glow_enabled = true
+glow_intensity = 0.35
+glow_bloom = 0.08
+ssao_enabled = true
+ssao_radius = 2.5
+ssao_intensity = 1.5
+fog_enabled = true
+fog_light_color = Color(0.7, 0.65, 0.5, 1)
+fog_density = 0.012
+fog_aerial_perspective = 0.05
+
+[sub_resource type="BoxMesh" id="ground_mesh"]
+size = Vector3(1000, 3, 1000)
+
+[sub_resource type="StandardMaterial3D" id="ground_mat"]
+albedo_color = Color(0.25, 0.3, 0.15, 1)
+roughness = 0.98
+ao_enabled = true
+
+[sub_resource type="BoxShape3D" id="ground_shape"]
+size = Vector3(1000, 3, 1000)
+
+[sub_resource type="CylinderMesh" id="tree_trunk"]
+radius = 1.5
+height = 25.0
+
+[sub_resource type="StandardMaterial3D" id="tree_trunk_mat"]
+albedo_color = Color(0.35, 0.25, 0.1, 1)
+roughness = 1.0
+
+[sub_resource type="SphereMesh" id="tree_foliage"]
+radius = 12.0
+height = 24.0
+
+[sub_resource type="StandardMaterial3D" id="foliage_mat"]
+albedo_color = Color(0.15, 0.4, 0.1, 1)
+roughness = 0.9
+
+[node name="GameMain" type="Node3D"]
+script = ExtResource("1")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("env")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.707107, 0.707107, 0, -0.707107, 0.707107, 0, 50, 0)
+shadow_enabled = true
+shadow_blur = 3.0
+
+[node name="Ground" type="MeshInstance3D" parent="."]
+mesh = SubResource("ground_mesh")
+material_override = SubResource("ground_mat")
+
+[node name="GroundCollider" type="StaticBody3D" parent="."]
+[node name="CollisionShape3D" parent="GroundCollider" index="0"]
+shape = SubResource("ground_shape")
+
+[node name="Trees" type="Node3D" parent="."]
+
+[node name="Tree1" type="Node3D" parent="Trees"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -100, 0, -150)
+
+[node name="Trunk" type="MeshInstance3D" parent="Trees/Tree1"]
+mesh = SubResource("tree_trunk")
+material_override = SubResource("tree_trunk_mat")
+
+[node name="Foliage" type="MeshInstance3D" parent="Trees/Tree1"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, 0)
+mesh = SubResource("tree_foliage")
+material_override = SubResource("foliage_mat")
+
+[node name="TreeCollider" type="StaticBody3D" parent="Trees/Tree1"]
+[node name="TreeShape" type="CollisionShape3D" parent="Trees/Tree1/TreeCollider"]
+shape = SubResource("ground_shape")
+
+[node name="Tree2" type="Node3D" parent="Trees"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 80, 0, -100)
+
+[node name="Trunk" type="MeshInstance3D" parent="Trees/Tree2"]
+mesh = SubResource("tree_trunk")
+material_override = SubResource("tree_trunk_mat")
+
+[node name="Foliage" type="MeshInstance3D" parent="Trees/Tree2"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, 0)
+mesh = SubResource("tree_foliage")
+material_override = SubResource("foliage_mat")
+
+[node name="TreeCollider" type="StaticBody3D" parent="Trees/Tree2"]
+[node name="TreeShape" type="CollisionShape3D" parent="Trees/Tree2/TreeCollider"]
+shape = SubResource("ground_shape")
+
+[node name="Tree3" type="Node3D" parent="Trees"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -80, 0, 100)
+
+[node name="Trunk" type="MeshInstance3D" parent="Trees/Tree3"]
+mesh = SubResource("tree_trunk")
+material_override = SubResource("tree_trunk_mat")
+
+[node name="Foliage" type="MeshInstance3D" parent="Trees/Tree3"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, 0)
+mesh = SubResource("tree_foliage")
+material_override = SubResource("foliage_mat")
+
+[node name="TreeCollider" type="StaticBody3D" parent="Trees/Tree3"]
+[node name="TreeShape" type="CollisionShape3D" parent="Trees/Tree3/TreeCollider"]
+shape = SubResource("ground_shape")
+
+[node name="Tree4" type="Node3D" parent="Trees"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 150, 0, 80)
+
+[node name="Trunk" type="MeshInstance3D" parent="Trees/Tree4"]
+mesh = SubResource("tree_trunk")
+material_override = SubResource("tree_trunk_mat")
+
+[node name="Foliage" type="MeshInstance3D" parent="Trees/Tree4"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, 0)
+mesh = SubResource("tree_foliage")
+material_override = SubResource("foliage_mat")
+
+[node name="TreeCollider" type="StaticBody3D" parent="Trees/Tree4"]
+[node name="TreeShape" type="CollisionShape3D" parent="Trees/Tree4/TreeCollider"]
+shape = SubResource("ground_shape")
+
+[node name="Characters" type="Node3D" parent="."]
+
+[node name="Rama" parent="Characters" instance=ExtResource("2")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0)
+
+[node name="Hanuman" parent="Characters" instance=ExtResource("3")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -100, 2, 100)
+
+[node name="HUD" type="CanvasLayer" parent="."]
+
+[node name="MainLabel" type="Label" parent="HUD"]
+offset_left = 20.0
+offset_top = 20.0
+offset_right = 800.0
+offset_bottom = 300.0
+text = "🌲 RAMAYANA GAME - BADRACHALAM FOREST
+
+CONTROLS:
+WASD - Move | Shift - Run | Space - Call | E - Interact
+
+Welcome to the forest! Find Hanuman and seek help in your quest for Sita."
+
+[node name="ObjectiveLabel" type="Label" parent="HUD"]
+offset_left = 20.0
+offset_top = 320.0
+offset_right = 800.0
+offset_bottom = 400.0
+text = "📍 Find Hanuman and call for his help"
+
+[node name="DebugLabel" type="Label" parent="HUD"]
+offset_left = 20.0
+offset_top = 400.0
+offset_right = 800.0
+offset_bottom = 550.0
+text = "Debug Info:
+FPS: 60
+Position: (0, 0, 0)
+Distance to Hanuman: 0m"
