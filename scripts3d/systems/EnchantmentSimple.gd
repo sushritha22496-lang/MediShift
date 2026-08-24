@@ -45,6 +45,11 @@ func _ready() -> void:
 	set_state("enchantment_decay", {})
 	set_state("cascade_chains", [])
 	set_state("failure_consequences", {})
+	set_state("application_history", [])
+	set_state("upgrade_history", [])
+	set_state("synergy_tracking", [])
+	set_state("success_failure_rates", {})
+	set_state("enchantment_statistics", {})
 	_initialize_enchantments()
 
 func _initialize_enchantments() -> void:
@@ -61,18 +66,23 @@ func enchant_item(item_name: String, enchantment_id: String, gold_available: flo
 	var enchantment = _find_enchantment(enchantment_id)
 	if not enchantment:
 		enchantment_failed.emit("Enchantment not found")
+		_record_success_failure(enchantment_id, false)
 		return false
 	if gold_available < enchantment.cost:
 		enchantment_failed.emit("Not enough gold")
+		_record_success_failure(enchantment_id, false)
 		return false
 	if randf() > enchantment.success_rate:
 		enchantment_failed.emit("Enchantment failed")
+		_record_success_failure(enchantment_id, false)
 		emit_event("enchantment_failed", enchantment_id)
 		return false
 	var items = get_state("items", {})
 	if not item_name in items:
 		items[item_name] = []
 	items[item_name].append(enchantment)
+	_record_application(item_name, enchantment_id)
+	_record_success_failure(enchantment_id, true)
 	enchantment_applied.emit(item_name, enchantment)
 	_check_synergies(item_name)
 	emit_event("enchanted", item_name)
@@ -85,6 +95,7 @@ func _check_synergies(item_name: String) -> void:
 		for synergy_id in ench.synergies:
 			for other_ench in enchantments:
 				if other_ench.id == synergy_id:
+					_record_synergy(item_name, ench.id, synergy_id)
 					synergy_triggered.emit([item_name, ench.id, synergy_id])
 					emit_event("synergy_triggered", {"item": item_name, "enchantments": [ench.id, synergy_id]})
 
@@ -118,6 +129,7 @@ func upgrade_enchantment(item_name: String, enchantment_id: String, gold_availab
 			ench.level += 1
 			ench.power *= 1.2
 			ench.cost = upgrade_cost
+			_record_upgrade(item_name, enchantment_id, ench.level)
 			enchantment_upgraded.emit(item_name, enchantment_id, ench.level)
 			emit_event("enchantment_upgraded", enchantment_id)
 			return true
@@ -183,6 +195,57 @@ func record_failure_consequence(item_name: String, consequence: String) -> void:
 func get_enchantment_decay_rate(item_name: String) -> float:
 	var decay = get_state("enchantment_decay", {})
 	return decay.get(item_name, 0.0)
+
+func _record_application(item_name: String, enchantment_id: String) -> void:
+	var history = get_state("application_history", [])
+	history.append({"item": item_name, "enchantment": enchantment_id, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("application_history", history)
+
+func _record_upgrade(item_name: String, enchantment_id: String, level: int) -> void:
+	var history = get_state("upgrade_history", [])
+	history.append({"item": item_name, "enchantment": enchantment_id, "level": level, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("upgrade_history", history)
+
+func _record_synergy(item_name: String, ench_id_1: String, ench_id_2: String) -> void:
+	var tracking = get_state("synergy_tracking", [])
+	tracking.append({"item": item_name, "synergies": [ench_id_1, ench_id_2], "time": Time.get_ticks_msec()})
+	if tracking.size() > 50:
+		tracking.pop_front()
+	set_state("synergy_tracking", tracking)
+
+func _record_success_failure(enchantment_id: String, success: bool) -> void:
+	var rates = get_state("success_failure_rates", {})
+	if enchantment_id not in rates:
+		rates[enchantment_id] = {"successes": 0, "failures": 0}
+	if success:
+		rates[enchantment_id]["successes"] += 1
+	else:
+		rates[enchantment_id]["failures"] += 1
+	set_state("success_failure_rates", rates)
+
+func update_enchantment_statistics() -> void:
+	var stats = get_state("enchantment_statistics", {})
+	var rates = get_state("success_failure_rates", {})
+	var total_success = 0
+	var total_failure = 0
+	for ench_id in rates:
+		total_success += rates[ench_id]["successes"]
+		total_failure += rates[ench_id]["failures"]
+	stats["total_applications"] = get_state("application_history", []).size()
+	stats["total_upgrades"] = get_state("upgrade_history", []).size()
+	stats["synergies_triggered"] = get_state("synergy_tracking", []).size()
+	stats["total_success"] = total_success
+	stats["total_failure"] = total_failure
+	stats["overall_success_rate"] = float(total_success) / float(total_success + total_failure) if (total_success + total_failure) > 0 else 0.0
+	set_state("enchantment_statistics", stats)
+
+func get_enchantment_statistics() -> Dictionary:
+	update_enchantment_statistics()
+	return get_state("enchantment_statistics", {})
 
 func get_cascading_effects() -> Array:
 	return get_state("cascade_chains", [])

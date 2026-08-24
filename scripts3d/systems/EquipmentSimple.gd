@@ -64,6 +64,11 @@ func _ready() -> void:
 	set_state("total_weight", 0.0)
 	set_state("carry_capacity", 50.0)
 	set_state("equipment_enchantments", {})
+	set_state("equipment_history", [])
+	set_state("durability_tracking", [])
+	set_state("repair_history", [])
+	set_state("weight_management_history", [])
+	set_state("equipment_statistics", {})
 
 func equip(equipment: Equipment, player_level: int = 1) -> bool:
 	var equipped = get_state("equipped", {})
@@ -79,7 +84,10 @@ func equip(equipment: Equipment, player_level: int = 1) -> bool:
 	if old_equipment:
 		current_weight -= old_equipment.weight
 	equipped[equipment.slot] = equipment
-	set_state("total_weight", current_weight + equipment.weight)
+	var new_weight = current_weight + equipment.weight
+	set_state("total_weight", new_weight)
+	_record_equipment_change(equipment.slot, equipment.name, true)
+	_record_weight_change(new_weight)
 	equipment_equipped.emit(equipment)
 	if old_equipment:
 		equipment_unequipped.emit(equipment.slot)
@@ -91,7 +99,10 @@ func unequip(slot: String) -> bool:
 	if slot in equipped and equipped[slot] != null:
 		var equipment = equipped[slot]
 		var current_weight = get_state("total_weight", 0.0)
-		set_state("total_weight", current_weight - equipment.weight)
+		var new_weight = current_weight - equipment.weight
+		set_state("total_weight", new_weight)
+		_record_equipment_change(slot, equipment.name, false)
+		_record_weight_change(new_weight)
 		equipped[slot] = null
 		equipment_unequipped.emit(slot)
 		emit_event("unequipped", slot)
@@ -143,6 +154,7 @@ func reduce_durability(slot: String, amount: float = 1.0) -> void:
 			emit_event("equipment_broke", eq.id)
 			return
 		eq.durability -= amount
+		_record_durability_change(eq.name, eq.durability)
 		durability_changed.emit(eq)
 		if eq.durability <= 0:
 			unequip(slot)
@@ -150,7 +162,9 @@ func reduce_durability(slot: String, amount: float = 1.0) -> void:
 func repair(slot: String, amount: float = 50.0) -> void:
 	var equipped = get_state("equipped", {})
 	if slot in equipped and equipped[slot] != null:
-		equipped[slot].durability = minf(equipped[slot].durability + amount, equipped[slot].max_durability)
+		var new_durability = minf(equipped[slot].durability + amount, equipped[slot].max_durability)
+		equipped[slot].durability = new_durability
+		_record_repair(equipped[slot].name, amount, new_durability)
 		durability_changed.emit(equipped[slot])
 
 func get_carrying_capacity_percent() -> float:
@@ -194,6 +208,54 @@ func add_enchantment_to_slot(slot: String, enchantment_id: String) -> bool:
 		emit_event("enchantment_added", {"slot": slot, "enchantment": enchantment_id})
 		return true
 	return false
+
+func _record_equipment_change(slot: String, equipment_name: String, equipped: bool) -> void:
+	var history = get_state("equipment_history", [])
+	history.append({"slot": slot, "equipment": equipment_name, "equipped": equipped, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("equipment_history", history)
+
+func _record_durability_change(equipment_name: String, durability: float) -> void:
+	var tracking = get_state("durability_tracking", [])
+	tracking.append({"equipment": equipment_name, "durability": durability, "time": Time.get_ticks_msec()})
+	if tracking.size() > 50:
+		tracking.pop_front()
+	set_state("durability_tracking", tracking)
+
+func _record_repair(equipment_name: String, amount_repaired: float, new_durability: float) -> void:
+	var history = get_state("repair_history", [])
+	history.append({"equipment": equipment_name, "amount": amount_repaired, "new_durability": new_durability, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("repair_history", history)
+
+func _record_weight_change(weight: float) -> void:
+	var history = get_state("weight_management_history", [])
+	history.append({"weight": weight, "capacity_percent": (weight / get_state("carry_capacity", 50.0)) * 100.0, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("weight_management_history", history)
+
+func update_equipment_statistics() -> void:
+	var stats = get_state("equipment_statistics", {})
+	var equipped = get_state("equipped", {})
+	var equipped_count = 0
+	for slot in equipped:
+		if equipped[slot] != null:
+			equipped_count += 1
+	stats["equipment_equipped"] = equipped_count
+	stats["total_weight"] = get_state("total_weight", 0.0)
+	stats["carry_capacity"] = get_state("carry_capacity", 50.0)
+	stats["equipment_changes"] = get_state("equipment_history", []).size()
+	stats["repairs_made"] = get_state("repair_history", []).size()
+	stats["total_damage"] = get_total_damage()
+	stats["total_defense"] = get_total_defense()
+	set_state("equipment_statistics", stats)
+
+func get_equipment_statistics() -> Dictionary:
+	update_equipment_statistics()
+	return get_state("equipment_statistics", {})
 
 func get_equipment_text() -> String:
 	var equipped = get_state("equipped", {})

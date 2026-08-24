@@ -27,6 +27,10 @@ func _ready() -> void:
 	set_state("price_history", {})
 	set_state("market_trends", {})
 	set_state("scarcity_levels", {})
+	set_state("demand_supply_history", [])
+	set_state("inflation_deflation_history", [])
+	set_state("market_trend_history", [])
+	set_state("economy_statistics", {})
 	_initialize_prices()
 
 func _initialize_prices() -> void:
@@ -55,21 +59,26 @@ func update_prices() -> void:
 			price_changed.emit(item_name, new_price)
 			emit_event("price_changed", item_name)
 
+	_record_demand_supply_state()
 	if inflation > 0.1:
+		_record_inflation_deflation(inflation, true)
 		inflation_occurred.emit(inflation)
 		emit_event("inflation", inflation)
 	elif inflation < -0.1:
+		_record_inflation_deflation(absf(inflation), false)
 		deflation_occurred.emit(absf(inflation))
 		emit_event("deflation", inflation)
 
 func set_demand(item: String, demand: float) -> void:
 	if item in prices:
 		prices[item].demand = clampf(demand, 0.1, 5.0)
+		_record_demand_supply_state()
 		emit_event("demand_changed", item)
 
 func set_supply(item: String, supply: float) -> void:
 	if item in prices:
 		prices[item].supply = clampf(supply, 0.1, 5.0)
+		_record_demand_supply_state()
 		emit_event("supply_changed", item)
 
 func get_price(item: String) -> float:
@@ -119,6 +128,7 @@ func set_market_trend(trend_type: String) -> void:
 		trends["active_trend"] = trend_type
 		trends["trend_changed_at"] = Time.get_ticks_msec()
 		set_state("market_trends", trends)
+		_record_market_trend(trend_type)
 		market_trend_changed.emit(trend_type)
 		emit_event("trend_changed", trend_type)
 
@@ -138,6 +148,50 @@ func set_scarcity_level(item: String, level: float) -> void:
 func get_scarcity_level(item: String) -> float:
 	var scarcity = get_state("scarcity_levels", {})
 	return scarcity.get(item, 0.0)
+
+func _record_demand_supply_state() -> void:
+	var history = get_state("demand_supply_history", [])
+	var state = {}
+	for item in prices:
+		state[item] = {"demand": prices[item].demand, "supply": prices[item].supply}
+	history.append({"state": state, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("demand_supply_history", history)
+
+func _record_inflation_deflation(rate: float, is_inflation: bool) -> void:
+	var history = get_state("inflation_deflation_history", [])
+	history.append({"rate": rate, "is_inflation": is_inflation, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("inflation_deflation_history", history)
+
+func _record_market_trend(trend: String) -> void:
+	var history = get_state("market_trend_history", [])
+	history.append({"trend": trend, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("market_trend_history", history)
+
+func update_economy_statistics() -> void:
+	var stats = get_state("economy_statistics", {})
+	var inflation = get_state("global_inflation", 0.0)
+	var stable = get_state("market_stability", 1.0)
+	stats["global_inflation"] = inflation
+	stats["market_stability"] = stable
+	stats["price_changes_tracked"] = 0
+	for item in prices:
+		var history = get_state("price_history", {})
+		if item in history:
+			stats["price_changes_tracked"] += history[item].size()
+	stats["demand_supply_updates"] = get_state("demand_supply_history", []).size()
+	stats["inflation_deflation_events"] = get_state("inflation_deflation_history", []).size()
+	stats["market_trend_changes"] = get_state("market_trend_history", []).size()
+	set_state("economy_statistics", stats)
+
+func get_economy_statistics() -> Dictionary:
+	update_economy_statistics()
+	return get_state("economy_statistics", {})
 
 func get_price_history(item: String) -> Array:
 	var history = get_state("price_history", {})
