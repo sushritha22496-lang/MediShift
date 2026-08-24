@@ -50,6 +50,10 @@ func _ready() -> void:
 	set_state("equipment", {"rod": "basic", "bait": "worm"})
 	set_state("fishing_spots", {})
 	set_state("catch_history", [])
+	set_state("rarity_distribution", {})
+	set_state("perfect_catch_tracking", [])
+	set_state("location_statistics", {})
+	set_state("fishing_statistics", {})
 
 func start_fishing(location: Vector3, time_of_day: String = "day", weather: String = "clear") -> Fish:
 	var rarity_roll = randf()
@@ -78,8 +82,14 @@ func start_fishing(location: Vector3, time_of_day: String = "day", weather: Stri
 	var total_weight = get_state("total_weight", 0.0) + fish.weight
 	set_state("total_weight", total_weight)
 	var history = get_state("catch_history", [])
-	history.append({"fish": fish.name, "time": Time.get_ticks_msec(), "perfect": is_perfect})
+	history.append({"fish": fish.name, "time": Time.get_ticks_msec(), "perfect": is_perfect, "weight": fish.weight, "rarity": fish.rarity})
+	if history.size() > 50:
+		history.pop_front()
 	set_state("catch_history", history)
+	_track_rarity(fish.rarity)
+	if is_perfect:
+		_record_perfect_catch(fish.name)
+	_record_location_visit(location)
 	if catches >= level * 10:
 		_level_up()
 	fish_caught.emit(fish)
@@ -125,6 +135,45 @@ func get_average_weight() -> float:
 	if catches == 0:
 		return 0.0
 	return get_state("total_weight", 0.0) / float(catches)
+
+func _track_rarity(rarity: String) -> void:
+	var dist = get_state("rarity_distribution", {})
+	dist[rarity] = dist.get(rarity, 0) + 1
+	set_state("rarity_distribution", dist)
+
+func _record_perfect_catch(fish_name: String) -> void:
+	var tracking = get_state("perfect_catch_tracking", [])
+	tracking.append({"fish": fish_name, "time": Time.get_ticks_msec()})
+	if tracking.size() > 50:
+		tracking.pop_front()
+	set_state("perfect_catch_tracking", tracking)
+
+func _record_location_visit(location: Vector3) -> void:
+	var spots = get_state("location_statistics", {})
+	var location_key = "%d_%d_%d" % [int(location.x), int(location.y), int(location.z)]
+	if location_key not in spots:
+		spots[location_key] = {"visits": 0, "catches": 0}
+	spots[location_key]["visits"] += 1
+	spots[location_key]["catches"] += 1
+	set_state("location_statistics", spots)
+
+func update_fishing_statistics() -> void:
+	var stats = get_state("fishing_statistics", {})
+	var history = get_state("catch_history", [])
+	var perfect_catches = get_state("perfect_catch_tracking", []).size()
+	stats["total_catches"] = get_state("catches", 0)
+	stats["total_weight"] = get_state("total_weight", 0.0)
+	stats["current_level"] = get_state("level", 1)
+	stats["perfect_catches"] = perfect_catches
+	stats["rarity_breakdown"] = get_state("rarity_distribution", {})
+	stats["unique_locations"] = get_state("location_statistics", {}).size()
+	if history.size() > 0:
+		stats["average_weight"] = get_average_weight()
+	set_state("fishing_statistics", stats)
+
+func get_fishing_statistics() -> Dictionary:
+	update_fishing_statistics()
+	return get_state("fishing_statistics", {})
 
 func get_largest_catch() -> float:
 	var history = get_catch_history()

@@ -41,6 +41,10 @@ func _ready() -> void:
 	set_state("weapon_equipped", "bow")
 	set_state("hunt_history", [])
 	set_state("endangered_counts", {})
+	set_state("perfect_hunt_tracking", [])
+	set_state("animal_type_tracking", {})
+	set_state("material_collection_history", [])
+	set_state("hunting_statistics", {})
 	_initialize_game()
 
 func _initialize_game() -> void:
@@ -69,8 +73,12 @@ func hunt(location: Vector3, stealth: float = 0.5, weapon_damage: float = 10.0) 
 		selected_game.meat_value *= 1.3
 		selected_game.pelt_value *= 1.3
 		selected_game.bones_count += 2
+		_record_perfect_hunt(selected_game.name)
 		perfect_hunt.emit(selected_game)
 	_collect_materials(selected_game)
+	_record_hunt_attempt(selected_game.name, is_perfect)
+	_track_animal_type(selected_game.name)
+	_record_material_collection(selected_game)
 	var hunts = get_state("hunts", 0) + 1
 	set_state("hunts", hunts)
 	selected_game.endangered_status += 1
@@ -101,6 +109,58 @@ func get_hunting_level() -> int:
 
 func get_total_hunts() -> int:
 	return get_state("hunts", 0)
+
+func _record_perfect_hunt(animal_name: String) -> void:
+	var tracking = get_state("perfect_hunt_tracking", [])
+	tracking.append({"animal": animal_name, "time": Time.get_ticks_msec()})
+	if tracking.size() > 50:
+		tracking.pop_front()
+	set_state("perfect_hunt_tracking", tracking)
+
+func _track_animal_type(animal_name: String) -> void:
+	var tracking = get_state("animal_type_tracking", {})
+	tracking[animal_name] = tracking.get(animal_name, 0) + 1
+	set_state("animal_type_tracking", tracking)
+
+func _record_hunt_attempt(animal_name: String, perfect: bool) -> void:
+	var history = get_state("hunt_history", [])
+	history.append({"animal": animal_name, "perfect": perfect, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("hunt_history", history)
+
+func _record_material_collection(game: Game) -> void:
+	var history = get_state("material_collection_history", [])
+	history.append({
+		"animal": game.name,
+		"meat": game.meat_value,
+		"pelt": game.pelt_value,
+		"bones": game.bones_count,
+		"time": Time.get_ticks_msec()
+	})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("material_collection_history", history)
+
+func update_hunting_statistics() -> void:
+	var stats = get_state("hunting_statistics", {})
+	var history = get_state("hunt_history", [])
+	var perfect_hunts = get_state("perfect_hunt_tracking", []).size()
+	var total_hunts = get_state("hunts", 0)
+	stats["total_hunts"] = total_hunts
+	stats["perfect_hunts"] = perfect_hunts
+	stats["hunt_success_rate"] = float(history.size()) / float(total_hunts) if total_hunts > 0 else 0.0
+	stats["current_level"] = get_state("level", 1)
+	stats["animal_types_hunted"] = get_state("animal_type_tracking", {}).size()
+	var materials = get_state("materials_collected", {})
+	stats["total_meat"] = materials.get("meat", 0.0)
+	stats["total_pelts"] = materials.get("pelt", 0.0)
+	stats["total_bones"] = materials.get("bones", 0)
+	set_state("hunting_statistics", stats)
+
+func get_hunting_statistics() -> Dictionary:
+	update_hunting_statistics()
+	return get_state("hunting_statistics", {})
 
 func get_hunting_text() -> String:
 	var level = get_state("level", 1)

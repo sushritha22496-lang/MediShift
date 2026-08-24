@@ -40,6 +40,11 @@ func _ready() -> void:
 	set_state("crafting_skill", 0.0)
 	set_state("recipe_mastery", {})
 	set_state("crafting_history", [])
+	set_state("learning_history", [])
+	set_state("attempt_history", [])
+	set_state("quality_tracking", {})
+	set_state("skill_progression", [])
+	set_state("crafting_statistics", {})
 	_initialize_recipes()
 
 func _initialize_recipes() -> void:
@@ -73,6 +78,7 @@ func learn_recipe(recipe_id: String) -> bool:
 			if not _check_recipe_prerequisites(recipe):
 				return false
 			learned.append(recipe)
+			_record_learning(recipe_id)
 			recipe_learned.emit(recipe)
 			emit_event("recipe_learned", recipe_id)
 			return true
@@ -108,12 +114,16 @@ func craft(recipe_id: String, inventory: InventorySimple) -> bool:
 			if randf() < success_rate:
 				var quality = _determine_quality(recipe, crafting_skill)
 				inventory.add_item(recipe.result_item, 1)
+				_record_attempt(recipe_id, true, quality)
+				_record_quality(recipe_id, quality)
+				_record_skill_progression(crafting_skill + (recipe.difficulty * 0.5))
 				crafting_completed.emit(recipe.result_item, quality)
 				_increase_mastery(recipe_id)
 				_increase_crafting_skill(recipe.difficulty)
 				emit_event("crafted", {"recipe": recipe_id, "quality": quality})
 				return true
 			else:
+				_record_attempt(recipe_id, false, 0)
 				crafting_failed.emit(recipe)
 				emit_event("crafting_failed", recipe_id)
 				return false
@@ -172,6 +182,58 @@ func get_recipes_text() -> String:
 func get_recipe_mastery(recipe_id: String) -> float:
 	var mastery = get_state("recipe_mastery", {})
 	return mastery.get(recipe_id, 0.0)
+
+func _record_learning(recipe_id: String) -> void:
+	var history = get_state("learning_history", [])
+	history.append({"recipe": recipe_id, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("learning_history", history)
+
+func _record_attempt(recipe_id: String, success: bool, quality: int) -> void:
+	var history = get_state("attempt_history", [])
+	history.append({"recipe": recipe_id, "success": success, "quality": quality, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("attempt_history", history)
+
+func _record_quality(recipe_id: String, quality: int) -> void:
+	var tracking = get_state("quality_tracking", {})
+	if recipe_id not in tracking:
+		tracking[recipe_id] = {"high": 0, "medium": 0, "low": 0}
+	if quality == 3:
+		tracking[recipe_id]["high"] += 1
+	elif quality == 2:
+		tracking[recipe_id]["medium"] += 1
+	else:
+		tracking[recipe_id]["low"] += 1
+	set_state("quality_tracking", tracking)
+
+func _record_skill_progression(skill_value: float) -> void:
+	var progression = get_state("skill_progression", [])
+	progression.append({"skill": skill_value, "time": Time.get_ticks_msec()})
+	if progression.size() > 50:
+		progression.pop_front()
+	set_state("skill_progression", progression)
+
+func update_crafting_statistics() -> void:
+	var stats = get_state("crafting_statistics", {})
+	var attempts = get_state("attempt_history", [])
+	var successes = 0
+	for attempt in attempts:
+		if attempt.get("success", false):
+			successes += 1
+	stats["recipes_learned"] = get_state("learning_history", []).size()
+	stats["total_attempts"] = attempts.size()
+	stats["successful_crafts"] = successes
+	stats["success_rate"] = float(successes) / float(attempts.size()) if attempts.size() > 0 else 0.0
+	stats["current_skill"] = get_state("crafting_skill", 0.0)
+	stats["total_mastery"] = get_state("recipe_mastery", {}).size()
+	set_state("crafting_statistics", stats)
+
+func get_crafting_statistics() -> Dictionary:
+	update_crafting_statistics()
+	return get_state("crafting_statistics", {})
 
 func get_crafting_skill() -> float:
 	return get_state("crafting_skill", 0.0)
