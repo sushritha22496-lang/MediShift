@@ -39,6 +39,31 @@ func _ready() -> void:
 	set_state("save_backups", {})
 	set_state("corrupted_saves", [])
 	set_state("total_playtime_saved", 0.0)
+	set_state("save_history", [])
+	set_state("load_history", [])
+	set_state("backup_history", [])
+	set_state("save_statistics", {})
+
+func _record_save(slot: int, character_name: String, level: int, size: int) -> void:
+	var history = get_state("save_history", [])
+	history.append({"slot": slot, "character": character_name, "level": level, "size": size, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("save_history", history)
+
+func _record_load(slot: int, character_name: String, level: int) -> void:
+	var history = get_state("load_history", [])
+	history.append({"slot": slot, "character": character_name, "level": level, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("load_history", history)
+
+func _record_backup_restore(slot: int, backup_index: int) -> void:
+	var history = get_state("backup_history", [])
+	history.append({"slot": slot, "backup_index": backup_index, "action": "restore", "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("backup_history", history)
 
 func save_game(slot: int, player_data: Dictionary, metadata: Dictionary = {}) -> bool:
 	if slot > max_slots:
@@ -58,6 +83,7 @@ func save_game(slot: int, player_data: Dictionary, metadata: Dictionary = {}) ->
 	var count = get_state("save_count", 0) + 1
 	set_state("save_count", count)
 	set_state("last_save_time", Time.get_ticks_msec())
+	_record_save(slot, save_file.character_name, save_file.level, save_file.save_size)
 	game_saved.emit(slot)
 	emit_event("game_saved", {"slot": slot, "size": save_file.save_size})
 	return true
@@ -88,6 +114,7 @@ func load_game(slot: int) -> Dictionary:
 	if slot in save_slots:
 		var save_file = save_slots[slot]
 		if _verify_checksum(save_file):
+			_record_load(slot, save_file.character_name, save_file.level)
 			game_loaded.emit(slot)
 			emit_event("game_loaded", {"slot": slot, "character": save_file.character_name, "level": save_file.level})
 			return {"player": save_file.player_data, "game_state": save_file.game_state, "metadata": save_file.metadata}
@@ -114,6 +141,7 @@ func restore_backup(slot: int, backup_index: int) -> bool:
 	if slot in backups and backup_index < backups[slot].size():
 		var backup = backups[slot][backup_index]
 		save_slots[slot] = backup["data"]
+		_record_backup_restore(slot, backup_index)
 		emit_event("backup_restored", {"slot": slot, "index": backup_index})
 		return true
 	return false
@@ -180,3 +208,25 @@ func get_save_text() -> String:
 	for save_info in saves.slice(0, 5):
 		text += "Slot %d: %s [Lvl %d]\n" % [save_info["slot"], save_info["character"], save_info["level"]]
 	return text
+
+func update_save_statistics() -> void:
+	var stats = get_state("save_statistics", {})
+	var save_hist = get_state("save_history", [])
+	var load_hist = get_state("load_history", [])
+	var backup_hist = get_state("backup_history", [])
+	var total_saves = get_state("save_count", 0)
+	stats["total_saves"] = total_saves
+	stats["total_loads"] = load_hist.size()
+	stats["total_backup_restores"] = backup_hist.size()
+	stats["corrupted_count"] = get_corrupted_saves().size()
+	stats["slots_used"] = save_slots.size()
+	if not save_hist.is_empty():
+		var total_size = 0
+		for entry in save_hist:
+			total_size += entry.get("size", 0)
+		stats["average_save_size"] = int(total_size / save_hist.size())
+	set_state("save_statistics", stats)
+
+func get_save_statistics() -> Dictionary:
+	update_save_statistics()
+	return get_state("save_statistics", {})
