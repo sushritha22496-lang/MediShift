@@ -7,8 +7,19 @@ var sfx_players: Array[AudioStreamPlayer3D] = []
 var music_volume: float = 0.7
 var sfx_volume: float = 0.8
 
+var audio_history: Array = []
+var volume_profiles: Dictionary = {}
+var audio_queue: Array = []
+var spatial_audio_positions: Dictionary = {}
+var fade_effects: Dictionary = {}
+var audio_metrics: Dictionary = {"tracks_played": 0, "total_duration": 0.0}
+var mute_state: Dictionary = {"music": false, "sfx": false}
+var audio_performance: Array = []
+
 signal music_started(track: String)
 signal sfx_played(sound: String)
+signal audio_queued(sound: String)
+signal volume_changed(type: String)
 
 func _ready() -> void:
 	music_player = AudioStreamPlayer.new()
@@ -69,3 +80,70 @@ func get_music_volume() -> float:
 
 func get_sfx_volume() -> float:
 	return sfx_volume
+
+func record_audio_history(track: String, audio_type: String, duration: float) -> void:
+	audio_history.append({"track": track, "type": audio_type, "duration": duration, "time": Time.get_ticks_msec()})
+	if audio_history.size() > 50:
+		audio_history.pop_front()
+
+func save_volume_profile(profile_name: String) -> void:
+	volume_profiles[profile_name] = {"music": music_volume, "sfx": sfx_volume}
+
+func load_volume_profile(profile_name: String) -> bool:
+	if profile_name in volume_profiles:
+		music_volume = volume_profiles[profile_name]["music"]
+		sfx_volume = volume_profiles[profile_name]["sfx"]
+		music_player.volume_db = linear2db(music_volume)
+		for sfx in sfx_players:
+			sfx.volume_db = linear2db(sfx_volume)
+		volume_changed.emit("profile")
+		return true
+	return false
+
+func queue_audio(sound_path: String, priority: int = 0) -> void:
+	audio_queue.append({"path": sound_path, "priority": priority})
+	audio_queue.sort_custom(func(a, b): return a["priority"] > b["priority"])
+	audio_queued.emit(sound_path)
+
+func get_queued_audio() -> Array:
+	return audio_queue
+
+func record_spatial_audio(sound_id: String, position: Vector3) -> void:
+	spatial_audio_positions[sound_id] = position
+
+func apply_fade_effect(player: AudioStreamPlayer, duration: float, target_volume: float) -> void:
+	var tween = create_tween()
+	tween.tween_property(player, "volume_db", linear2db(target_volume), duration)
+	fade_effects[player] = {"duration": duration, "target": target_volume}
+
+func set_mute(audio_type: String, muted: bool) -> void:
+	mute_state[audio_type] = muted
+	if audio_type == "music":
+		music_player.volume_db = -80.0 if muted else linear2db(music_volume)
+	elif audio_type == "sfx":
+		for sfx in sfx_players:
+			sfx.volume_db = -80.0 if muted else linear2db(sfx_volume)
+	emit_event("mute_changed", audio_type)
+
+func is_muted(audio_type: String) -> bool:
+	return mute_state.get(audio_type, false)
+
+func record_audio_performance(fps: float, latency_ms: int) -> void:
+	audio_performance.append({"fps": fps, "latency": latency_ms, "time": Time.get_ticks_msec()})
+	if audio_performance.size() > 100:
+		audio_performance.pop_front()
+
+func increment_tracks_played() -> void:
+	audio_metrics["tracks_played"] += 1
+
+func add_total_duration(duration: float) -> void:
+	audio_metrics["total_duration"] += duration
+
+func get_total_tracks_played() -> int:
+	return audio_metrics.get("tracks_played", 0)
+
+func get_total_audio_duration() -> float:
+	return audio_metrics.get("total_duration", 0.0)
+
+func get_audio_history() -> Array:
+	return audio_history

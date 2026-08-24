@@ -25,6 +25,13 @@ signal book_read(book_id: String)
 func _ready() -> void:
 	set_state("discovered_books", [])
 	set_state("read_books", [])
+	set_state("book_read_progress", {})
+	set_state("author_reputation", {})
+	set_state("book_categories", {})
+	set_state("reading_history", [])
+	set_state("knowledge_progression", {})
+	set_state("lore_levels", {})
+	set_state("book_recommendations", [])
 	_initialize_books()
 
 func _initialize_books() -> void:
@@ -99,3 +106,69 @@ func _get_book(book_id: String) -> Book:
 		if book.id == book_id:
 			return book
 	return null
+
+func set_book_read_progress(book_id: String, progress: float) -> void:
+	var prog = get_state("book_read_progress", {})
+	prog[book_id] = clampf(progress, 0.0, 1.0)
+	set_state("book_read_progress", prog)
+
+func get_book_read_progress(book_id: String) -> float:
+	var prog = get_state("book_read_progress", {})
+	return prog.get(book_id, 0.0)
+
+func update_author_reputation(author: String, change: float) -> void:
+	var reputation = get_state("author_reputation", {})
+	reputation[author] = reputation.get(author, 0.0) + change
+	set_state("author_reputation", reputation)
+	emit_event("author_reputation_changed", author)
+
+func categorize_book(book_id: String, category: String) -> void:
+	var categories = get_state("book_categories", {})
+	if book_id not in categories:
+		categories[book_id] = []
+	categories[book_id].append(category)
+	set_state("book_categories", categories)
+
+func record_reading_session(book_id: String, duration_ms: int, pages_read: int) -> void:
+	var history = get_state("reading_history", [])
+	history.append({"book": book_id, "duration": duration_ms, "pages": pages_read, "time": Time.get_ticks_msec()})
+	if history.size() > 100:
+		history.pop_front()
+	set_state("reading_history", history)
+
+func track_knowledge_gain(knowledge_id: String, value: float) -> void:
+	var knowledge = get_state("knowledge_progression", {})
+	knowledge[knowledge_id] = knowledge.get(knowledge_id, 0.0) + value
+	set_state("knowledge_progression", knowledge)
+	emit_event("knowledge_gained", knowledge_id)
+
+func set_lore_level(lore_type: String, level: int) -> void:
+	var levels = get_state("lore_levels", {})
+	levels[lore_type] = level
+	set_state("lore_levels", levels)
+	emit_event("lore_level_set", lore_type)
+
+func get_lore_level(lore_type: String) -> int:
+	var levels = get_state("lore_levels", {})
+	return levels.get(lore_type, 0)
+
+func add_recommendation(book_id: String, reason: String) -> void:
+	var recommendations = get_state("book_recommendations", [])
+	recommendations.append({"book": book_id, "reason": reason, "time": Time.get_ticks_msec()})
+	if recommendations.size() > 30:
+		recommendations.pop_front()
+	set_state("book_recommendations", recommendations)
+
+func get_recommended_books() -> Array:
+	return get_state("book_recommendations", [])
+
+func get_total_pages_read() -> int:
+	var history = get_state("reading_history", [])
+	var total = 0
+	for session in history:
+		total += session["pages"]
+	return total
+
+func get_author_reputation(author: String) -> float:
+	var reputation = get_state("author_reputation", {})
+	return reputation.get(author, 0.0)

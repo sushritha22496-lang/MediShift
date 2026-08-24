@@ -24,6 +24,13 @@ signal animation_interrupted(animation_id: String, new_animation: String)
 func _ready() -> void:
 	set_state("current_animation", "")
 	set_state("animation_queue", [])
+	set_state("animation_history", [])
+	set_state("animation_blending", {})
+	set_state("frame_tracking", {})
+	set_state("animation_speed_variations", {})
+	set_state("entity_animation_states", {})
+	set_state("interrupt_history", [])
+	set_state("animation_performance", {})
 	_initialize_animations()
 
 func _initialize_animations() -> void:
@@ -90,3 +97,60 @@ func get_animation_text() -> String:
 	if current:
 		return "Animation: %s (%.1fs)" % [current.name, current.duration]
 	return "No animation playing"
+
+func record_animation_history(animation_id: String, duration_ms: int) -> void:
+	var history = get_state("animation_history", [])
+	history.append({"animation": animation_id, "duration": duration_ms, "time": Time.get_ticks_msec()})
+	if history.size() > 100:
+		history.pop_front()
+	set_state("animation_history", history)
+
+func set_animation_blend(source_id: String, target_id: String, blend_time: float) -> void:
+	var blending = get_state("animation_blending", {})
+	blending["%s_%s" % [source_id, target_id]] = {"source": source_id, "target": target_id, "blend_time": blend_time}
+	set_state("animation_blending", blending)
+
+func set_animation_speed(animation_id: String, speed: float) -> void:
+	var speeds = get_state("animation_speed_variations", {})
+	speeds[animation_id] = speed
+	set_state("animation_speed_variations", speeds)
+
+func get_animation_speed(animation_id: String) -> float:
+	var speeds = get_state("animation_speed_variations", {})
+	return speeds.get(animation_id, 1.0)
+
+func track_frame(animation_id: String, frame: int) -> void:
+	var tracking = get_state("frame_tracking", {})
+	if animation_id not in tracking:
+		tracking[animation_id] = []
+	tracking[animation_id].append(frame)
+	if tracking[animation_id].size() > 50:
+		tracking[animation_id].pop_front()
+	set_state("frame_tracking", tracking)
+
+func set_entity_animation_state(entity_id: String, state: String) -> void:
+	var states = get_state("entity_animation_states", {})
+	states[entity_id] = state
+	set_state("entity_animation_states", states)
+
+func record_interrupt(interrupted_id: String, new_id: String) -> void:
+	var interrupts = get_state("interrupt_history", [])
+	interrupts.append({"interrupted": interrupted_id, "new": new_id, "time": Time.get_ticks_msec()})
+	if interrupts.size() > 50:
+		interrupts.pop_front()
+	set_state("interrupt_history", interrupts)
+
+func record_animation_performance(animation_id: String, fps: float, load_time_ms: int) -> void:
+	var perf = get_state("animation_performance", {})
+	if animation_id not in perf:
+		perf[animation_id] = []
+	perf[animation_id].append({"fps": fps, "load": load_time_ms, "time": Time.get_ticks_msec()})
+	if perf[animation_id].size() > 30:
+		perf[animation_id].pop_front()
+	set_state("animation_performance", perf)
+
+func get_animation_history() -> Array:
+	return get_state("animation_history", [])
+
+func get_interrupt_count() -> int:
+	return get_state("interrupt_history", []).size()
