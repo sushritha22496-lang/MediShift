@@ -31,6 +31,9 @@ func _ready() -> void:
 	set_state("entity_animation_states", {})
 	set_state("interrupt_history", [])
 	set_state("animation_performance", {})
+	set_state("animation_start_history", [])
+	set_state("animation_end_history", [])
+	set_state("animation_statistics", {})
 	_initialize_animations()
 
 func _initialize_animations() -> void:
@@ -45,6 +48,20 @@ func _initialize_animations() -> void:
 		"death": Animation.new("death", "Death", 1.5, false, 4)
 	}
 
+func _record_animation_start(animation_id: String) -> void:
+	var history = get_state("animation_start_history", [])
+	history.append({"animation": animation_id, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("animation_start_history", history)
+
+func _record_animation_end(animation_id: String) -> void:
+	var history = get_state("animation_end_history", [])
+	history.append({"animation": animation_id, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("animation_end_history", history)
+
 func play_animation(animation_id: String) -> bool:
 	if animation_id not in animations:
 		return false
@@ -58,6 +75,7 @@ func play_animation(animation_id: String) -> bool:
 		emit_event("animation_interrupted", animation_id)
 
 	set_state("current_animation", animation_id)
+	_record_animation_start(animation_id)
 	animation_started.emit(animation_id)
 	emit_event("animation_started", animation_id)
 
@@ -65,6 +83,7 @@ func play_animation(animation_id: String) -> bool:
 		await get_tree().create_timer(anim.duration).timeout
 		if get_state("current_animation", "") == animation_id:
 			set_state("current_animation", "")
+			_record_animation_end(animation_id)
 			animation_ended.emit(animation_id)
 			emit_event("animation_ended", animation_id)
 
@@ -73,6 +92,7 @@ func play_animation(animation_id: String) -> bool:
 func stop_animation() -> void:
 	var current = get_state("current_animation", "")
 	if current != "":
+		_record_animation_end(current)
 		animation_ended.emit(current)
 		emit_event("animation_ended", current)
 	set_state("current_animation", "")
@@ -154,3 +174,28 @@ func get_animation_history() -> Array:
 
 func get_interrupt_count() -> int:
 	return get_state("interrupt_history", []).size()
+
+func update_animation_statistics() -> void:
+	var stats = get_state("animation_statistics", {})
+	var start_hist = get_state("animation_start_history", [])
+	var end_hist = get_state("animation_end_history", [])
+	var anim_hist = get_state("animation_history", [])
+	var interrupt_hist = get_state("interrupt_history", [])
+	var perf = get_state("animation_performance", {})
+	stats["animations_started"] = start_hist.size()
+	stats["animations_completed"] = end_hist.size()
+	stats["total_animation_plays"] = anim_hist.size()
+	stats["interrupts_total"] = interrupt_hist.size()
+	var unique_anims = {}
+	for entry in start_hist:
+		unique_anims[entry["animation"]] = true
+	stats["unique_animations_used"] = unique_anims.size()
+	stats["animation_count"] = animations.size()
+	stats["currently_playing"] = get_state("current_animation", "") != ""
+	var queued = get_state("animation_queue", [])
+	stats["queued_animations"] = queued.size()
+	set_state("animation_statistics", stats)
+
+func get_animation_statistics() -> Dictionary:
+	update_animation_statistics()
+	return get_state("animation_statistics", {})

@@ -32,6 +32,9 @@ func _ready() -> void:
 	set_state("knowledge_progression", {})
 	set_state("lore_levels", {})
 	set_state("book_recommendations", [])
+	set_state("book_discovery_history", [])
+	set_state("book_completion_history", [])
+	set_state("archive_statistics", {})
 	_initialize_books()
 
 func _initialize_books() -> void:
@@ -43,6 +46,20 @@ func _initialize_books() -> void:
 		Book.new("b5", "Sacred Rituals", "Temple Keeper", "Ancient ceremonies and blessings...", 75)
 	]
 
+func _record_book_discovery(book_id: String, book_title: String) -> void:
+	var history = get_state("book_discovery_history", [])
+	history.append({"book_id": book_id, "title": book_title, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("book_discovery_history", history)
+
+func _record_book_completion(book_id: String, pages_read: int, duration_ms: int) -> void:
+	var history = get_state("book_completion_history", [])
+	history.append({"book_id": book_id, "pages": pages_read, "duration": duration_ms, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("book_completion_history", history)
+
 func discover_book(book_id: String) -> bool:
 	var book = _get_book(book_id)
 	if book and not book.discovered:
@@ -50,6 +67,7 @@ func discover_book(book_id: String) -> bool:
 		var discovered = get_state("discovered_books", [])
 		discovered.append(book_id)
 		set_state("discovered_books", discovered)
+		_record_book_discovery(book_id, book.title)
 		book_discovered.emit(book)
 		emit_event("book_discovered", book_id)
 		return true
@@ -172,3 +190,27 @@ func get_total_pages_read() -> int:
 func get_author_reputation(author: String) -> float:
 	var reputation = get_state("author_reputation", {})
 	return reputation.get(author, 0.0)
+
+func update_archive_statistics() -> void:
+	var stats = get_state("archive_statistics", {})
+	var disc_hist = get_state("book_discovery_history", [])
+	var comp_hist = get_state("book_completion_history", [])
+	var read_hist = get_state("reading_history", [])
+	var discovered = get_state("discovered_books", [])
+	var read = get_state("read_books", [])
+	stats["total_discovered"] = discovered.size()
+	stats["total_read"] = read.size()
+	stats["total_books"] = books.size()
+	stats["discovery_percent"] = (float(discovered.size()) / float(books.size()) * 100.0) if books.size() > 0 else 0.0
+	stats["reading_percent"] = (float(read.size()) / float(books.size()) * 100.0) if books.size() > 0 else 0.0
+	stats["total_pages_read"] = get_total_pages_read()
+	stats["reading_sessions"] = read_hist.size()
+	stats["discoveries_recorded"] = disc_hist.size()
+	stats["completions_recorded"] = comp_hist.size()
+	var rep = get_state("author_reputation", {})
+	stats["unique_authors_known"] = rep.size()
+	set_state("archive_statistics", stats)
+
+func get_archive_statistics() -> Dictionary:
+	update_archive_statistics()
+	return get_state("archive_statistics", {})

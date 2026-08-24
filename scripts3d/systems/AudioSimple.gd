@@ -15,6 +15,10 @@ var fade_effects: Dictionary = {}
 var audio_metrics: Dictionary = {"tracks_played": 0, "total_duration": 0.0}
 var mute_state: Dictionary = {"music": false, "sfx": false}
 var audio_performance: Array = []
+var music_play_history: Array = []
+var sfx_play_history: Array = []
+var volume_change_history: Array = []
+var audio_statistics: Dictionary = {}
 
 signal music_started(track: String)
 signal sfx_played(sound: String)
@@ -34,12 +38,29 @@ func _ready() -> void:
 
 	music_player.volume_db = linear2db(music_volume)
 
+func _record_music_play(track_path: String) -> void:
+	music_play_history.append({"track": track_path, "time": Time.get_ticks_msec()})
+	if music_play_history.size() > 50:
+		music_play_history.pop_front()
+
+func _record_sfx_play(sound_path: String, position: Vector3) -> void:
+	sfx_play_history.append({"sound": sound_path, "position": position, "time": Time.get_ticks_msec()})
+	if sfx_play_history.size() > 50:
+		sfx_play_history.pop_front()
+
+func _record_volume_change(audio_type: String, new_volume: float) -> void:
+	volume_change_history.append({"type": audio_type, "volume": new_volume, "time": Time.get_ticks_msec()})
+	if volume_change_history.size() > 50:
+		volume_change_history.pop_front()
+
 func play_music(track_path: String, loop: bool = true) -> void:
 	if ResourceLoader.exists(track_path):
 		var audio = load(track_path)
 		music_player.stream = audio
 		music_player.stream.loop = loop
 		music_player.play()
+		_record_music_play(track_path)
+		increment_tracks_played()
 		music_started.emit(track_path)
 
 func stop_music() -> void:
@@ -64,16 +85,20 @@ func play_sfx(sound_path: String, position: Vector3 = Vector3.ZERO) -> void:
 	available_player.global_position = position
 	available_player.volume_db = linear2db(sfx_volume)
 	available_player.play()
+	_record_sfx_play(sound_path, position)
+	increment_tracks_played()
 	sfx_played.emit(sound_path)
 
 func set_music_volume(volume: float) -> void:
 	music_volume = clamp(volume, 0.0, 1.0)
 	music_player.volume_db = linear2db(music_volume)
+	_record_volume_change("music", music_volume)
 
 func set_sfx_volume(volume: float) -> void:
 	sfx_volume = clamp(volume, 0.0, 1.0)
 	for sfx in sfx_players:
 		sfx.volume_db = linear2db(sfx_volume)
+	_record_volume_change("sfx", sfx_volume)
 
 func get_music_volume() -> float:
 	return music_volume
@@ -147,3 +172,21 @@ func get_total_audio_duration() -> float:
 
 func get_audio_history() -> Array:
 	return audio_history
+
+func update_audio_statistics() -> void:
+	audio_statistics["music_plays"] = music_play_history.size()
+	audio_statistics["sfx_plays"] = sfx_play_history.size()
+	audio_statistics["total_plays"] = audio_metrics["tracks_played"]
+	audio_statistics["total_duration"] = audio_metrics["total_duration"]
+	audio_statistics["volume_changes"] = volume_change_history.size()
+	audio_statistics["current_music_volume"] = music_volume
+	audio_statistics["current_sfx_volume"] = sfx_volume
+	audio_statistics["music_muted"] = mute_state.get("music", false)
+	audio_statistics["sfx_muted"] = mute_state.get("sfx", false)
+	audio_statistics["audio_queue_size"] = audio_queue.size()
+	audio_statistics["volume_profiles_saved"] = volume_profiles.size()
+	audio_statistics["audio_history_size"] = audio_history.size()
+
+func get_audio_statistics() -> Dictionary:
+	update_audio_statistics()
+	return audio_statistics
