@@ -39,6 +39,10 @@ func _ready() -> void:
 	set_state("behavior_log", [])
 	set_state("threat_sources", {})
 	set_state("memory_events", [])
+	set_state("behavior_activation_history", [])
+	set_state("behavior_deactivation_history", [])
+	set_state("decision_record", [])
+	set_state("ai_statistics", {})
 	_initialize_behaviors()
 
 func _initialize_behaviors() -> void:
@@ -55,9 +59,31 @@ func _initialize_behaviors() -> void:
 	for b in behaviors.values():
 		b.weight = 1.0 + randf_range(-0.2, 0.2)
 
+func _record_behavior_activation(behavior_id: String) -> void:
+	var history = get_state("behavior_activation_history", [])
+	history.append({"behavior": behavior_id, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("behavior_activation_history", history)
+
+func _record_behavior_deactivation(behavior_id: String) -> void:
+	var history = get_state("behavior_deactivation_history", [])
+	history.append({"behavior": behavior_id, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("behavior_deactivation_history", history)
+
+func _record_decision(behavior_id: String, decision: String) -> void:
+	var history = get_state("decision_record", [])
+	history.append({"behavior": behavior_id, "decision": decision, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("decision_record", history)
+
 func activate_behavior(behavior_id: String) -> bool:
 	if behavior_id in behaviors:
 		set_state("active_behavior", behavior_id)
+		_record_behavior_activation(behavior_id)
 		behavior_activated.emit(behavior_id)
 		emit_event("behavior_activated", behavior_id)
 		return true
@@ -66,6 +92,7 @@ func activate_behavior(behavior_id: String) -> bool:
 func deactivate_behavior(behavior_id: String) -> void:
 	if get_state("active_behavior", "") == behavior_id:
 		set_state("active_behavior", "")
+		_record_behavior_deactivation(behavior_id)
 		behavior_deactivated.emit(behavior_id)
 		emit_event("behavior_deactivated", behavior_id)
 
@@ -85,6 +112,7 @@ func make_decision(behavior_id: String, options: Array[String]) -> String:
 	if options.is_empty():
 		return ""
 	var decision = options[randi() % options.size()]
+	_record_decision(behavior_id, decision)
 	decision_made.emit(behavior_id, decision)
 	emit_event("decision_made", behavior_id)
 	return decision
@@ -218,3 +246,28 @@ func get_behavior_success_rate(behavior_id: String) -> float:
 
 func get_memory_events() -> Array:
 	return get_state("memory_events", [])
+
+func update_ai_statistics() -> void:
+	var stats = get_state("ai_statistics", {})
+	var act_hist = get_state("behavior_activation_history", [])
+	var deact_hist = get_state("behavior_deactivation_history", [])
+	var dec_rec = get_state("decision_record", [])
+	var behavior_log = get_state("behavior_log", [])
+	stats["total_activations"] = act_hist.size()
+	stats["total_deactivations"] = deact_hist.size()
+	stats["total_decisions"] = dec_rec.size()
+	stats["total_behavior_executions"] = behavior_log.size()
+	var unique_behaviors = {}
+	for entry in act_hist:
+		unique_behaviors[entry["behavior"]] = true
+	stats["unique_behaviors_used"] = unique_behaviors.size()
+	stats["current_energy"] = get_state("energy", 100.0)
+	stats["current_threat"] = get_state("threat_level", 0.0)
+	stats["current_emotion"] = get_state("emotional_state", "neutral")
+	var threat_sources = get_state("threat_sources", {})
+	stats["active_threats"] = threat_sources.size()
+	set_state("ai_statistics", stats)
+
+func get_ai_statistics() -> Dictionary:
+	update_ai_statistics()
+	return get_state("ai_statistics", {})
