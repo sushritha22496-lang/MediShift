@@ -27,14 +27,58 @@ func _ready() -> void:
 	set_state("milestones", {})
 	set_state("stat_history", [])
 	set_state("total_exp_gained", 0.0)
+	set_state("level_up_history", [])
+	set_state("damage_taken_history", [])
+	set_state("healing_received_history", [])
+	set_state("buff_history", [])
+	set_state("death_history", [])
+	set_state("character_statistics", {})
+
+func _record_damage(amount: float) -> void:
+	var history = get_state("damage_taken_history", [])
+	history.append({"amount": amount, "hp_after": get_stat("hp"), "timestamp": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("damage_taken_history", history)
+
+func _record_healing(amount: float) -> void:
+	var history = get_state("healing_received_history", [])
+	history.append({"amount": amount, "hp_after": get_stat("hp"), "timestamp": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("healing_received_history", history)
+
+func _record_buff(stat: String, amount: float) -> void:
+	var history = get_state("buff_history", [])
+	history.append({"stat": stat, "amount": amount, "timestamp": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("buff_history", history)
+
+func _record_death() -> void:
+	var history = get_state("death_history", [])
+	history.append({"level": level, "exp": exp, "timestamp": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("death_history", history)
+
+func _record_level_up(new_level: int) -> void:
+	var history = get_state("level_up_history", [])
+	history.append({"level": new_level, "exp": exp, "timestamp": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("level_up_history", history)
 
 func take_damage(amount: float) -> void:
 	set_stat("hp", maxf(get_stat("hp") - amount, 0))
+	_record_damage(amount)
 	if get_stat("hp") <= 0:
+		_record_death()
 		emit_event("died", self)
 
 func heal(amount: float) -> void:
 	set_stat("hp", minf(get_stat("hp") + amount, get_stat("max_hp")))
+	_record_healing(amount)
 
 func set_stat(key: String, value: float) -> void:
 	if key in stats:
@@ -67,6 +111,7 @@ func level_up_character() -> void:
 	var max_hp_gain = vit_gain * 10.0 + (level * 5.0)
 	set_stat("max_hp", get_stat("max_hp") + max_hp_gain)
 	set_stat("hp", get_stat("max_hp"))
+	_record_level_up(level)
 	level_up.emit(level)
 	skill_points_gained.emit(3)
 	emit_event("level_up", level)
@@ -85,6 +130,7 @@ func add_stat_permanent(stat: String, amount: float) -> void:
 func apply_stat_buff(stat: String, amount: float) -> void:
 	if stat in stat_buffs:
 		stat_buffs[stat] += amount
+		_record_buff(stat, amount)
 		emit_event("buff_applied", stat)
 
 func remove_stat_buff(stat: String, amount: float) -> void:
@@ -173,3 +219,29 @@ func _track_stat_history() -> void:
 
 func get_stat_history() -> Array:
 	return get_state("stat_history", [])
+
+func update_character_statistics() -> void:
+	var stats = get_state("character_statistics", {})
+	var level_hist = get_state("level_up_history", [])
+	var damage_hist = get_state("damage_taken_history", [])
+	var healing_hist = get_state("healing_received_history", [])
+	var death_hist = get_state("death_history", [])
+	stats["current_level"] = level
+	stats["total_exp_gained"] = get_state("total_exp_gained", 0.0)
+	stats["level_ups"] = level_hist.size()
+	stats["total_damage_taken"] = 0.0
+	for entry in damage_hist:
+		stats["total_damage_taken"] += entry["amount"]
+	stats["total_healing_received"] = 0.0
+	for entry in healing_hist:
+		stats["total_healing_received"] += entry["amount"]
+	stats["death_count"] = death_hist.size()
+	stats["achievements_unlocked"] = get_state("achievements", []).size()
+	stats["current_gold"] = gold
+	stats["current_skill_points"] = skill_points
+	stats["current_hp"] = get_stat("hp")
+	set_state("character_statistics", stats)
+
+func get_character_statistics() -> Dictionary:
+	update_character_statistics()
+	return get_state("character_statistics", {})

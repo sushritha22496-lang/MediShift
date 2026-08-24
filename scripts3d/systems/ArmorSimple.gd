@@ -32,6 +32,11 @@ func _ready() -> void:
 	set_state("enchantments", {})
 	set_state("armor_upgrades", {})
 	set_state("armor_sets", {})
+	set_state("equipment_history", [])
+	set_state("durability_history", [])
+	set_state("upgrade_history", [])
+	set_state("enchantment_history", [])
+	set_state("armor_statistics", {})
 	_initialize_armors()
 
 func _initialize_armors() -> void:
@@ -50,12 +55,41 @@ func _initialize_armors() -> void:
 		Armor.new("steel_boots", "Steel Boots", "feet", 8.0, 2.0, 1.5, "rare")
 	]
 
+func _record_equipment_change(slot: String, armor_name: String, equipped: bool) -> void:
+	var history = get_state("equipment_history", [])
+	history.append({"slot": slot, "armor": armor_name, "equipped": equipped, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("equipment_history", history)
+
+func _record_durability_change(armor_id: String, durability: float) -> void:
+	var history = get_state("durability_history", [])
+	history.append({"armor": armor_id, "durability": durability, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("durability_history", history)
+
+func _record_upgrade(armor_id: String, new_level: int) -> void:
+	var history = get_state("upgrade_history", [])
+	history.append({"armor": armor_id, "level": new_level, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("upgrade_history", history)
+
+func _record_enchantment(armor_id: String, enchant: String) -> void:
+	var history = get_state("enchantment_history", [])
+	history.append({"armor": armor_id, "enchantment": enchant, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("enchantment_history", history)
+
 func equip_armor(armor_id: String) -> bool:
 	for armor in armors:
 		if armor.id == armor_id:
 			var equipped = get_state("equipped", {})
 			equipped[armor.slot] = armor
 			set_state("equipped", equipped)
+			_record_equipment_change(armor.slot, armor.name, true)
 			armor_equipped.emit(armor.slot, armor)
 			emit_event("armor_equipped", armor_id)
 			return true
@@ -64,6 +98,8 @@ func equip_armor(armor_id: String) -> bool:
 func unequip_armor(slot: String) -> void:
 	var equipped = get_state("equipped", {})
 	if slot in equipped:
+		var armor_name = equipped[slot].name if equipped[slot] else "Unknown"
+		_record_equipment_change(slot, armor_name, false)
 		equipped.erase(slot)
 		set_state("equipped", equipped)
 		armor_unequipped.emit(slot)
@@ -111,6 +147,7 @@ func damage_armor(armor_id: String, damage: float) -> bool:
 		durability[armor_id] = 100.0
 	durability[armor_id] = maxf(0.0, durability[armor_id] - damage)
 	set_state("armor_durability", durability)
+	_record_durability_change(armor_id, durability[armor_id])
 	if durability[armor_id] <= 0:
 		armor_broken.emit(armor_id)
 		emit_event("armor_broken", armor_id)
@@ -121,6 +158,7 @@ func repair_armor(armor_id: String, amount: float = 50.0) -> void:
 	var durability = get_state("armor_durability", {})
 	durability[armor_id] = minf(100.0, durability.get(armor_id, 100.0) + amount)
 	set_state("armor_durability", durability)
+	_record_durability_change(armor_id, durability[armor_id])
 	emit_event("armor_repaired", armor_id)
 
 func upgrade_armor(armor_id: String) -> bool:
@@ -135,6 +173,7 @@ func upgrade_armor(armor_id: String) -> bool:
 	armor.magic_defense *= 1.1
 	upgrades[armor_id] = level + 1
 	set_state("armor_upgrades", upgrades)
+	_record_upgrade(armor_id, level + 1)
 	emit_event("armor_upgraded", armor_id)
 	return true
 
@@ -144,6 +183,7 @@ func add_enchantment(armor_id: String, enchant: String) -> void:
 		enchants[armor_id] = []
 	enchants[armor_id].append(enchant)
 	set_state("enchantments", enchants)
+	_record_enchantment(armor_id, enchant)
 
 func register_armor_set(set_name: String, armor_ids: Array) -> void:
 	var sets = get_state("armor_sets", {})
@@ -172,3 +212,23 @@ func check_set_bonus(set_name: String) -> bool:
 func get_armor_durability(armor_id: String) -> float:
 	var durability = get_state("armor_durability", {})
 	return durability.get(armor_id, 100.0)
+
+func update_armor_statistics() -> void:
+	var stats = get_state("armor_statistics", {})
+	var equipment_hist = get_state("equipment_history", [])
+	var durability_hist = get_state("durability_history", [])
+	var upgrade_hist = get_state("upgrade_history", [])
+	var enchant_hist = get_state("enchantment_history", [])
+	var equipped = get_state("equipped", {})
+	stats["total_equips"] = equipment_hist.size()
+	stats["total_durability_changes"] = durability_hist.size()
+	stats["total_upgrades"] = upgrade_hist.size()
+	stats["total_enchantments"] = enchant_hist.size()
+	stats["currently_equipped"] = equipped.size()
+	stats["total_defense"] = get_total_defense()
+	stats["total_magic_defense"] = get_total_magic_defense()
+	set_state("armor_statistics", stats)
+
+func get_armor_statistics() -> Dictionary:
+	update_armor_statistics()
+	return get_state("armor_statistics", {})
