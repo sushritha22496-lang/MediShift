@@ -20,6 +20,12 @@ func _ready() -> void:
 	set_state("wind_speed", 0.0)
 	set_state("lightning_strikes", 0)
 	set_state("visibility_obstacles", [])
+	set_state("weather_change_history", [])
+	set_state("temperature_history", [])
+	set_state("wind_history", [])
+	set_state("hazard_tracking", [])
+	set_state("weather_statistics", {})
+	set_state("visibility_history", [])
 
 func _process(delta: float) -> void:
 	var timer = get_state("change_timer", 0.0)
@@ -39,6 +45,7 @@ func change_weather() -> void:
 		set_state("current_weather", new_weather)
 		var intensity = randf_range(0.3, 1.0)
 		set_state("intensity", intensity)
+		_record_weather_change(old_weather, new_weather, intensity)
 		update_weather_properties(new_weather, intensity)
 		weather_changed.emit(new_weather)
 		emit_event("weather_changed", new_weather)
@@ -75,6 +82,9 @@ func update_weather_properties(weather: String, intensity: float) -> void:
 			wind = intensity * 10.0
 	set_state("temperature", temp)
 	set_state("wind_speed", wind)
+	_record_temperature_history(temp)
+	_record_wind_history(wind)
+	_record_visibility(get_visibility_modifier())
 
 func get_weather() -> String:
 	return get_state("current_weather", "clear")
@@ -174,4 +184,61 @@ func apply_environmental_hazard(hazard_type: String) -> float:
 			damage = randf_range(5.0, 15.0) * intensity
 		"dehydration" if weather == "clear":
 			damage = randf_range(2.0, 8.0) * intensity
+	if damage > 0:
+		_record_hazard(hazard_type, damage)
 	return damage
+
+func _record_weather_change(old_weather: String, new_weather: String, intensity: float) -> void:
+	var history = get_state("weather_change_history", [])
+	history.append({"from": old_weather, "to": new_weather, "intensity": intensity, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("weather_change_history", history)
+
+func _record_temperature_history(temp: float) -> void:
+	var history = get_state("temperature_history", [])
+	history.append({"temp": temp, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("temperature_history", history)
+
+func _record_wind_history(wind: float) -> void:
+	var history = get_state("wind_history", [])
+	history.append({"wind": wind, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("wind_history", history)
+
+func _record_hazard(hazard_type: String, damage: float) -> void:
+	var tracking = get_state("hazard_tracking", [])
+	tracking.append({"type": hazard_type, "damage": damage, "time": Time.get_ticks_msec()})
+	if tracking.size() > 50:
+		tracking.pop_front()
+	set_state("hazard_tracking", tracking)
+	emit_event("hazard_triggered", hazard_type)
+
+func _record_visibility(visibility: float) -> void:
+	var history = get_state("visibility_history", [])
+	history.append({"visibility": visibility, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("visibility_history", history)
+
+func get_weather_change_history() -> Array:
+	return get_state("weather_change_history", [])
+
+func get_hazard_tracking() -> Array:
+	return get_state("hazard_tracking", [])
+
+func update_weather_statistics() -> void:
+	var stats = get_state("weather_statistics", {})
+	stats["current_weather"] = get_weather()
+	stats["current_temp"] = get_state("temperature", 20.0)
+	stats["current_wind"] = get_state("wind_speed", 0.0)
+	stats["lightning_strikes"] = get_state("lightning_strikes", 0)
+	stats["weather_changes"] = get_state("weather_change_history", []).size()
+	set_state("weather_statistics", stats)
+
+func get_weather_statistics() -> Dictionary:
+	update_weather_statistics()
+	return get_state("weather_statistics", {})
