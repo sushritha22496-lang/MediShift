@@ -35,9 +35,16 @@ signal weapon_equipped(weapon: Weapon)
 signal weapon_unequipped
 signal weapon_durability_changed(weapon_id: String, durability: float)
 signal weapon_broken(weapon_id: String)
+signal weapon_upgraded(weapon_id: String, level: int)
+signal enchantment_added(weapon_id: String, effect: String)
 
 func _ready() -> void:
 	set_state("equipped", null)
+	set_state("enchantments", {})
+	set_state("weapon_upgrades", {})
+	set_state("mastery", {})
+	set_state("perks", {})
+	set_state("element_intensity", {})
 	_initialize_weapons()
 
 func _initialize_weapons() -> void:
@@ -126,3 +133,67 @@ func get_crit_multiplier(weapon_id: String) -> float:
 	if weapon and randf() < weapon.crit_chance:
 		return 1.5 + (weapon.level_requirement * 0.1)
 	return 1.0
+
+func upgrade_weapon(weapon_id: String, materials: int = 1) -> bool:
+	var weapon = get_weapon(weapon_id)
+	if not weapon or materials <= 0:
+		return false
+	var upgrades = get_state("weapon_upgrades", {})
+	var current = upgrades.get(weapon_id, 0)
+	var new_level = current + 1
+	if new_level > 10:
+		return false
+	weapon.damage *= 1.12
+	weapon.max_durability *= 1.08
+	weapon.durability = weapon.max_durability
+	weapon.crit_chance += 0.02
+	upgrades[weapon_id] = new_level
+	set_state("weapon_upgrades", upgrades)
+	weapon_upgraded.emit(weapon_id, new_level)
+	emit_event("weapon_upgraded", {"weapon": weapon_id, "level": new_level})
+	return true
+
+func add_enchantment(weapon_id: String, enchant_id: String, power: float = 1.0) -> bool:
+	var weapon = get_weapon(weapon_id)
+	if not weapon:
+		return false
+	var enchants = get_state("enchantments", {})
+	if weapon_id not in enchants:
+		enchants[weapon_id] = []
+	if enchants[weapon_id].size() >= 3:
+		return false
+	enchants[weapon_id].append({"id": enchant_id, "power": power, "active": true})
+	set_state("enchantments", enchants)
+	enchantment_added.emit(weapon_id, enchant_id)
+	emit_event("enchantment_added", {"weapon": weapon_id, "enchant": enchant_id})
+	return true
+
+func add_weapon_perk(weapon_id: String, perk: String) -> void:
+	var perks = get_state("perks", {})
+	if weapon_id not in perks:
+		perks[weapon_id] = []
+	perks[weapon_id].append(perk)
+	set_state("perks", perks)
+	emit_event("perk_added", perk)
+
+func track_weapon_mastery(weapon_id: String, exp: float = 1.0) -> void:
+	var mastery = get_state("mastery", {})
+	mastery[weapon_id] = mastery.get(weapon_id, 0.0) + exp
+	set_state("mastery", mastery)
+
+func get_weapon_mastery(weapon_id: String) -> float:
+	var mastery = get_state("mastery", {})
+	return mastery.get(weapon_id, 0.0)
+
+func get_enchantments(weapon_id: String) -> Array:
+	var enchants = get_state("enchantments", {})
+	return enchants.get(weapon_id, [])
+
+func increase_element_intensity(weapon_id: String, intensity: float = 0.1) -> void:
+	var weapon = get_weapon(weapon_id)
+	if not weapon or weapon.element == "none":
+		return
+	var elements = get_state("element_intensity", {})
+	elements[weapon_id] = elements.get(weapon_id, 0.0) + intensity
+	set_state("element_intensity", elements)
+	emit_event("element_increased", weapon_id)

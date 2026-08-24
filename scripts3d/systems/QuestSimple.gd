@@ -4,8 +4,13 @@ class_name QuestSimple
 
 signal quest_added(track: Track)
 signal quest_completed(track: Track)
+signal quest_abandoned(quest_id: String)
+signal quest_progress_updated(quest_id: String, progress: int)
 
 func _ready() -> void:
+	set_state("quest_markers", {})
+	set_state("quest_branches", {})
+	set_state("quest_history", [])
 	_initialize_quests()
 
 func _initialize_quests() -> void:
@@ -85,3 +90,42 @@ func scale_rewards(quest_id: String, player_level: int) -> void:
 		var diff_mult = 1.0 + (get_quest_difficulty(quest_id) * 0.25)
 		quest.rewards["experience"] = int(quest.rewards.get("experience", 0) * diff_mult * (player_level * 0.1 + 1.0))
 		quest.rewards["gold"] = int(quest.rewards.get("gold", 0) * diff_mult)
+
+func set_quest_marker(quest_id: String, location: Vector3) -> void:
+	var markers = get_state("quest_markers", {})
+	markers[quest_id] = location
+	set_state("quest_markers", markers)
+	emit_event("marker_set", quest_id)
+
+func get_quest_marker(quest_id: String) -> Vector3:
+	var markers = get_state("quest_markers", {})
+	return markers.get(quest_id, Vector3.ZERO)
+
+func update_quest_progress(quest_id: String, amount: int = 1) -> void:
+	var quest = get_quest(quest_id)
+	if quest and quest in active:
+		quest.progress += amount
+		quest_progress_updated.emit(quest_id, quest.progress)
+		emit_event("progress_updated", {"quest": quest_id, "progress": quest.progress})
+		if quest.progress >= quest.target:
+			complete_quest(quest_id)
+
+func track_quest_branch(quest_id: String, branch_id: String) -> void:
+	var branches = get_state("quest_branches", {})
+	if quest_id not in branches:
+		branches[quest_id] = []
+	branches[quest_id].append(branch_id)
+	set_state("quest_branches", branches)
+
+func abandon_quest(quest_id: String) -> bool:
+	var quest = get_quest(quest_id)
+	if quest and quest in active:
+		active.erase(quest)
+		quest_abandoned.emit(quest_id)
+		emit_event("quest_abandoned", quest_id)
+		return true
+	return false
+
+func get_quest_branches(quest_id: String) -> Array:
+	var branches = get_state("quest_branches", {})
+	return branches.get(quest_id, [])

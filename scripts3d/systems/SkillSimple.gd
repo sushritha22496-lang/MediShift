@@ -29,10 +29,16 @@ var available_skills: Array[Skill] = []
 
 signal skill_learned(skill: Skill)
 signal skill_used(skill: Skill)
+signal skill_leveled(skill: String, level: int)
+signal skill_tree_unlocked(skill: String)
 
 func _ready() -> void:
 	set_state("learned", {})
 	set_state("cooldowns", {})
+	set_state("skill_stats", {})
+	set_state("skill_variations", {})
+	set_state("usage_count", {})
+	set_state("tree_unlocked", {})
 	_initialize_skills()
 
 func _physics_process(delta: float) -> void:
@@ -131,3 +137,43 @@ func get_skills_text() -> String:
 		var cooldown_text = "Ready" if cooldowns.get(skill_name, 0.0) <= 0 else "%.1fs" % cooldowns.get(skill_name, 0.0)
 		text += "%s [%s]\n" % [skill_name, cooldown_text]
 	return text
+
+func add_skill_variation(skill_name: String, variation: String) -> bool:
+	var learned = get_state("learned", {})
+	if skill_name not in learned:
+		return false
+	var variations = get_state("skill_variations", {})
+	if skill_name not in variations:
+		variations[skill_name] = []
+	variations[skill_name].append(variation)
+	set_state("skill_variations", variations)
+	emit_event("variation_added", skill_name)
+	return true
+
+func get_skill_variations(skill_name: String) -> Array:
+	var variations = get_state("skill_variations", {})
+	return variations.get(skill_name, [])
+
+func track_skill_usage(skill_name: String) -> void:
+	var usage = get_state("usage_count", {})
+	usage[skill_name] = usage.get(skill_name, 0) + 1
+	set_state("usage_count", usage)
+
+func get_skill_usage_count(skill_name: String) -> int:
+	var usage = get_state("usage_count", {})
+	return usage.get(skill_name, 0)
+
+func unlock_skill_tree(tree_name: String) -> void:
+	var unlocked = get_state("tree_unlocked", {})
+	unlocked[tree_name] = true
+	set_state("tree_unlocked", unlocked)
+	skill_tree_unlocked.emit(tree_name)
+	emit_event("tree_unlocked", tree_name)
+
+func is_tree_unlocked(tree_name: String) -> bool:
+	var unlocked = get_state("tree_unlocked", {})
+	return unlocked.get(tree_name, false)
+
+func get_skill_stats(skill_name: String) -> Dictionary:
+	var stats = get_state("skill_stats", {})
+	return stats.get(skill_name, {"casts": 0, "hits": 0, "crits": 0, "effectiveness": 0.0})

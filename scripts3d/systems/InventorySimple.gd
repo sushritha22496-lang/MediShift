@@ -9,6 +9,7 @@ const DEFAULT_STACK_SIZE = 10
 signal inventory_changed
 signal inventory_full
 signal weight_limit_exceeded
+signal equipment_changed(slot: String, item: String)
 
 func _ready() -> void:
 	var items = []
@@ -18,6 +19,10 @@ func _ready() -> void:
 	set_state("items", items)
 	set_state("total_weight", 0.0)
 	set_state("slot_filter", "all")
+	set_state("equipment_slots", {"head": null, "body": null, "hands": null, "feet": null, "back": null})
+	set_state("item_conditions", {})
+	set_state("favorite_items", [])
+	set_state("locked_items", [])
 
 func add_item(item_name: String, quantity: int = 1, rarity: String = "common", weight: float = 1.0) -> bool:
 	var items = get_state("items", [])
@@ -91,3 +96,54 @@ func damage_item(item_name: String, damage: float) -> void:
 		if item != null and item["name"] == item_name:
 			item["durability"] = maxf(0.0, item.get("durability", 100.0) - damage)
 			emit_event("item_damaged", item_name)
+
+func equip_to_slot(item_name: String, slot: String) -> bool:
+	var valid_slots = ["head", "body", "hands", "feet", "back"]
+	if slot not in valid_slots or not has_item(item_name):
+		return false
+	var equipment = get_state("equipment_slots", {})
+	equipment[slot] = item_name
+	set_state("equipment_slots", equipment)
+	equipment_changed.emit(slot, item_name)
+	emit_event("item_equipped", {"item": item_name, "slot": slot})
+	return true
+
+func unequip_slot(slot: String) -> void:
+	var equipment = get_state("equipment_slots", {})
+	if slot in equipment:
+		equipment[slot] = null
+		set_state("equipment_slots", equipment)
+		emit_event("item_unequipped", slot)
+
+func has_item(item_name: String) -> bool:
+	return get_item_count(item_name) > 0
+
+func get_equipped_item(slot: String) -> String:
+	var equipment = get_state("equipment_slots", {})
+	return equipment.get(slot, null)
+
+func filter_by_type(item_type: String) -> Array:
+	var items = get_state("items", [])
+	var filtered = []
+	for item in items:
+		if item != null and item.get("type", "") == item_type:
+			filtered.append(item)
+	return filtered
+
+func mark_favorite(item_name: String) -> void:
+	var favorites = get_state("favorite_items", [])
+	if item_name not in favorites:
+		favorites.append(item_name)
+		set_state("favorite_items", favorites)
+		emit_event("marked_favorite", item_name)
+
+func lock_item(item_name: String) -> void:
+	var locked = get_state("locked_items", [])
+	if item_name not in locked:
+		locked.append(item_name)
+		set_state("locked_items", locked)
+
+func set_item_condition(item_name: String, condition: float) -> void:
+	var conditions = get_state("item_conditions", {})
+	conditions[item_name] = clampf(condition, 0.0, 100.0)
+	set_state("item_conditions", conditions)
