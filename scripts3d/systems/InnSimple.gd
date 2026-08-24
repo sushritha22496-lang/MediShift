@@ -7,36 +7,117 @@ class_name InnSimple
 
 signal rest_started
 signal rest_completed(health_recovered: float)
+signal meal_purchased(meal_name: String, bonus: Dictionary)
+signal room_upgraded(room_type: String)
+
+class Room:
+	var type: String
+	var cost: float
+	var healing_multiplier: float = 1.0
+	var amenities: Array[String] = []
+	var stat_bonuses: Dictionary = {}
+	func _init(p_type: String, p_cost: float, p_multiplier: float = 1.0) -> void:
+		type = p_type
+		cost = p_cost
+		healing_multiplier = p_multiplier
 
 func _ready() -> void:
 	set_state("is_resting", false)
 	set_state("quality", "comfortable")
+	set_state("rooms", {})
+	set_state("total_rests", 0)
+	set_state("inn_reputation", 0.0)
+	set_state("current_room_type", "standard")
+	set_state("status_effects_removed", {})
+	_initialize_rooms()
 
-func rest(player: Node3D, rest_hours: int = 1) -> bool:
+func _initialize_rooms() -> void:
+	var rooms = {}
+	var standard = Room.new("standard", 50.0, 1.0)
+	standard.amenities = ["bed", "water"]
+	rooms["standard"] = standard
+
+	var comfortable = Room.new("comfortable", 100.0, 1.3)
+	comfortable.amenities = ["bed", "bath", "fire"]
+	comfortable.stat_bonuses = {"strength": 0.5}
+	rooms["comfortable"] = comfortable
+
+	var luxurious = Room.new("luxurious", 200.0, 1.8)
+	luxurious.amenities = ["bed", "bath", "fire", "food"]
+	luxurious.stat_bonuses = {"strength": 1.0, "vitality": 1.0}
+	rooms["luxurious"] = luxurious
+
+	set_state("rooms", rooms)
+
+func rest(player: Node3D, rest_hours: int = 1, room_type: String = "standard") -> bool:
 	if get_state("is_resting", false):
 		return false
+	var rooms = get_state("rooms", {})
+	var room = rooms.get(room_type, rooms["standard"])
 	set_state("is_resting", true)
+	set_state("current_room_type", room_type)
 	rest_started.emit()
-	emit_event("rest_started", rest_hours)
+	emit_event("rest_started", room_type)
 	await get_tree().create_timer(rest_hours * 0.5).timeout
-	var healing = base_healing * rest_hours
+	var healing = base_healing * rest_hours * room.healing_multiplier
 	if player.has_method("heal"):
 		player.heal(healing)
+	_remove_status_effects()
+	var total_rests = get_state("total_rests", 0) + 1
+	set_state("total_rests", total_rests)
 	set_state("is_resting", false)
 	rest_completed.emit(healing)
-	emit_event("rest_completed", healing)
+	emit_event("rest_completed", {"healing": healing, "room": room_type})
 	return true
+
+func _remove_status_effects() -> void:
+	var effects_removed = get_state("status_effects_removed", {})
+	var removed_count = effects_removed.get("poison", 0) + effects_removed.get("curse", 0)
+	emit_event("status_effects_removed", removed_count)
+
+func purchase_meal(meal_type: String) -> Dictionary:
+	var bonus = {}
+	match meal_type:
+		"simple":
+			bonus = {"healing": 50.0, "cost": 20.0}
+		"hearty":
+			bonus = {"healing": 100.0, "strength_bonus": 0.5, "cost": 50.0}
+		"exotic":
+			bonus = {"healing": 150.0, "strength_bonus": 1.0, "magic_bonus": 0.5, "cost": 100.0}
+	if bonus.size() > 0:
+		meal_purchased.emit(meal_type, bonus)
+		emit_event("meal_purchased", meal_type)
+	return bonus
+
+func upgrade_room(new_room_type: String) -> bool:
+	var current = get_state("current_room_type", "standard")
+	if current != new_room_type:
+		set_state("current_room_type", new_room_type)
+		room_upgraded.emit(new_room_type)
+		emit_event("room_upgraded", new_room_type)
+		return true
+	return false
+
+func add_inn_reputation(amount: float) -> void:
+	var rep = get_state("inn_reputation", 0.0)
+	set_state("inn_reputation", rep + amount)
+	emit_event("inn_reputation_changed", rep + amount)
+
+func get_room_cost(room_type: String) -> float:
+	var rooms = get_state("rooms", {})
+	var room = rooms.get(room_type, rooms["standard"])
+	return room.cost if room else rest_cost
 
 func get_rest_cost() -> float:
 	return rest_cost
 
 func get_inn_text() -> String:
-	var healing = base_healing
-	if get_state("quality", "comfortable") == "luxurious":
-		healing = 150.0
-	elif get_state("quality", "comfortable") == "poor":
-		healing = 75.0
-	return "🏨 Inn\nRest Cost: %.0f gold\nHeal: %.0f HP per hour" % [rest_cost, healing]
+	var current_room = get_state("current_room_type", "standard")
+	var rooms = get_state("rooms", {})
+	var room = rooms.get(current_room, rooms["standard"])
+	var total_rests = get_state("total_rests", 0)
+	var healing = base_healing * room.healing_multiplier
+	return "🏨 Inn | Room: %s | Rest: %d times\nCost: %.0f | Heal: %.0f HP/hour" % [current_room, total_rests, room.cost, healing]
 
 func set_rest_quality(quality: String) -> void:
 	set_state("quality", quality)
