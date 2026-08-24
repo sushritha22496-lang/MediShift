@@ -36,6 +36,9 @@ class Track:
 			return false
 		return (Time.get_ticks_msec() - start_time) > (time_limit * 1000)
 
+	func get_elapsed_time_ms() -> int:
+		return Time.get_ticks_msec() - start_time
+
 var active: Array[Track] = []
 var completed: Array[Track] = []
 
@@ -44,6 +47,11 @@ signal track_progress(track: Track)
 signal track_completed(track: Track)
 signal track_failed(track: Track)
 signal milestone_reached(data: Dictionary)
+
+var track_state_tracking: Dictionary = {}
+var track_timing_data: Dictionary = {}
+var failure_consequences: Array = []
+var track_chains: Dictionary = {}
 
 func start(id: String, title: String, target_count: int = 1, track_type: String = "quest", difficulty: int = 1) -> Track:
 	var track = Track.new(id, title, track_type)
@@ -103,3 +111,42 @@ func to_text(prefix: String = "") -> String:
 	for t in active:
 		text += "%s (%d/%d)\n" % [t.title, t.progress, t.target]
 	return text if not active.is_empty() else "%sNone" % prefix
+
+func record_track_timing(track_id: String, completion_time_ms: int, speedrun: bool = false) -> void:
+	track_timing_data[track_id] = {"time": completion_time_ms, "speedrun": speedrun, "timestamp": Time.get_ticks_msec()}
+
+func get_track_completion_time(track_id: String) -> int:
+	return track_timing_data.get(track_id, {}).get("time", 0)
+
+func record_failure_consequence(consequence: String) -> void:
+	failure_consequences.append(consequence)
+	if failure_consequences.size() > 30:
+		failure_consequences.pop_front()
+
+func set_track_chain(parent_track_id: String, child_track_id: String) -> void:
+	if parent_track_id not in track_chains:
+		track_chains[parent_track_id] = []
+	track_chains[parent_track_id].append(child_track_id)
+
+func get_chained_tracks(parent_id: String) -> Array:
+	return track_chains.get(parent_id, [])
+
+func get_track_performance_rating(track_id: String) -> float:
+	var track = _find_track(track_id, completed)
+	if track:
+		var bonus = 0.0
+		for objective in track.optional_objectives:
+			if objective in track.optional_progress:
+				bonus += 0.1
+		return minf(1.0, (float(track.progress) / float(track.target)) + bonus)
+	return 0.0
+
+func _find_track(track_id: String, list: Array) -> Track:
+	for track in list:
+		if track.id == track_id:
+			return track
+	return null
+
+func is_speedrun(track_id: String) -> bool:
+	var timing = track_timing_data.get(track_id, {})
+	return timing.get("speedrun", false)

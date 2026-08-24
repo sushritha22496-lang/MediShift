@@ -36,6 +36,13 @@ func _ready() -> void:
 	set_state("potion_mastery", {})
 	set_state("brewing_history", [])
 	set_state("contamination", 0)
+	set_state("ingredient_quality", {})
+	set_state("potion_batches", [])
+	set_state("catalyst_effects", {})
+	set_state("experiments", [])
+	set_state("recipe_discoveries", [])
+	set_state("lab_upgrades", [])
+	set_state("breakthrough_count", 0)
 	_initialize_potions()
 
 func _initialize_potions() -> void:
@@ -174,3 +181,72 @@ func get_potions_text() -> String:
 		var mastery = get_state("potion_mastery", {})
 		text += "%s (Mastery: %d)\n" % [potion.name, int(mastery.get(potion.id, 0.0))]
 	return text
+
+func set_ingredient_quality(ingredient: String, quality: float) -> void:
+	var qualities = get_state("ingredient_quality", {})
+	qualities[ingredient] = clampf(quality, 0.0, 1.0)
+	set_state("ingredient_quality", qualities)
+	emit_event("ingredient_quality_set", ingredient)
+
+func get_ingredient_quality(ingredient: String) -> float:
+	var qualities = get_state("ingredient_quality", {})
+	return qualities.get(ingredient, 0.7)
+
+func record_potion_batch(potion_id: String, batch_size: int, quality: float) -> void:
+	var batches = get_state("potion_batches", [])
+	batches.append({"potion": potion_id, "size": batch_size, "quality": quality, "time": Time.get_ticks_msec()})
+	if batches.size() > 50:
+		batches.pop_front()
+	set_state("potion_batches", batches)
+
+func apply_catalyst_effect(catalyst: String, effect: String) -> void:
+	var effects = get_state("catalyst_effects", {})
+	if catalyst not in effects:
+		effects[catalyst] = []
+	effects[catalyst].append(effect)
+	set_state("catalyst_effects", effects)
+	emit_event("catalyst_applied", catalyst)
+
+func record_experiment(experiment_data: Dictionary) -> void:
+	var experiments = get_state("experiments", [])
+	experiments.append({"data": experiment_data, "time": Time.get_ticks_msec()})
+	if experiments.size() > 40:
+		experiments.pop_front()
+	set_state("experiments", experiments)
+	emit_event("experiment_recorded", experiment_data)
+
+func discover_recipe(recipe_name: String, ingredients: Array) -> void:
+	var discoveries = get_state("recipe_discoveries", [])
+	discoveries.append({"name": recipe_name, "ingredients": ingredients, "time": Time.get_ticks_msec()})
+	set_state("recipe_discoveries", discoveries)
+	emit_event("recipe_discovered", recipe_name)
+
+func add_lab_upgrade(upgrade: String) -> void:
+	var upgrades = get_state("lab_upgrades", [])
+	upgrades.append(upgrade)
+	set_state("lab_upgrades", upgrades)
+	emit_event("lab_upgraded", upgrade)
+
+func record_breakthrough() -> void:
+	var count = get_state("breakthrough_count", 0)
+	set_state("breakthrough_count", count + 1)
+	emit_event("breakthrough_achieved", count + 1)
+
+func get_lab_upgrades() -> Array:
+	return get_state("lab_upgrades", [])
+
+func has_lab_upgrade(upgrade: String) -> bool:
+	return upgrade in get_lab_upgrades()
+
+func get_total_potions_brewed() -> int:
+	var batches = get_state("potion_batches", [])
+	var total = 0
+	for batch in batches:
+		total += batch["size"]
+	return total
+
+func get_experiment_count() -> int:
+	return get_state("experiments", []).size()
+
+func get_breakthrough_count() -> int:
+	return get_state("breakthrough_count", 0)
