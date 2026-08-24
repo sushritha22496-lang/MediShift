@@ -42,6 +42,11 @@ func _ready() -> void:
 	set_state("failed_bounties", [])
 	set_state("evidence_tracker", {})
 	set_state("bounty_timers", {})
+	set_state("acceptance_history", [])
+	set_state("completion_history", [])
+	set_state("evidence_history", [])
+	set_state("risk_assessment_tracking", [])
+	set_state("bounty_statistics", {})
 	_initialize_bounties()
 
 func _initialize_bounties() -> void:
@@ -86,6 +91,7 @@ func accept_bounty(bounty_id: String) -> bool:
 		var evidence_tracker = get_state("evidence_tracker", {})
 		evidence_tracker[bounty_id] = 0
 		set_state("evidence_tracker", evidence_tracker)
+		_record_acceptance(bounty_id, bounty.difficulty, bounty.risk_level)
 		bounty_accepted.emit(bounty)
 		emit_event("bounty_accepted", bounty_id)
 		return true
@@ -112,6 +118,7 @@ func complete_bounty(bounty_id: String) -> float:
 		var total = get_state("total_earned", 0.0)
 		total += reward
 		set_state("total_earned", total)
+		_record_completion(bounty_id, reward)
 		_update_bounty_reputation(bounty_id, true)
 		bounty_completed.emit(bounty, reward)
 		emit_event("bounty_completed", {"id": bounty_id, "reward": reward})
@@ -140,6 +147,9 @@ func abandon_bounty(bounty_id: String) -> bool:
 		var failed = get_state("failed_bounties", [])
 		failed.append(bounty_id)
 		set_state("failed_bounties", failed)
+		var bounty = _get_bounty(bounty_id)
+		if bounty:
+			_record_abandonment(bounty_id, bounty.risk_level)
 		_update_bounty_reputation(bounty_id, false)
 		bounty_abandoned.emit(bounty_id)
 		emit_event("bounty_abandoned", bounty_id)
@@ -150,6 +160,7 @@ func collect_evidence(bounty_id: String) -> void:
 	var evidence = get_state("evidence_tracker", {})
 	evidence[bounty_id] = evidence.get(bounty_id, 0) + 1
 	set_state("evidence_tracker", evidence)
+	_record_evidence_collection(bounty_id, evidence[bounty_id])
 	emit_event("evidence_collected", {"bounty": bounty_id})
 
 func get_bounty_progress(bounty_id: String) -> float:
@@ -195,6 +206,57 @@ func get_bounty_text() -> String:
 		var progress = get_bounty_progress(bounty.id)
 		text += "[★%d] %s - %.0f (%.0f%%)\n" % [bounty.difficulty, bounty.target, bounty.reward, progress * 100.0]
 	return text
+
+func _record_acceptance(bounty_id: String, difficulty: int, risk: float) -> void:
+	var history = get_state("acceptance_history", [])
+	history.append({"bounty": bounty_id, "difficulty": difficulty, "risk": risk, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("acceptance_history", history)
+	_record_risk_assessment(difficulty, risk)
+
+func _record_completion(bounty_id: String, reward: float) -> void:
+	var history = get_state("completion_history", [])
+	history.append({"bounty": bounty_id, "reward": reward, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("completion_history", history)
+
+func _record_evidence_collection(bounty_id: String, amount: int) -> void:
+	var history = get_state("evidence_history", [])
+	history.append({"bounty": bounty_id, "evidence_count": amount, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("evidence_history", history)
+
+func _record_abandonment(bounty_id: String, risk_level: float) -> void:
+	var history = get_state("acceptance_history", [])
+	for entry in history:
+		if entry.get("bounty") == bounty_id:
+			entry["abandoned"] = true
+			break
+	_record_risk_assessment(0, risk_level, true)
+
+func _record_risk_assessment(difficulty: int, risk: float, abandoned: bool = false) -> void:
+	var tracking = get_state("risk_assessment_tracking", [])
+	tracking.append({"difficulty": difficulty, "risk": risk, "abandoned": abandoned, "time": Time.get_ticks_msec()})
+	if tracking.size() > 50:
+		tracking.pop_front()
+	set_state("risk_assessment_tracking", tracking)
+
+func update_bounty_statistics() -> void:
+	var stats = get_state("bounty_statistics", {})
+	stats["total_completed"] = get_state("completed_bounties", []).size()
+	stats["total_abandoned"] = get_state("failed_bounties", []).size()
+	stats["total_earned"] = get_total_earned()
+	stats["active_count"] = get_active_bounties().size()
+	stats["acceptance_history_size"] = get_state("acceptance_history", []).size()
+	stats["average_reward"] = stats["total_earned"] / float(stats["total_completed"]) if stats["total_completed"] > 0 else 0.0
+	set_state("bounty_statistics", stats)
+
+func get_bounty_statistics() -> Dictionary:
+	update_bounty_statistics()
+	return get_state("bounty_statistics", {})
 
 func _get_bounty(bounty_id: String) -> Bounty:
 	for bounty in bounties:

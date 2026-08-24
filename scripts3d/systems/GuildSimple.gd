@@ -50,6 +50,11 @@ func _ready() -> void:
 	set_state("member_roles", {})
 	set_state("guild_wars", [])
 	set_state("guild_events", [])
+	set_state("join_history", [])
+	set_state("contribution_history", [])
+	set_state("treasury_history", [])
+	set_state("upgrade_history", [])
+	set_state("guild_statistics", {})
 	_initialize_guilds()
 
 func _initialize_guilds() -> void:
@@ -78,6 +83,7 @@ func join_guild(guild_id: String) -> bool:
 			var contribs = get_state("member_contributions", {})
 			contribs["player"] = 0.0
 			set_state("member_contributions", contribs)
+			_record_join(guild_id, guild.level)
 			guild_joined.emit(guild)
 			emit_event("joined", guild_id)
 			return true
@@ -91,6 +97,7 @@ func add_member_contribution(member_id: String, amount: float) -> void:
 			contribs[member_id] = contribs.get(member_id, 0.0) + amount
 			set_state("member_contributions", contribs)
 			guild.reputation += amount * 0.1
+			_record_contribution(member_id, amount, guild.reputation)
 			emit_event("contribution_added", {"member": member_id, "amount": amount})
 
 func add_to_treasury(amount: float) -> void:
@@ -99,6 +106,7 @@ func add_to_treasury(amount: float) -> void:
 		if guild.id == guild_id:
 			guild.treasury += amount
 			guild.prestige += amount * 0.01
+			_record_treasury_change(guild_id, guild.treasury, amount)
 			if guild.treasury >= guild.level * 1000:
 				_level_up_guild(guild)
 
@@ -117,6 +125,7 @@ func upgrade_hall(upgrade_type: String, cost: float) -> bool:
 			if guild.treasury >= cost:
 				guild.treasury -= cost
 				guild.hall_upgrades[upgrade_type] += 1
+				_record_upgrade(upgrade_type, guild.hall_upgrades[upgrade_type], cost)
 				emit_event("hall_upgraded", {"upgrade": upgrade_type, "level": guild.hall_upgrades[upgrade_type]})
 				return true
 	return false
@@ -171,6 +180,52 @@ func get_guild_perks() -> Array[String]:
 func get_guild_storage() -> Dictionary:
 	var guild = get_player_guild()
 	return guild.storage_items if guild else {}
+
+func _record_join(guild_id: String, level: int) -> void:
+	var history = get_state("join_history", [])
+	history.append({"guild": guild_id, "level": level, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("join_history", history)
+
+func _record_contribution(member_id: String, amount: float, reputation: float) -> void:
+	var history = get_state("contribution_history", [])
+	history.append({"member": member_id, "amount": amount, "reputation": reputation, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("contribution_history", history)
+
+func _record_treasury_change(guild_id: String, new_total: float, delta: float) -> void:
+	var history = get_state("treasury_history", [])
+	history.append({"guild": guild_id, "new_total": new_total, "delta": delta, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("treasury_history", history)
+
+func _record_upgrade(upgrade_type: String, level: int, cost: float) -> void:
+	var history = get_state("upgrade_history", [])
+	history.append({"type": upgrade_type, "level": level, "cost": cost, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("upgrade_history", history)
+
+func update_guild_statistics() -> void:
+	var stats = get_state("guild_statistics", {})
+	var guild = get_player_guild()
+	if guild:
+		stats["guild_name"] = guild.name
+		stats["guild_level"] = guild.level
+		stats["members"] = guild.members
+		stats["treasury"] = guild.treasury
+		stats["reputation"] = guild.reputation
+		stats["prestige"] = guild.prestige
+		stats["contributions"] = get_state("contribution_history", []).size()
+		stats["upgrades_made"] = get_state("upgrade_history", []).size()
+	set_state("guild_statistics", stats)
+
+func get_guild_statistics() -> Dictionary:
+	update_guild_statistics()
+	return get_state("guild_statistics", {})
 
 func get_guild_info_text() -> String:
 	var guild = get_player_guild()

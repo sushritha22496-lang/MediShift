@@ -61,6 +61,11 @@ func _ready() -> void:
 	set_state("mount_affections", {})
 	set_state("mount_breeding", {})
 	set_state("total_distance_traveled", 0.0)
+	set_state("acquisition_history", [])
+	set_state("care_history", [])
+	set_state("affection_progression", [])
+	set_state("stamina_tracking", [])
+	set_state("mount_statistics", {})
 	_initialize_mounts()
 
 func _initialize_mounts() -> void:
@@ -79,6 +84,7 @@ func acquire_mount(mount_id: String) -> bool:
 		var affections = get_state("mount_affections", {})
 		affections[mount_id] = 0.0
 		set_state("mount_affections", affections)
+		_record_acquisition(mount_id, mount.rarity)
 		mount_acquired.emit(new_mount)
 		emit_event("mount_acquired", mount_id)
 		return true
@@ -109,7 +115,9 @@ func feed_mount(mount_id: String) -> void:
 	if mount:
 		mount.hunger = minf(mount.hunger + 30.0, 100.0)
 		mount.happiness = minf(mount.happiness + 5.0, 100.0)
+		_record_care_action(mount_id, "feed", mount.happiness)
 		_increase_mount_affection(mount_id, 0.5)
+		_record_affection_change(mount_id, get_mount_affection(mount_id))
 		emit_event("mount_fed", mount_id)
 
 func heal_mount(mount_id: String, amount: float) -> void:
@@ -167,6 +175,7 @@ func drain_mount_stamina(mount_id: String, amount: float) -> void:
 		var hunger_drain = 1.0 + ((100.0 - mount.hunger) * 0.01)
 		mount.stamina -= (amount * hunger_drain)
 		mount.hunger -= 0.5
+		_record_stamina_change(mount_id, mount.stamina)
 		if mount.stamina <= 0:
 			mount.stamina = 0
 			emit_event("mount_tired", mount_id)
@@ -211,6 +220,51 @@ func get_mount_text() -> String:
 	if active.injuries.size() > 0:
 		status = " [INJURED]"
 	return "%s (Lvl %d) %s\nSpeed: %.0f | Stamina: %.0f/%.0f | Happiness: %.0f | Affection: %.1f" % [active.name, active.level, status, active.speed, active.stamina, active.max_stamina, active.happiness, affection]
+
+func _record_acquisition(mount_id: String, rarity: String) -> void:
+	var history = get_state("acquisition_history", [])
+	history.append({"mount": mount_id, "rarity": rarity, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("acquisition_history", history)
+
+func _record_care_action(mount_id: String, action_type: String, happiness: float) -> void:
+	var history = get_state("care_history", [])
+	history.append({"mount": mount_id, "action": action_type, "happiness": happiness, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("care_history", history)
+
+func _record_affection_change(mount_id: String, affection: float) -> void:
+	var tracking = get_state("affection_progression", [])
+	tracking.append({"mount": mount_id, "affection": affection, "time": Time.get_ticks_msec()})
+	if tracking.size() > 50:
+		tracking.pop_front()
+	set_state("affection_progression", tracking)
+
+func _record_stamina_change(mount_id: String, stamina: float) -> void:
+	var tracking = get_state("stamina_tracking", [])
+	tracking.append({"mount": mount_id, "stamina": stamina, "time": Time.get_ticks_msec()})
+	if tracking.size() > 50:
+		tracking.pop_front()
+	set_state("stamina_tracking", tracking)
+
+func update_mount_statistics() -> void:
+	var stats = get_state("mount_statistics", {})
+	stats["owned_mounts"] = owned_mounts.size()
+	stats["total_distance"] = get_state("total_distance_traveled", 0.0)
+	stats["acquisition_count"] = get_state("acquisition_history", []).size()
+	stats["care_actions"] = get_state("care_history", []).size()
+	if not owned_mounts.is_empty():
+		var avg_affection = 0.0
+		for mount in owned_mounts:
+			avg_affection += get_mount_affection(mount.id)
+		stats["average_affection"] = avg_affection / float(owned_mounts.size())
+	set_state("mount_statistics", stats)
+
+func get_mount_statistics() -> Dictionary:
+	update_mount_statistics()
+	return get_state("mount_statistics", {})
 
 func _get_mount_from_list(mount_id: String, mount_list: Array[Mount]) -> Mount:
 	for mount in mount_list:
