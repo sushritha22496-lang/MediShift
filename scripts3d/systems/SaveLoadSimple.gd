@@ -1,89 +1,73 @@
-extends Node
+extends BaseSystemSimple
 
 class_name SaveLoadSimple
 
-const SAVE_PATH = "user://ramayana_save/"
-const SAVE_FILE = "save_game.json"
+signal game_saved(save_slot: int)
+signal game_loaded(save_slot: int)
+signal save_deleted(save_slot: int)
 
-signal save_complete
-signal load_complete
+var save_slots: Dictionary = {}
 
 func _ready() -> void:
-	if not DirAccess.dir_exists_absolute(SAVE_PATH):
-		DirAccess.make_absolute(SAVE_PATH)
+	set_state("last_save_time", 0.0)
+	set_state("save_count", 0)
 
-func save_game(player: Node3D, game_state: GameStateSimple, quest_system: QuestSimple) -> bool:
+func save_game(slot: int, player_data: Dictionary) -> bool:
 	var save_data = {
-		"player_position": _vector3_to_array(player.global_position),
-		"player_health": game_state.current_health,
-		"player_stamina": game_state.current_stamina,
-		"player_mana": game_state.current_mana,
-		"level": game_state.level,
-		"experience": game_state.experience,
-		"gold": game_state.gold,
-		"active_quests": [],
-		"completed_quests": [],
-		"save_time": Time.get_ticks_msec()
+		"slot": slot,
+		"timestamp": Time.get_ticks_msec(),
+		"player": player_data,
+		"game_state": _capture_game_state()
 	}
-
-	for quest in quest_system.get_active_quests():
-		save_data["active_quests"].append({
-			"id": quest.id,
-			"title": quest.title,
-			"completed": quest.completed
-		})
-
-	for quest in quest_system.get_completed_quests():
-		save_data["completed_quests"].append({
-			"id": quest.id,
-			"title": quest.title
-		})
-
-	var json_string = JSON.stringify(save_data)
-	var file = FileAccess.open(SAVE_PATH + SAVE_FILE, FileAccess.WRITE)
-	if file == null:
-		print("Error saving game")
-		return false
-
-	file.store_string(json_string)
-	save_complete.emit()
-	print("Game saved successfully")
+	save_slots[slot] = save_data
+	var count = get_state("save_count", 0)
+	count += 1
+	set_state("save_count", count)
+	set_state("last_save_time", Time.get_ticks_msec())
+	game_saved.emit(slot)
+	emit_event("game_saved", slot)
 	return true
 
-func load_game() -> Dictionary:
-	if not ResourceLoader.exists(SAVE_PATH + SAVE_FILE):
-		print("No save file found")
-		return {}
+func load_game(slot: int) -> Dictionary:
+	if slot in save_slots:
+		game_loaded.emit(slot)
+		emit_event("game_loaded", slot)
+		return save_slots[slot]
+	return {}
 
-	var file = FileAccess.open(SAVE_PATH + SAVE_FILE, FileAccess.READ)
-	if file == null:
-		print("Error loading game")
-		return {}
-
-	var json_string = file.get_as_text()
-	var json = JSON.new()
-	var error = json.parse(json_string)
-	if error != OK:
-		print("Error parsing save file")
-		return {}
-
-	load_complete.emit()
-	print("Game loaded successfully")
-	return json.data
-
-func _vector3_to_array(vec: Vector3) -> Array:
-	return [vec.x, vec.y, vec.z]
-
-func _array_to_vector3(arr: Array) -> Vector3:
-	return Vector3(arr[0], arr[1], arr[2])
-
-func has_save() -> bool:
-	return ResourceLoader.exists(SAVE_PATH + SAVE_FILE)
-
-func delete_save() -> bool:
-	if ResourceLoader.exists(SAVE_PATH + SAVE_FILE):
-		var dir = DirAccess.open(SAVE_PATH)
-		if dir:
-			dir.remove(SAVE_FILE)
-			return true
+func delete_save(slot: int) -> bool:
+	if slot in save_slots:
+		save_slots.erase(slot)
+		save_deleted.emit(slot)
+		emit_event("save_deleted", slot)
+		return true
 	return false
+
+func has_save(slot: int) -> bool:
+	return slot in save_slots
+
+func get_save_list() -> Array:
+	var saves = []
+	for slot in save_slots.keys():
+		saves.append({
+			"slot": slot,
+			"timestamp": save_slots[slot]["timestamp"],
+			"exists": true
+		})
+	return saves
+
+func get_save_text() -> String:
+	var text = "Save Slots\n"
+	text += "Total Saves: %d\n" % get_state("save_count", 0)
+	for slot in range(1, 4):
+		if has_save(slot):
+			text += "Slot %d: ✓\n" % slot
+		else:
+			text += "Slot %d: -\n" % slot
+	return text
+
+func _capture_game_state() -> Dictionary:
+	return {
+		"time": Time.get_ticks_msec(),
+		"playtime": 0.0
+	}
