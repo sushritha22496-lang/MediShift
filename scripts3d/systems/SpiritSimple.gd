@@ -26,6 +26,14 @@ signal spirit_appeased
 func _ready() -> void:
 	set_state("encountered_spirits", [])
 	set_state("active_blessings", [])
+	set_state("spirit_affinity", {})
+	set_state("blessing_effectiveness", {})
+	set_state("appeasement_requirements", {})
+	set_state("blessing_durations", {})
+	set_state("spirit_manifestations", [])
+	set_state("spirit_pacts", {})
+	set_state("blessing_conflicts", [])
+	set_state("spirit_resonance", {})
 	_initialize_spirits()
 
 func _initialize_spirits() -> void:
@@ -98,3 +106,75 @@ func _get_spirit(spirit_id: String) -> Spirit:
 		if spirit.id == spirit_id:
 			return spirit
 	return null
+
+func track_spirit_affinity(spirit_type: String) -> void:
+	var affinity = get_state("spirit_affinity", {})
+	affinity[spirit_type] = affinity.get(spirit_type, 0) + 1
+	set_state("spirit_affinity", affinity)
+	emit_event("affinity_increased", spirit_type)
+
+func set_blessing_effectiveness(blessing: String, effectiveness: float) -> void:
+	var effects = get_state("blessing_effectiveness", {})
+	effects[blessing] = clampf(effectiveness, 0.0, 1.0)
+	set_state("blessing_effectiveness", effects)
+	emit_event("effectiveness_set", blessing)
+
+func add_appeasement_requirement(spirit_id: String, requirement: String) -> void:
+	var reqs = get_state("appeasement_requirements", {})
+	if spirit_id not in reqs:
+		reqs[spirit_id] = []
+	reqs[spirit_id].append(requirement)
+	set_state("appeasement_requirements", reqs)
+	emit_event("requirement_added", spirit_id)
+
+func set_blessing_duration(blessing: String, duration_ms: int) -> void:
+	var durations = get_state("blessing_durations", {})
+	durations[blessing] = {"start": Time.get_ticks_msec(), "duration": duration_ms}
+	set_state("blessing_durations", durations)
+
+func record_spirit_manifestation(spirit_id: String, manifestation_type: String) -> void:
+	var manifestations = get_state("spirit_manifestations", [])
+	manifestations.append({"spirit": spirit_id, "type": manifestation_type, "time": Time.get_ticks_msec()})
+	if manifestations.size() > 50:
+		manifestations.pop_front()
+	set_state("spirit_manifestations", manifestations)
+	emit_event("manifestation_recorded", spirit_id)
+
+func create_spirit_pact(spirit_id: String, pact_terms: Dictionary) -> void:
+	var pacts = get_state("spirit_pacts", {})
+	pacts[spirit_id] = {"terms": pact_terms, "established": Time.get_ticks_msec()}
+	set_state("spirit_pacts", pacts)
+	emit_event("pact_created", spirit_id)
+
+func record_blessing_conflict(blessing1: String, blessing2: String) -> void:
+	var conflicts = get_state("blessing_conflicts", [])
+	conflicts.append({"blessing1": blessing1, "blessing2": blessing2})
+	if conflicts.size() > 30:
+		conflicts.pop_front()
+	set_state("blessing_conflicts", conflicts)
+
+func update_spirit_resonance(spirit_type: String, resonance: float) -> void:
+	var resonance_map = get_state("spirit_resonance", {})
+	resonance_map[spirit_type] = clampf(resonance, 0.0, 1.0)
+	set_state("spirit_resonance", resonance_map)
+	emit_event("resonance_updated", spirit_type)
+
+func get_blessing_effectiveness(blessing: String) -> float:
+	var effects = get_state("blessing_effectiveness", {})
+	return effects.get(blessing, 0.5)
+
+func get_spirit_resonance(spirit_type: String) -> float:
+	var resonance_map = get_state("spirit_resonance", {})
+	return resonance_map.get(spirit_type, 0.0)
+
+func is_blessing_expired(blessing: String) -> bool:
+	var durations = get_state("blessing_durations", {})
+	if blessing not in durations:
+		return false
+	var current_time = Time.get_ticks_msec()
+	var start = durations[blessing]["start"]
+	var duration = durations[blessing]["duration"]
+	return (current_time - start) > duration
+
+func get_affinity_stat() -> Dictionary:
+	return get_state("spirit_affinity", {})

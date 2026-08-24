@@ -3,6 +3,7 @@ extends BaseSystemSimple
 class_name StatisticsSimple
 
 signal statistic_updated(stat_name: String, value: float)
+signal milestone_reached(category: String, milestone: String)
 
 func _ready() -> void:
 	set_state("stats", {
@@ -22,6 +23,13 @@ func _ready() -> void:
 		"battles_lost": 0,
 		"largest_combo": 0
 	})
+	set_state("stat_history", [])
+	set_state("stat_milestones", {})
+	set_state("stat_trends", {})
+	set_state("category_records", {})
+	set_state("session_stats", {})
+	set_state("achievement_multipliers", {})
+	set_state("stat_peak_values", {})
 
 func increment_stat(stat_name: String, amount: float = 1.0) -> void:
 	var stats = get_state("stats", {})
@@ -85,3 +93,72 @@ func get_summary_text() -> String:
 	text += "Deaths: %.0f\n" % get_stat("deaths")
 	text += "Locations: %.0f | NPCs: %.0f\n" % [get_stat("locations_discovered"), get_stat("npcs_met")]
 	return text
+
+func record_stat_change(stat_name: String, old_value: float, new_value: float) -> void:
+	var history = get_state("stat_history", [])
+	history.append({"stat": stat_name, "old": old_value, "new": new_value, "time": Time.get_ticks_msec()})
+	if history.size() > 100:
+		history.pop_front()
+	set_state("stat_history", history)
+
+func record_milestone(category: String, milestone: String) -> void:
+	var milestones = get_state("stat_milestones", {})
+	if category not in milestones:
+		milestones[category] = []
+	milestones[category].append(milestone)
+	set_state("stat_milestones", milestones)
+	milestone_reached.emit(category, milestone)
+	emit_event("milestone_reached", category)
+
+func track_stat_trend(stat_name: String, time_window_ms: int = 3600000) -> float:
+	var history = get_state("stat_history", [])
+	var current_time = Time.get_ticks_msec()
+	var recent_changes = []
+	for entry in history:
+		if entry["stat"] == stat_name and (current_time - entry["time"]) <= time_window_ms:
+			recent_changes.append(entry["new"] - entry["old"])
+	var trend = recent_changes.reduce(func(a, b): return a + b, 0.0) if recent_changes.size() > 0 else 0.0
+	var trends = get_state("stat_trends", {})
+	trends[stat_name] = trend
+	set_state("stat_trends", trends)
+	return trend
+
+func record_category_record(category: String, record_name: String, value: float) -> void:
+	var records = get_state("category_records", {})
+	if category not in records:
+		records[category] = {}
+	records[category][record_name] = value
+	set_state("category_records", records)
+
+func add_achievement_multiplier(stat_name: String, multiplier: float) -> void:
+	var multipliers = get_state("achievement_multipliers", {})
+	multipliers[stat_name] = multipliers.get(stat_name, 1.0) * multiplier
+	set_state("achievement_multipliers", multipliers)
+	emit_event("multiplier_added", stat_name)
+
+func update_session_stat(session_key: String, value: float) -> void:
+	var session = get_state("session_stats", {})
+	session[session_key] = value
+	set_state("session_stats", session)
+
+func record_peak_value(stat_name: String, value: float) -> void:
+	var peaks = get_state("stat_peak_values", {})
+	var current_peak = peaks.get(stat_name, 0.0)
+	if value > current_peak:
+		peaks[stat_name] = value
+		set_state("stat_peak_values", peaks)
+		emit_event("peak_reached", stat_name)
+
+func get_stat_trend(stat_name: String) -> float:
+	var trends = get_state("stat_trends", {})
+	return trends.get(stat_name, 0.0)
+
+func get_peak_value(stat_name: String) -> float:
+	var peaks = get_state("stat_peak_values", {})
+	return peaks.get(stat_name, 0.0)
+
+func get_category_record(category: String, record_name: String) -> float:
+	var records = get_state("category_records", {})
+	if category in records and record_name in records[category]:
+		return records[category][record_name]
+	return 0.0
