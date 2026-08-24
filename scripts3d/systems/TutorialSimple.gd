@@ -26,6 +26,8 @@ func _ready() -> void:
 	set_state("current_step", 0)
 	set_state("tutorial_completed_flag", false)
 	set_state("skip_tutorial", false)
+	set_state("step_times", {})
+	set_state("hints_used", {})
 	_initialize_tutorial()
 
 func _initialize_tutorial() -> void:
@@ -91,3 +93,29 @@ func get_tutorial_text() -> String:
 	if not step:
 		return "Tutorial completed!"
 	return "Step %d/%d: %s\n%s" % [get_state("current_step", 0) + 1, tutorial_steps.size(), step.title, step.instruction]
+
+func record_step_start_time(step_id: String) -> void:
+	var times = get_state("step_times", {})
+	if step_id not in times:
+		times[step_id] = {"start": Time.get_ticks_msec(), "end": 0}
+	set_state("step_times", times)
+
+func record_step_end_time(step_id: String) -> float:
+	var times = get_state("step_times", {})
+	if step_id in times:
+		times[step_id]["end"] = Time.get_ticks_msec()
+		var duration = (times[step_id]["end"] - times[step_id]["start"]) / 1000.0
+		set_state("step_times", times)
+		return duration
+	return 0.0
+
+func use_hint(step_id: String) -> void:
+	var hints = get_state("hints_used", {})
+	hints[step_id] = hints.get(step_id, 0) + 1
+	set_state("hints_used", hints)
+
+func get_step_completion_time(step_id: String) -> float:
+	var times = get_state("step_times", {})
+	if step_id in times and times[step_id]["end"] > 0:
+		return (times[step_id]["end"] - times[step_id]["start"]) / 1000.0
+	return 0.0

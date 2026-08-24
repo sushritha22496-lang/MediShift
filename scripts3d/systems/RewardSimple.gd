@@ -23,6 +23,9 @@ signal reward_claimed(reward_id: String)
 func _ready() -> void:
 	set_state("pending_rewards", [])
 	set_state("claimed_rewards", [])
+	set_state("reward_multiplier", 1.0)
+	set_state("reward_conditions", {})
+	set_state("reward_history", [])
 	_initialize_rewards()
 
 func _initialize_rewards() -> void:
@@ -76,3 +79,34 @@ func get_reward_text() -> String:
 	for reward in pending.slice(0, 3):
 		text += "• %s (%.0f)\n" % [reward.name, reward.value]
 	return text
+
+func set_reward_multiplier(multiplier: float) -> void:
+	set_state("reward_multiplier", clampf(multiplier, 0.1, 5.0))
+	emit_event("multiplier_changed", multiplier)
+
+func get_reward_multiplier() -> float:
+	return get_state("reward_multiplier", 1.0)
+
+func add_reward_condition(reward_id: String, condition: String) -> void:
+	var conditions = get_state("reward_conditions", {})
+	if reward_id not in conditions:
+		conditions[reward_id] = []
+	conditions[reward_id].append(condition)
+	set_state("reward_conditions", conditions)
+
+func check_reward_conditions(reward_id: String) -> bool:
+	var conditions = get_state("reward_conditions", {})
+	if reward_id not in conditions:
+		return true
+	return conditions[reward_id].is_empty()
+
+func get_claimed_reward_count() -> int:
+	return get_state("claimed_rewards", []).size()
+
+func get_total_rewards_value() -> float:
+	var claimed_ids = get_state("claimed_rewards", [])
+	var total = 0.0
+	for reward in reward_pool:
+		if reward.id in claimed_ids:
+			total += reward.value * get_reward_multiplier()
+	return total

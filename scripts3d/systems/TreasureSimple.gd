@@ -46,6 +46,8 @@ func _ready() -> void:
 	set_state("discovered_treasures", [])
 	set_state("looted_treasures", [])
 	set_state("total_value_found", 0.0)
+	set_state("treasure_access_log", [])
+	set_state("security_bypasses", [])
 	_initialize_treasures()
 
 func _initialize_treasures() -> void:
@@ -178,3 +180,19 @@ func _get_treasure(treasure_id: String) -> Treasure:
 		if treasure.id == treasure_id:
 			return treasure
 	return null
+
+func log_treasure_access(treasure_id: String, action: String) -> void:
+	var log = get_state("treasure_access_log", [])
+	log.append({"treasure": treasure_id, "action": action, "timestamp": Time.get_ticks_msec()})
+	if log.size() > 100:
+		log.pop_front()
+	set_state("treasure_access_log", log)
+
+func record_security_bypass(treasure_id: String, bypass_type: String) -> void:
+	var bypasses = get_state("security_bypasses", [])
+	bypasses.append({"treasure": treasure_id, "type": bypass_type, "time": Time.get_ticks_msec()})
+	set_state("security_bypasses", bypasses)
+	emit_event("security_bypassed", {"treasure": treasure_id, "type": bypass_type})
+
+func get_treasure_access_log() -> Array:
+	return get_state("treasure_access_log", [])
