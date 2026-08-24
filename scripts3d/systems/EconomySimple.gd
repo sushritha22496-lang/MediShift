@@ -1,0 +1,98 @@
+extends BaseSystemSimple
+
+class_name EconomySimple
+
+class PriceData:
+	var base_price: float
+	var current_price: float
+	var demand: float
+	var supply: float
+	func _init(p_base: float, p_demand: float = 1.0, p_supply: float = 1.0) -> void:
+		base_price = p_base
+		current_price = p_base
+		demand = p_demand
+		supply = p_supply
+
+var prices: Dictionary = {}
+
+signal price_changed(item: String, new_price: float)
+signal inflation_occurred(rate: float)
+signal deflation_occurred(rate: float)
+
+func _ready() -> void:
+	set_state("global_inflation", 0.0)
+	set_state("market_stability", 1.0)
+	_initialize_prices()
+
+func _initialize_prices() -> void:
+	prices["health_potion"] = PriceData.new(25.0)
+	prices["mana_potion"] = PriceData.new(20.0)
+	prices["sword"] = PriceData.new(150.0)
+	prices["armor"] = PriceData.new(200.0)
+	prices["bread"] = PriceData.new(5.0)
+	prices["horse"] = PriceData.new(500.0)
+	prices["gem"] = PriceData.new(100.0)
+
+func update_prices() -> void:
+	var inflation = get_state("global_inflation", 0.0)
+	inflation += randf_range(-0.01, 0.02)
+	inflation = clampf(inflation, -0.2, 0.3)
+	set_state("global_inflation", inflation)
+
+	for item_name in prices.keys():
+		var price_data = prices[item_name]
+		var market_factor = 1.0 + inflation
+		market_factor *= (price_data.demand / price_data.supply)
+		var new_price = price_data.base_price * clampf(market_factor, 0.5, 2.0)
+
+		if absf(new_price - price_data.current_price) > 0.1:
+			price_data.current_price = new_price
+			price_changed.emit(item_name, new_price)
+			emit_event("price_changed", item_name)
+
+	if inflation > 0.1:
+		inflation_occurred.emit(inflation)
+		emit_event("inflation", inflation)
+	elif inflation < -0.1:
+		deflation_occurred.emit(absf(inflation))
+		emit_event("deflation", inflation)
+
+func set_demand(item: String, demand: float) -> void:
+	if item in prices:
+		prices[item].demand = clampf(demand, 0.1, 5.0)
+		emit_event("demand_changed", item)
+
+func set_supply(item: String, supply: float) -> void:
+	if item in prices:
+		prices[item].supply = clampf(supply, 0.1, 5.0)
+		emit_event("supply_changed", item)
+
+func get_price(item: String) -> float:
+	if item in prices:
+		return prices[item].current_price
+	return 0.0
+
+func get_base_price(item: String) -> float:
+	if item in prices:
+		return prices[item].base_price
+	return 0.0
+
+func get_all_prices() -> Dictionary:
+	var result = {}
+	for item in prices.keys():
+		result[item] = prices[item].current_price
+	return result
+
+func get_inflation_rate() -> float:
+	return get_state("global_inflation", 0.0)
+
+func get_economy_text() -> String:
+	var inflation = get_inflation_rate()
+	var text = "Economy\nInflation: %.1f%%\n" % (inflation * 100.0)
+	text += "Prices:\n"
+	for item in prices.keys():
+		var current = prices[item].current_price
+		var base = prices[item].base_price
+		var change = ((current - base) / base) * 100.0
+		text += "%s: %.0f (%.0f%%)\n" % [item.capitalize(), current, change]
+	return text
