@@ -33,6 +33,14 @@ signal treasures_found(tomb_id: String, treasure_count: int)
 func _ready() -> void:
 	set_state("discovered_tombs", [])
 	set_state("opened_tombs", [])
+	set_state("guardian_defeats", {})
+	set_state("tomb_seals", {})
+	set_state("tomb_artifacts", {})
+	set_state("tomb_curses", [])
+	set_state("guardian_respawn_timers", {})
+	set_state("tomb_exploration_progress", {})
+	set_state("ancient_knowledge", [])
+	set_state("guardian_stats", {})
 	_initialize_tombs()
 
 func _initialize_tombs() -> void:
@@ -108,3 +116,86 @@ func _get_tomb(tomb_id: String) -> Tomb:
 		if tomb.id == tomb_id:
 			return tomb
 	return null
+
+func record_guardian_defeat(tomb_id: String, defeat_data: Dictionary) -> void:
+	var defeats = get_state("guardian_defeats", {})
+	if tomb_id not in defeats:
+		defeats[tomb_id] = []
+	defeats[tomb_id].append({"data": defeat_data, "time": Time.get_ticks_msec()})
+	if defeats[tomb_id].size() > 10:
+		defeats[tomb_id].pop_front()
+	set_state("guardian_defeats", defeats)
+	emit_event("guardian_defeat_recorded", tomb_id)
+
+func set_tomb_seal_status(tomb_id: String, sealed: bool) -> void:
+	var seals = get_state("tomb_seals", {})
+	seals[tomb_id] = {"sealed": sealed, "time": Time.get_ticks_msec()}
+	set_state("tomb_seals", seals)
+	emit_event("seal_status_changed", tomb_id)
+
+func is_tomb_sealed(tomb_id: String) -> bool:
+	var seals = get_state("tomb_seals", {})
+	if tomb_id not in seals:
+		return true
+	return seals[tomb_id]["sealed"]
+
+func record_tomb_artifact(tomb_id: String, artifact: Dictionary) -> void:
+	var artifacts = get_state("tomb_artifacts", {})
+	if tomb_id not in artifacts:
+		artifacts[tomb_id] = []
+	artifacts[tomb_id].append(artifact)
+	set_state("tomb_artifacts", artifacts)
+	emit_event("artifact_found", tomb_id)
+
+func apply_tomb_curse(tomb_id: String, curse: String) -> void:
+	var curses = get_state("tomb_curses", [])
+	curses.append({"tomb": tomb_id, "curse": curse, "time": Time.get_ticks_msec()})
+	if curses.size() > 30:
+		curses.pop_front()
+	set_state("tomb_curses", curses)
+	emit_event("curse_applied", tomb_id)
+
+func set_guardian_respawn_timer(tomb_id: String, respawn_time_ms: int) -> void:
+	var timers = get_state("guardian_respawn_timers", {})
+	timers[tomb_id] = {"start": Time.get_ticks_msec(), "duration": respawn_time_ms}
+	set_state("guardian_respawn_timers", timers)
+
+func has_guardian_respawned(tomb_id: String) -> bool:
+	var timers = get_state("guardian_respawn_timers", {})
+	if tomb_id not in timers:
+		return false
+	var current = Time.get_ticks_msec()
+	var start = timers[tomb_id]["start"]
+	var duration = timers[tomb_id]["duration"]
+	return (current - start) > duration
+
+func update_tomb_exploration_progress(tomb_id: String, progress: float) -> void:
+	var prog = get_state("tomb_exploration_progress", {})
+	prog[tomb_id] = clampf(progress, 0.0, 1.0)
+	set_state("tomb_exploration_progress", prog)
+	emit_event("exploration_progress_updated", tomb_id)
+
+func record_ancient_knowledge(knowledge: String) -> void:
+	var knowledge_list = get_state("ancient_knowledge", [])
+	knowledge_list.append({"knowledge": knowledge, "time": Time.get_ticks_msec()})
+	if knowledge_list.size() > 50:
+		knowledge_list.pop_front()
+	set_state("ancient_knowledge", knowledge_list)
+	emit_event("knowledge_gained", knowledge)
+
+func set_guardian_stats(tomb_id: String, stats: Dictionary) -> void:
+	var guardian_stats = get_state("guardian_stats", {})
+	guardian_stats[tomb_id] = stats
+	set_state("guardian_stats", guardian_stats)
+
+func get_guardian_stats(tomb_id: String) -> Dictionary:
+	var guardian_stats = get_state("guardian_stats", {})
+	return guardian_stats.get(tomb_id, {})
+
+func get_tomb_artifacts(tomb_id: String) -> Array:
+	var artifacts = get_state("tomb_artifacts", {})
+	return artifacts.get(tomb_id, [])
+
+func get_tomb_exploration_progress(tomb_id: String) -> float:
+	var prog = get_state("tomb_exploration_progress", {})
+	return prog.get(tomb_id, 0.0)

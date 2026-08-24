@@ -27,6 +27,13 @@ signal teleport_completed(destination: Vector3)
 func _ready() -> void:
 	set_state("active_portals", [])
 	set_state("teleport_keys", {})
+	set_state("portal_cooldowns", {})
+	set_state("teleport_history", [])
+	set_state("portal_level_requirements", {})
+	set_state("portal_energy_costs", {})
+	set_state("portal_links", {})
+	set_state("portal_malfunctions", [])
+	set_state("destination_safety_levels", {})
 	_initialize_portals()
 
 func _initialize_portals() -> void:
@@ -102,3 +109,80 @@ func _get_portal(portal_id: String) -> Portal:
 		if portal.id == portal_id:
 			return portal
 	return null
+
+func set_portal_cooldown(portal_id: String, cooldown_ms: int) -> void:
+	var cooldowns = get_state("portal_cooldowns", {})
+	cooldowns[portal_id] = {"start": Time.get_ticks_msec(), "duration": cooldown_ms}
+	set_state("portal_cooldowns", cooldowns)
+	emit_event("cooldown_set", portal_id)
+
+func is_portal_on_cooldown(portal_id: String) -> bool:
+	var cooldowns = get_state("portal_cooldowns", {})
+	if portal_id not in cooldowns:
+		return false
+	var current = Time.get_ticks_msec()
+	var start = cooldowns[portal_id]["start"]
+	var duration = cooldowns[portal_id]["duration"]
+	return (current - start) < duration
+
+func record_teleport(portal_id: String, destination: Vector3, success: bool) -> void:
+	var history = get_state("teleport_history", [])
+	history.append({"portal": portal_id, "dest": destination, "success": success, "time": Time.get_ticks_msec()})
+	if history.size() > 100:
+		history.pop_front()
+	set_state("teleport_history", history)
+
+func set_portal_level_requirement(portal_id: String, level_required: int) -> void:
+	var requirements = get_state("portal_level_requirements", {})
+	requirements[portal_id] = level_required
+	set_state("portal_level_requirements", requirements)
+
+func get_portal_level_requirement(portal_id: String) -> int:
+	var requirements = get_state("portal_level_requirements", {})
+	return requirements.get(portal_id, 1)
+
+func set_portal_energy_cost(portal_id: String, cost: float) -> void:
+	var costs = get_state("portal_energy_costs", {})
+	costs[portal_id] = cost
+	set_state("portal_energy_costs", costs)
+
+func get_portal_energy_cost(portal_id: String) -> float:
+	var costs = get_state("portal_energy_costs", {})
+	return costs.get(portal_id, 10.0)
+
+func link_portals(portal1_id: String, portal2_id: String) -> void:
+	var links = get_state("portal_links", {})
+	links[portal1_id] = portal2_id
+	links[portal2_id] = portal1_id
+	set_state("portal_links", links)
+	emit_event("portals_linked", {"p1": portal1_id, "p2": portal2_id})
+
+func get_linked_portal(portal_id: String) -> String:
+	var links = get_state("portal_links", {})
+	return links.get(portal_id, "")
+
+func record_portal_malfunction(portal_id: String, malfunction_type: String) -> void:
+	var malfunctions = get_state("portal_malfunctions", [])
+	malfunctions.append({"portal": portal_id, "type": malfunction_type, "time": Time.get_ticks_msec()})
+	if malfunctions.size() > 50:
+		malfunctions.pop_front()
+	set_state("portal_malfunctions", malfunctions)
+	emit_event("malfunction_recorded", portal_id)
+
+func set_destination_safety_level(destination: Vector3, safety: float) -> void:
+	var safety_levels = get_state("destination_safety_levels", {})
+	var key = "%d_%d_%d" % [int(destination.x), int(destination.y), int(destination.z)]
+	safety_levels[key] = clampf(safety, 0.0, 1.0)
+	set_state("destination_safety_levels", safety_levels)
+
+func get_destination_safety_level(destination: Vector3) -> float:
+	var safety_levels = get_state("destination_safety_levels", {})
+	var key = "%d_%d_%d" % [int(destination.x), int(destination.y), int(destination.z)]
+	return safety_levels.get(key, 0.5)
+
+func get_teleport_success_rate() -> float:
+	var history = get_state("teleport_history", [])
+	if history.is_empty():
+		return 0.0
+	var successes = history.filter(func(h): return h["success"]).size()
+	return float(successes) / float(history.size())
