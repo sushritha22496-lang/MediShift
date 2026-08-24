@@ -18,6 +18,13 @@ var completion_categories: Dictionary = {
 
 func _ready() -> void:
 	set_state("category_percentages", {})
+	set_state("completion_history", [])
+	set_state("category_unlocks", {})
+	set_state("completion_rewards", {})
+	set_state("speedrun_times", {})
+	set_state("difficulty_scaled_progress", {})
+	set_state("completion_statistics", {})
+	set_state("completion_rate_by_time", [])
 
 func complete_item(category: String) -> void:
 	if category in completion_categories:
@@ -82,3 +89,64 @@ func get_completion_summary() -> String:
 	if completed.size() > 0:
 		text += "\nCompleted: %s\n" % ", ".join(completed)
 	return text
+
+func record_completion_history(category: String, item_count: int) -> void:
+	var history = get_state("completion_history", [])
+	history.append({"category": category, "items": item_count, "time": Time.get_ticks_msec()})
+	if history.size() > 100:
+		history.pop_front()
+	set_state("completion_history", history)
+
+func unlock_category(category: String) -> void:
+	var unlocks = get_state("category_unlocks", {})
+	unlocks[category] = {"unlocked": true, "time": Time.get_ticks_msec()}
+	set_state("category_unlocks", unlocks)
+	emit_event("category_unlocked", category)
+
+func record_completion_reward(category: String, reward: Dictionary) -> void:
+	var rewards = get_state("completion_rewards", {})
+	if category not in rewards:
+		rewards[category] = []
+	rewards[category].append(reward)
+	set_state("completion_rewards", rewards)
+	emit_event("reward_earned", category)
+
+func record_speedrun_time(category: String, time_ms: int) -> void:
+	var speedruns = get_state("speedrun_times", {})
+	if category not in speedruns:
+		speedruns[category] = time_ms
+	else:
+		speedruns[category] = mini(speedruns[category], time_ms)
+	set_state("speedrun_times", speedruns)
+	emit_event("speedrun_recorded", category)
+
+func get_speedrun_time(category: String) -> int:
+	var speedruns = get_state("speedrun_times", {})
+	return speedruns.get(category, -1)
+
+func set_difficulty_scaled_progress(category: String, difficulty: int, progress: float) -> void:
+	var scaled = get_state("difficulty_scaled_progress", {})
+	var key = "%s_d%d" % [category, difficulty]
+	scaled[key] = progress
+	set_state("difficulty_scaled_progress", scaled)
+
+func update_completion_statistics() -> void:
+	var stats = get_state("completion_statistics", {})
+	stats["total_completion"] = get_total_completion()
+	stats["completed_categories"] = get_completed_categories().size()
+	stats["history_entries"] = get_state("completion_history", []).size()
+	set_state("completion_statistics", stats)
+
+func record_completion_rate(completion_rate: float) -> void:
+	var rates = get_state("completion_rate_by_time", [])
+	rates.append({"rate": completion_rate, "time": Time.get_ticks_msec()})
+	if rates.size() > 50:
+		rates.pop_front()
+	set_state("completion_rate_by_time", rates)
+
+func get_completion_history() -> Array:
+	return get_state("completion_history", [])
+
+func get_completion_statistics() -> Dictionary:
+	update_completion_statistics()
+	return get_state("completion_statistics", {})

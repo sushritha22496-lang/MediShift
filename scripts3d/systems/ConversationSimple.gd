@@ -38,6 +38,13 @@ func _ready() -> void:
 	set_state("dialogue_choices_made", {})
 	set_state("conversation_cooldowns", {})
 	set_state("npc_emotional_state", {})
+	set_state("dialogue_branching_stats", {})
+	set_state("npc_preference_tracking", {})
+	set_state("dialogue_chain_tracking", [])
+	set_state("dialogue_modification_history", [])
+	set_state("node_completion_tracking", {})
+	set_state("dialogue_influence", {})
+	set_state("conversation_performance", [])
 	_initialize_dialogue_trees()
 
 func _initialize_dialogue_trees() -> void:
@@ -188,3 +195,71 @@ func get_npc_reputation(npc_id: String) -> float:
 func get_npc_emotional_state(npc_id: String) -> float:
 	var emotions = get_state("npc_emotional_state", {})
 	return emotions.get(npc_id, 0.0)
+
+func track_dialogue_branch(npc_id: String, branch_id: String) -> void:
+	var stats = get_state("dialogue_branching_stats", {})
+	if npc_id not in stats:
+		stats[npc_id] = []
+	stats[npc_id].append(branch_id)
+	set_state("dialogue_branching_stats", stats)
+
+func record_npc_preference(npc_id: String, preference_type: String, value: float) -> void:
+	var prefs = get_state("npc_preference_tracking", {})
+	if npc_id not in prefs:
+		prefs[npc_id] = {}
+	prefs[npc_id][preference_type] = value
+	set_state("npc_preference_tracking", prefs)
+
+func get_npc_preference(npc_id: String, preference_type: String) -> float:
+	var prefs = get_state("npc_preference_tracking", {})
+	if npc_id in prefs and preference_type in prefs[npc_id]:
+		return prefs[npc_id][preference_type]
+	return 0.0
+
+func record_dialogue_chain(chain_data: Dictionary) -> void:
+	var chains = get_state("dialogue_chain_tracking", [])
+	chains.append({"data": chain_data, "time": Time.get_ticks_msec()})
+	if chains.size() > 50:
+		chains.pop_front()
+	set_state("dialogue_chain_tracking", chains)
+
+func record_dialogue_modification(node_id: String, modification: String) -> void:
+	var history = get_state("dialogue_modification_history", [])
+	history.append({"node": node_id, "modification": modification, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("dialogue_modification_history", history)
+
+func record_node_completion(node_id: String, npc_id: String) -> void:
+	var tracking = get_state("node_completion_tracking", {})
+	if npc_id not in tracking:
+		tracking[npc_id] = []
+	tracking[npc_id].append(node_id)
+	set_state("node_completion_tracking", tracking)
+
+func track_dialogue_influence(influence_type: String, value: float) -> void:
+	var influence = get_state("dialogue_influence", {})
+	influence[influence_type] = influence.get(influence_type, 0.0) + value
+	set_state("dialogue_influence", influence)
+
+func record_conversation_performance(npc_id: String, duration_ms: int, choices_made: int) -> void:
+	var perf = get_state("conversation_performance", [])
+	perf.append({"npc": npc_id, "duration": duration_ms, "choices": choices_made, "time": Time.get_ticks_msec()})
+	if perf.size() > 50:
+		perf.pop_front()
+	set_state("conversation_performance", perf)
+
+func get_dialogue_influence(influence_type: String) -> float:
+	var influence = get_state("dialogue_influence", {})
+	return influence.get(influence_type, 0.0)
+
+func get_total_dialogue_influence() -> float:
+	var influence = get_state("dialogue_influence", {})
+	var total = 0.0
+	for value in influence.values():
+		total += value
+	return total
+
+func get_nodes_completed_with_npc(npc_id: String) -> Array:
+	var tracking = get_state("node_completion_tracking", {})
+	return tracking.get(npc_id, [])
