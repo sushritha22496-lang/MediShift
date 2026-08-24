@@ -22,6 +22,13 @@ func _ready() -> void:
 	set_state("master_volume", 1.0)
 	set_state("sfx_volume", 0.8)
 	set_state("active_sounds", [])
+	set_state("sound_history", [])
+	set_state("effect_durations", {})
+	set_state("volume_change_history", [])
+	set_state("pitch_variations", {})
+	set_state("effect_categories", {})
+	set_state("cleanup_record", [])
+	set_state("sound_performance", [])
 	_initialize_sounds()
 
 func _initialize_sounds() -> void:
@@ -43,6 +50,7 @@ func play_sound(sound_id: String) -> bool:
 		var active = get_state("active_sounds", [])
 		active.append(sound_id)
 		set_state("active_sounds", active)
+		_record_sound_history(sound_id)
 		sound_played.emit(sound_id)
 		emit_event("sound_played", sound_id)
 		return true
@@ -82,3 +90,66 @@ func get_sound_text() -> String:
 	text += "Master: %.0f%% | SFX: %.0f%%\n" % [get_state("master_volume", 1.0) * 100.0, get_state("sfx_volume", 0.8) * 100.0]
 	text += "Active: %d sounds" % get_state("active_sounds", []).size()
 	return text
+
+func _record_sound_history(sound_id: String) -> void:
+	var history = get_state("sound_history", [])
+	history.append({"sound": sound_id, "time": Time.get_ticks_msec(), "volume": get_effective_volume(sound_id)})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("sound_history", history)
+
+func set_effect_duration(sound_id: String, duration_ms: int) -> void:
+	var durations = get_state("effect_durations", {})
+	durations[sound_id] = duration_ms
+	set_state("effect_durations", durations)
+
+func get_effect_duration(sound_id: String) -> int:
+	var durations = get_state("effect_durations", {})
+	return durations.get(sound_id, 0)
+
+func record_volume_change(old_volume: float, new_volume: float, change_type: String) -> void:
+	var history = get_state("volume_change_history", [])
+	history.append({"old": old_volume, "new": new_volume, "type": change_type, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("volume_change_history", history)
+
+func set_pitch_variation(sound_id: String, variation: float) -> void:
+	var variations = get_state("pitch_variations", {})
+	variations[sound_id] = clampf(variation, 0.5, 2.0)
+	set_state("pitch_variations", variations)
+
+func get_pitch_variation(sound_id: String) -> float:
+	var variations = get_state("pitch_variations", {})
+	return variations.get(sound_id, 1.0)
+
+func set_effect_category(sound_id: String, category: String) -> void:
+	var categories = get_state("effect_categories", {})
+	categories[sound_id] = category
+	set_state("effect_categories", categories)
+	emit_event("category_assigned", sound_id)
+
+func get_effects_by_category(category: String) -> Array:
+	var categories = get_state("effect_categories", {})
+	var result = []
+	for sound_id in categories:
+		if categories[sound_id] == category:
+			result.append(sound_id)
+	return result
+
+func record_cleanup(sound_id: String, reason: String) -> void:
+	var cleanup = get_state("cleanup_record", [])
+	cleanup.append({"sound": sound_id, "reason": reason, "time": Time.get_ticks_msec()})
+	if cleanup.size() > 30:
+		cleanup.pop_front()
+	set_state("cleanup_record", cleanup)
+
+func record_sound_performance(sound_id: String, play_duration_ms: int, success: bool) -> void:
+	var perf = get_state("sound_performance", [])
+	perf.append({"sound": sound_id, "duration": play_duration_ms, "success": success, "time": Time.get_ticks_msec()})
+	if perf.size() > 50:
+		perf.pop_front()
+	set_state("sound_performance", perf)
+
+func get_sound_history() -> Array:
+	return get_state("sound_history", [])

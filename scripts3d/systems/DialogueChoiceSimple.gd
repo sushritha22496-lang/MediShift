@@ -17,10 +17,19 @@ class DialogueNode:
 var dialogue_nodes: Dictionary = {}
 var current_dialogue: DialogueNode = null
 var dialogue_history: Array[String] = []
+var choice_tracking: Dictionary = {}
+var choice_influence_totals: Dictionary = {}
+var dialogue_statistics: Dictionary = {}
+var player_choice_preferences: Dictionary = {}
+var consequence_tracking: Array = []
+var dialogue_path_tracking: Array = []
+var sequence_completion: Dictionary = {}
 
 signal dialogue_started(speaker: String, text: String)
 signal choice_presented(choices: Array[Choice])
 signal dialogue_ended
+signal choice_tracked(choice_id: String)
+signal path_completed(path_id: String)
 
 func _ready() -> void:
 	_initialize_dialogues()
@@ -72,3 +81,68 @@ func get_dialogue_text() -> String:
 	if current_dialogue:
 		return "%s: %s" % [current_dialogue.speaker, current_dialogue.text]
 	return ""
+
+func track_choice_selection(choice_id: String) -> void:
+	if choice_id not in choice_tracking:
+		choice_tracking[choice_id] = 0
+	choice_tracking[choice_id] += 1
+	choice_tracked.emit(choice_id)
+
+func record_choice_influence(choice_id: String, influence_type: String, value: float) -> void:
+	var key = "%s_%s" % [choice_id, influence_type]
+	if key not in choice_influence_totals:
+		choice_influence_totals[key] = 0.0
+	choice_influence_totals[key] += value
+
+func update_dialogue_statistics() -> void:
+	dialogue_statistics["total_dialogues"] = dialogue_nodes.size()
+	dialogue_statistics["total_choices_made"] = choice_tracking.values().reduce(func(a, b): return a + b, 0)
+	dialogue_statistics["dialogue_history_size"] = dialogue_history.size()
+	dialogue_statistics["consequence_count"] = consequence_tracking.size()
+
+func get_dialogue_statistics() -> Dictionary:
+	update_dialogue_statistics()
+	return dialogue_statistics
+
+func record_player_choice_preference(choice_text: String, times_selected: int) -> void:
+	player_choice_preferences[choice_text] = times_selected
+
+func get_choice_popularity() -> Dictionary:
+	return player_choice_preferences
+
+func record_consequence(consequence_type: String, consequence_data: Dictionary) -> void:
+	consequence_tracking.append({"type": consequence_type, "data": consequence_data, "time": Time.get_ticks_msec()})
+	if consequence_tracking.size() > 50:
+		consequence_tracking.pop_front()
+
+func record_dialogue_path(dialogue_sequence: Array) -> void:
+	dialogue_path_tracking.append({"path": dialogue_sequence, "time": Time.get_ticks_msec()})
+	if dialogue_path_tracking.size() > 30:
+		dialogue_path_tracking.pop_front()
+
+func rate_choice_effectiveness(choice_id: String) -> float:
+	var tracking = choice_tracking.get(choice_id, 0)
+	var influence = 0.0
+	for key in choice_influence_totals:
+		if key.begins_with(choice_id):
+			influence += choice_influence_totals[key]
+	return influence / maxf(1.0, float(tracking))
+
+func mark_sequence_completed(sequence_id: String) -> void:
+	sequence_completion[sequence_id] = {"completed": true, "time": Time.get_ticks_msec()}
+	path_completed.emit(sequence_id)
+
+func get_choice_selection_count(choice_id: String) -> int:
+	return choice_tracking.get(choice_id, 0)
+
+func get_most_popular_choice() -> String:
+	var max_choice = ""
+	var max_count = 0
+	for choice_id in choice_tracking:
+		if choice_tracking[choice_id] > max_count:
+			max_count = choice_tracking[choice_id]
+			max_choice = choice_id
+	return max_choice
+
+func get_dialogue_paths() -> Array:
+	return dialogue_path_tracking

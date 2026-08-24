@@ -32,6 +32,17 @@ func _ready() -> void:
 	set_state("total_travels", 0)
 	set_state("travel_encounters_log", [])
 	set_state("discovered_routes", [])
+	set_state("travel_history", [])
+	set_state("route_preferences", {})
+	set_state("speed_bonuses", {})
+	set_state("encounter_probability", {})
+	set_state("fastest_routes", {})
+	set_state("travel_achievements", {})
+	set_state("route_unlock_requirements", {})
+	set_state("travel_costs_paid", 0.0)
+	set_state("travel_distance_covered", 0.0)
+	set_state("average_travel_time", 0.0)
+	set_state("travel_performance", [])
 	_initialize_travel_points()
 
 func _initialize_travel_points() -> void:
@@ -92,17 +103,20 @@ func travel_to(point_id: String, player: Node3D, player_level: int = 1, availabl
 				if (Time.get_ticks_msec() - last_travel) < 5000:
 					return false
 			travel_started.emit(point)
-			await get_tree().create_timer(point.travel_time).timeout
-			if not point.is_safe_point and randf() < (0.1 * point.danger_level):
+			var start_time = Time.get_ticks_msec()
+			var adjusted_time = point.travel_time * (1.0 - get_speed_bonus(point_id))
+			await get_tree().create_timer(adjusted_time).timeout
+			if not point.is_safe_point and randf() < _calculate_encounter_probability(point):
 				_trigger_travel_encounter(point)
 			player.global_position = point.position
 			set_state("current_id", point_id)
 			cooldowns[point_id] = Time.get_ticks_msec()
 			set_state("travel_cooldowns", cooldowns)
+			_record_travel_history(point_id, point.travel_cost, adjusted_time, Time.get_ticks_msec() - start_time)
 			var total = get_state("total_travels", 0) + 1
 			set_state("total_travels", total)
 			travel_completed.emit(point)
-			emit_event("traveled", {"destination": point_id, "cost": point.travel_cost, "time": point.travel_time})
+			emit_event("traveled", {"destination": point_id, "cost": point.travel_cost, "time": adjusted_time})
 			return true
 	return false
 
@@ -143,3 +157,99 @@ func get_travel_text() -> String:
 		var danger = " ★%d" % point.danger_level if point.danger_level > 0 else ""
 		text += "%s %s (%.0f gold)%s\n" % [status, point.name, point.travel_cost, danger]
 	return text
+
+func _record_travel_history(point_id: String, cost: float, duration: float, actual_time: int) -> void:
+	var history = get_state("travel_history", [])
+	history.append({"destination": point_id, "cost": cost, "duration": duration, "time": Time.get_ticks_msec(), "actual_ms": actual_time})
+	if history.size() > 100:
+		history.pop_front()
+	set_state("travel_history", history)
+	var total_cost = get_state("travel_costs_paid", 0.0) + cost
+	set_state("travel_costs_paid", total_cost)
+	var distance = point_id.hash() % 500
+	var covered = get_state("travel_distance_covered", 0.0) + distance
+	set_state("travel_distance_covered", covered)
+
+func set_route_preference(point_id: String, preference_level: float) -> void:
+	var prefs = get_state("route_preferences", {})
+	prefs[point_id] = clampf(preference_level, 0.0, 1.0)
+	set_state("route_preferences", prefs)
+	emit_event("route_preference_set", point_id)
+
+func get_route_preference(point_id: String) -> float:
+	var prefs = get_state("route_preferences", {})
+	return prefs.get(point_id, 0.5)
+
+func set_speed_bonus(point_id: String, bonus: float) -> void:
+	var bonuses = get_state("speed_bonuses", {})
+	bonuses[point_id] = clampf(bonus, 0.0, 0.5)
+	set_state("speed_bonuses", bonuses)
+	emit_event("speed_bonus_set", point_id)
+
+func get_speed_bonus(point_id: String) -> float:
+	var bonuses = get_state("speed_bonuses", {})
+	return bonuses.get(point_id, 0.0)
+
+func _calculate_encounter_probability(point: TravelPoint) -> float:
+	var base_prob = 0.1 * point.danger_level
+	var pref = get_route_preference(point.id)
+	return base_prob * (1.0 + (pref - 0.5))
+
+func record_route_attempt(from_id: String, to_id: String, success: bool) -> void:
+	var routes = get_state("discovered_routes", [])
+	routes.append({"from": from_id, "to": to_id, "success": success, "time": Time.get_ticks_msec()})
+	if routes.size() > 50:
+		routes.pop_front()
+	set_state("discovered_routes", routes)
+
+func get_fastest_route(point_id: String) -> float:
+	var fastest = get_state("fastest_routes", {})
+	return fastest.get(point_id, -1.0)
+
+func record_fastest_route(point_id: String, time_ms: int) -> void:
+	var fastest = get_state("fastest_routes", {})
+	if point_id not in fastest or time_ms < fastest[point_id]:
+		fastest[point_id] = time_ms
+	set_state("fastest_routes", fastest)
+	emit_event("route_record", point_id)
+
+func unlock_achievement(achievement_id: String) -> void:
+	var achievements = get_state("travel_achievements", {})
+	achievements[achievement_id] = {"unlocked": true, "time": Time.get_ticks_msec()}
+	set_state("travel_achievements", achievements)
+	emit_event("achievement_unlocked", achievement_id)
+
+func has_achievement(achievement_id: String) -> bool:
+	var achievements = get_state("travel_achievements", {})
+	return achievement_id in achievements
+
+func set_unlock_requirement(point_id: String, requirement: Dictionary) -> void:
+	var reqs = get_state("route_unlock_requirements", {})
+	reqs[point_id] = requirement
+	set_state("route_unlock_requirements", reqs)
+
+func check_unlock_requirement(point_id: String, player_progress: Dictionary) -> bool:
+	var reqs = get_state("route_unlock_requirements", {})
+	if point_id not in reqs:
+		return true
+	var req = reqs[point_id]
+	for key in req:
+		if key not in player_progress or player_progress[key] < req[key]:
+			return false
+	return true
+
+func get_travel_history() -> Array:
+	return get_state("travel_history", [])
+
+func get_total_cost_paid() -> float:
+	return get_state("travel_costs_paid", 0.0)
+
+func get_distance_covered() -> float:
+	return get_state("travel_distance_covered", 0.0)
+
+func record_travel_performance(point_id: String, time_ms: int, encounters: int) -> void:
+	var perf = get_state("travel_performance", [])
+	perf.append({"point": point_id, "time": time_ms, "encounters": encounters, "timestamp": Time.get_ticks_msec()})
+	if perf.size() > 50:
+		perf.pop_front()
+	set_state("travel_performance", perf)
