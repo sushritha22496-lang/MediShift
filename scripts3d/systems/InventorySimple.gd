@@ -23,6 +23,31 @@ func _ready() -> void:
 	set_state("item_conditions", {})
 	set_state("favorite_items", [])
 	set_state("locked_items", [])
+	set_state("item_addition_history", [])
+	set_state("item_removal_history", [])
+	set_state("weight_change_history", [])
+	set_state("inventory_statistics", {})
+
+func _record_item_addition(item_name: String, quantity: int, rarity: String, weight: float) -> void:
+	var history = get_state("item_addition_history", [])
+	history.append({"item": item_name, "quantity": quantity, "rarity": rarity, "weight": weight, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("item_addition_history", history)
+
+func _record_item_removal(item_name: String, quantity: int) -> void:
+	var history = get_state("item_removal_history", [])
+	history.append({"item": item_name, "quantity": quantity, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("item_removal_history", history)
+
+func _record_weight_change(new_weight: float) -> void:
+	var history = get_state("weight_change_history", [])
+	history.append({"weight": new_weight, "capacity_percent": (new_weight / MAX_WEIGHT) * 100.0, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("weight_change_history", history)
 
 func add_item(item_name: String, quantity: int = 1, rarity: String = "common", weight: float = 1.0) -> bool:
 	var items = get_state("items", [])
@@ -34,14 +59,20 @@ func add_item(item_name: String, quantity: int = 1, rarity: String = "common", w
 	for i in range(MAX_SLOTS):
 		if items[i] == null:
 			items[i] = {"name": item_name, "quantity": quantity, "rarity": rarity, "weight": weight, "durability": 100.0}
-			set_state("total_weight", current_weight + item_weight)
+			var new_weight = current_weight + item_weight
+			set_state("total_weight", new_weight)
+			_record_item_addition(item_name, quantity, rarity, weight)
+			_record_weight_change(new_weight)
 			inventory_changed.emit()
 			emit_event("item_added", {"item": item_name, "qty": quantity, "rarity": rarity})
 			return true
 		elif items[i]["name"] == item_name and items[i]["quantity"] < DEFAULT_STACK_SIZE:
 			var can_add = min(quantity, DEFAULT_STACK_SIZE - items[i]["quantity"])
 			items[i]["quantity"] += can_add
-			set_state("total_weight", current_weight + (weight * can_add))
+			var new_weight = current_weight + (weight * can_add)
+			set_state("total_weight", new_weight)
+			_record_item_addition(item_name, can_add, rarity, weight)
+			_record_weight_change(new_weight)
 			inventory_changed.emit()
 			if can_add < quantity:
 				return add_item(item_name, quantity - can_add, rarity, weight)
@@ -54,7 +85,10 @@ func remove_item(item_name: String, quantity: int = 1) -> bool:
 	for i in range(MAX_SLOTS):
 		if items[i] != null and items[i]["name"] == item_name:
 			var weight_removed = items[i]["weight"] * quantity
-			set_state("total_weight", maxf(0.0, get_state("total_weight", 0.0) - weight_removed))
+			var new_weight = maxf(0.0, get_state("total_weight", 0.0) - weight_removed)
+			set_state("total_weight", new_weight)
+			_record_item_removal(item_name, quantity)
+			_record_weight_change(new_weight)
 			items[i]["quantity"] -= quantity
 			if items[i]["quantity"] <= 0:
 				items[i] = null
@@ -147,3 +181,31 @@ func set_item_condition(item_name: String, condition: float) -> void:
 	var conditions = get_state("item_conditions", {})
 	conditions[item_name] = clampf(condition, 0.0, 100.0)
 	set_state("item_conditions", conditions)
+
+func update_inventory_statistics() -> void:
+	var stats = get_state("inventory_statistics", {})
+	var items = get_state("items", [])
+	var add_hist = get_state("item_addition_history", [])
+	var remove_hist = get_state("item_removal_history", [])
+	var weight_hist = get_state("weight_change_history", [])
+	var item_count = 0
+	var unique_items = {}
+	for item in items:
+		if item != null:
+			item_count += item["quantity"]
+			unique_items[item["name"]] = true
+	stats["total_items"] = item_count
+	stats["unique_items"] = unique_items.size()
+	stats["inventory_slots_used"] = 0
+	for item in items:
+		if item != null:
+			stats["inventory_slots_used"] += 1
+	stats["current_weight"] = get_state("total_weight", 0.0)
+	stats["weight_percent"] = get_inventory_weight_percent()
+	stats["total_additions"] = add_hist.size()
+	stats["total_removals"] = remove_hist.size()
+	set_state("inventory_statistics", stats)
+
+func get_inventory_statistics() -> Dictionary:
+	update_inventory_statistics()
+	return get_state("inventory_statistics", {})

@@ -39,6 +39,10 @@ func _ready() -> void:
 	set_state("skill_variations", {})
 	set_state("usage_count", {})
 	set_state("tree_unlocked", {})
+	set_state("skill_learning_history", [])
+	set_state("skill_upgrade_history", [])
+	set_state("skill_usage_history", [])
+	set_state("skill_statistics", {})
 	_initialize_skills()
 
 func _physics_process(delta: float) -> void:
@@ -57,6 +61,27 @@ func _initialize_skills() -> void:
 	]
 	learn_skill("Power Strike")
 
+func _record_skill_learned(skill_name: String) -> void:
+	var history = get_state("skill_learning_history", [])
+	history.append({"skill": skill_name, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("skill_learning_history", history)
+
+func _record_skill_upgrade(skill_name: String, new_level: int) -> void:
+	var history = get_state("skill_upgrade_history", [])
+	history.append({"skill": skill_name, "level": new_level, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("skill_upgrade_history", history)
+
+func _record_skill_usage(skill_name: String) -> void:
+	var history = get_state("skill_usage_history", [])
+	history.append({"skill": skill_name, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("skill_usage_history", history)
+
 func learn_skill(skill_name: String) -> bool:
 	for skill in available_skills:
 		if skill.name == skill_name:
@@ -64,6 +89,7 @@ func learn_skill(skill_name: String) -> bool:
 			if not skill_name in learned:
 				learned[skill_name] = skill
 				set_state("learned", learned)
+				_record_skill_learned(skill_name)
 				skill_learned.emit(skill)
 				get_state("cooldowns", {})[skill_name] = 0.0
 				return true
@@ -76,6 +102,8 @@ func use_skill(skill_name: String, current_mana: float = 100.0) -> bool:
 		var skill = learned[skill_name]
 		if cooldowns.get(skill_name, 0.0) <= 0 and current_mana >= skill.mana_cost:
 			cooldowns[skill_name] = skill.cooldown
+			_record_skill_usage(skill_name)
+			track_skill_usage(skill_name)
 			skill_used.emit(skill)
 			emit_event("skill_used", skill_name)
 			return true
@@ -90,6 +118,8 @@ func upgrade_skill(skill_name: String) -> bool:
 			skill.damage *= 1.1
 			skill.cooldown *= 0.95
 			skill.mana_cost *= 1.05
+			_record_skill_upgrade(skill_name, skill.level)
+			skill_leveled.emit(skill_name, skill.level)
 			emit_event("skill_upgraded", {"name": skill_name, "level": skill.level})
 			return true
 	return false
@@ -177,3 +207,26 @@ func is_tree_unlocked(tree_name: String) -> bool:
 func get_skill_stats(skill_name: String) -> Dictionary:
 	var stats = get_state("skill_stats", {})
 	return stats.get(skill_name, {"casts": 0, "hits": 0, "crits": 0, "effectiveness": 0.0})
+
+func update_skill_statistics() -> void:
+	var stats = get_state("skill_statistics", {})
+	var learn_hist = get_state("skill_learning_history", [])
+	var upgrade_hist = get_state("skill_upgrade_history", [])
+	var usage_hist = get_state("skill_usage_history", [])
+	var learned = get_state("learned", {})
+	stats["total_skills_learned"] = learn_hist.size()
+	stats["total_upgrades"] = upgrade_hist.size()
+	stats["total_usages"] = usage_hist.size()
+	stats["currently_learned"] = learned.size()
+	var usage = get_state("usage_count", {})
+	stats["most_used_skill"] = ""
+	var max_uses = 0
+	for skill_name in usage:
+		if usage[skill_name] > max_uses:
+			max_uses = usage[skill_name]
+			stats["most_used_skill"] = skill_name
+	set_state("skill_statistics", stats)
+
+func get_skill_statistics() -> Dictionary:
+	update_skill_statistics()
+	return get_state("skill_statistics", {})
