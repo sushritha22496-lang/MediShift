@@ -1,0 +1,149 @@
+[gd_scene load_steps=20 format=3 uid="uid://dfj5mxpwn0qo31"]
+
+[ext_resource type="Script" path="res://scripts3d/managers/ForestManager.gd" id="1"]
+[ext_resource type="Script" path="res://scripts3d/managers/WorldExpansion.gd" id="2"]
+[ext_resource type="PackedScene" path="res://scenes3d/characters/rama_character_3d.tscn" id="3"]
+[ext_resource type="PackedScene" path="res://scenes3d/npcs/hanuman_npc_3d.tscn" id="4"]
+[ext_resource type="PackedScene" path="res://scenes3d/npcs/monkey_npc_3d.tscn" id="5"]
+[ext_resource type="PackedScene" path="res://scenes3d/npcs/scout_npc_3d.tscn" id="6"]
+
+[sub_resource type="ProceduralSkyMaterial" id="sky_mat"]
+sky_top_color = Color(0.35, 0.55, 0.8, 1)
+sky_horizon_color = Color(0.75, 0.65, 0.45, 1)
+ground_horizon_color = Color(0.45, 0.4, 0.3, 1)
+ground_bottom_color = Color(0.15, 0.1, 0.05, 1)
+sun_angle_max = 40.0
+sun_curve = 0.2
+
+[sub_resource type="Sky" id="sky"]
+sky_material = SubResource("sky_mat")
+
+[sub_resource type="Environment" id="env"]
+background_mode = 2
+sky = SubResource("sky")
+ambient_light_source = 2
+ambient_light_energy = 0.65
+tonemap_mode = 3
+glow_enabled = true
+glow_intensity = 0.35
+glow_bloom = 0.08
+ssao_enabled = true
+ssao_radius = 2.5
+ssao_intensity = 1.5
+fog_enabled = true
+fog_light_color = Color(0.7, 0.65, 0.5, 1)
+fog_density = 0.012
+fog_aerial_perspective = 0.05
+adjustment_enabled = true
+adjustment_saturation = 1.1
+
+[sub_resource type="BoxMesh" id="ground_mesh"]
+size = Vector3(1200, 3, 1200)
+
+[sub_resource type="StandardMaterial3D" id="ground_mat"]
+albedo_color = Color(0.25, 0.3, 0.15, 1)
+roughness = 0.98
+ao_enabled = true
+
+[sub_resource type="BoxShape3D" id="ground_shape"]
+size = Vector3(1200, 3, 1200)
+
+[node name="BadrachalamForestMega" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("env")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.707107, 0.707107, 0, -0.707107, 0.707107, 0, 50, 0)
+shadow_enabled = true
+shadow_blur = 3.0
+
+[node name="Ground" type="MeshInstance3D" parent="."]
+mesh = SubResource("ground_mesh")
+material_override = SubResource("ground_mat")
+
+[node name="GroundCollider" type="StaticBody3D" parent="."]
+[node name="CollisionShape3D" parent="GroundCollider" index="0"]
+shape = SubResource("ground_shape")
+
+[node name="WorldExpansion" type="Node3D" parent="."]
+script = ExtResource("2")
+world_width = 1200.0
+world_height = 1200.0
+trees_per_zone = 12
+rocks_per_zone = 8
+items_per_zone = 15
+
+[node name="Forest" type="Node3D" parent="WorldExpansion"]
+[node name="Items" type="Node3D" parent="WorldExpansion"]
+[node name="Rocks" type="Node3D" parent="WorldExpansion"]
+
+[node name="Characters" type="Node3D" parent="."]
+
+[node name="Rama" parent="Characters" instance=ExtResource("3")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0)
+
+[node name="Hanuman" parent="Characters" instance=ExtResource("4")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -100, 2, 150)
+
+[node name="Monkeys" type="Node3D" parent="Characters"]
+
+[node name="Monkey1" parent="Characters/Monkeys" instance=ExtResource("5")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 100, 2, 100)
+monkey_name = "Monkey Scout 1"
+
+[node name="Monkey2" parent="Characters/Monkeys" instance=ExtResource("5")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -100, 2, -150)
+monkey_name = "Monkey Scout 2"
+
+[node name="Monkey3" parent="Characters/Monkeys" instance=ExtResource("5")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 200, 2, 200)
+monkey_name = "Monkey Scout 3"
+
+[node name="Monkey4" parent="Characters/Monkeys" instance=ExtResource("5")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 250, 2, -100)
+monkey_name = "Monkey Scout 4"
+
+[node name="Monkey5" parent="Characters/Monkeys" instance=ExtResource("5")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -250, 2, 100)
+monkey_name = "Monkey Scout 5"
+
+[node name="Scout1" parent="Characters" instance=ExtResource("6")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 150, 2, -200)
+npc_name = "Scout Arjun"
+
+[node name="Scout2" parent="Characters" instance=ExtResource("6")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -150, 2, 200)
+npc_name = "Scout Vikram"
+
+[node name="Scout3" parent="Characters" instance=ExtResource("6")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 300, 2, 50)
+npc_name = "Scout Devendra"
+
+[node name="HUD" type="CanvasLayer" parent="."]
+
+[node name="MainLabel" type="Label" parent="HUD"]
+offset_left = 20.0
+offset_top = 20.0
+offset_right = 600.0
+offset_bottom = 200.0
+text = "🌲 EXPANDED BADRACHALAM FOREST
+
+WASD - Move | Shift - Run | Space - Call
+E - Interact | Esc - Debug | I - Inventory
+
+Searching for Sita in the vast forest..."
+
+[node name="ObjectiveLabel" type="Label" parent="HUD"]
+offset_left = 20.0
+offset_top = 220.0
+offset_right = 600.0
+offset_bottom = 280.0
+text = "📍 Objective: Find Hanuman and allies"
+
+[node name="InventoryLabel" type="Label" parent="HUD"]
+offset_left = 20.0
+offset_top = 300.0
+offset_right = 400.0
+offset_bottom = 450.0
+text = "🎒 Inventory: Empty"

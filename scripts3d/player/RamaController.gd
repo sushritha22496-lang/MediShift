@@ -22,16 +22,24 @@ var call_intensity: float = 0.0  # How loud/emotional the call is
 # Camera
 @onready var camera: Camera3D = $Camera3D
 
+# Systems
+var inventory: InventorySystem
+var detection_range: float = 10.0
+
 # Signals
 signal rama_called(intensity: float)
 signal dialogue_started
 signal dialogue_ended
+signal item_collected(item_name: String)
 
 func _ready() -> void:
 	add_to_group("player")
 	if not audio_player:
 		audio_player = AudioStreamPlayer3D.new()
 		add_child(audio_player)
+
+	inventory = InventorySystem.new()
+	add_child(inventory)
 
 	# Load animations for Rama
 	if anim_player:

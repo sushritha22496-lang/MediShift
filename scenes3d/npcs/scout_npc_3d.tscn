@@ -1,0 +1,26 @@
+[gd_scene load_steps=6 format=3 uid="uid://duvbvejg8xmv5ty3j1"]
+
+[ext_resource type="Script" path="res://scripts3d/npcs/ScoutNPC.gd" id="1"]
+[ext_resource type="PackedScene" path="res://scenes3d/models/demon_guard_3d.tscn" id="2"]
+
+[sub_resource type="CapsuleShape3D" id="shape"]
+radius = 0.5
+height = 2.2
+
+[sub_resource type="StandardMaterial3D" id="mat"]
+albedo_color = Color(0.4, 0.3, 0.6, 1)
+
+[node name="Scout" type="CharacterBody3D"]
+script = ExtResource("1")
+npc_name = "Scout"
+walk_speed = 3.5
+run_speed = 6.0
+
+[node name="Model" parent="." instance=ExtResource("2")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+shape = SubResource("shape")
+
+[node name="HeadMarker" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0)

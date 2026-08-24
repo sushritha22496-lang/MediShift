@@ -8,14 +8,26 @@ class_name ForestManager
 @onready var monkeys: Node3D = $Characters/Monkeys
 @onready var main_label: Label = $HUD/MainLabel
 @onready var objective_label: Label = $HUD/ObjectiveLabel
+@onready var inventory_label: Label = $HUD/InventoryLabel
+
+# Systems
+var quest_system: QuestSystem
+var location_manager: LocationManager
 
 # State
 var has_met: bool = false
 var game_started: bool = false
 
 func _ready() -> void:
+	quest_system = QuestSystem.new()
+	add_child(quest_system)
+
+	location_manager = LocationManager.new()
+	add_child(location_manager)
+
 	# Connect Rama's calling signal to Hanuman
 	rama.rama_called.connect(_on_rama_called)
+	rama.inventory.item_added.connect(_on_item_collected)
 
 	# Connect Hanuman's signals
 	hanuman.rama_detected.connect(_on_hanuman_detects_rama)
@@ -24,6 +36,10 @@ func _ready() -> void:
 
 	# Set Hanuman's reference to Rama
 	hanuman.set_rama_reference(rama)
+
+	# Connect quest signals
+	quest_system.quest_completed.connect(_on_quest_completed)
+	quest_system.objective_updated.connect(_on_objective_updated)
 
 	# Show initial HUD message
 	_show_hud_message("🌲 BADRACHALAM FOREST - The Search for Sita\n\nRama searches desperately through the forest...\n\nPress SPACE to call for Sita!\nMonkeys wander the forest with Hanuman...")
@@ -88,7 +104,37 @@ func _show_hud_message(message: String) -> void:
 	if objective_label and "Objective:" not in message:
 		objective_label.text = "📍 " + message.split("\n")[0]
 
+func _on_item_collected(item_name: String, quantity: int) -> void:
+	"""Called when player collects an item"""
+	_update_inventory_display()
+
+func _on_quest_completed(quest: QuestSystem.Quest) -> void:
+	"""Called when a quest is completed"""
+	_show_hud_message("✅ QUEST COMPLETE: " + quest.title)
+
+func _on_objective_updated(objective: String) -> void:
+	"""Called when objective changes"""
+	if objective_label:
+		objective_label.text = "📍 " + objective
+
+func _update_inventory_display() -> void:
+	"""Update the inventory HUD display"""
+	if not inventory_label or not rama.inventory:
+		return
+
+	var inventory = rama.inventory.get_inventory()
+	if inventory.is_empty():
+		inventory_label.text = "🎒 Inventory: Empty"
+	else:
+		var items_text = "🎒 Inventory:\n"
+		for item_name in inventory.keys():
+			items_text += "%s: %d\n" % [item_name, inventory[item_name]]
+		inventory_label.text = items_text.strip_edges()
+
 func _process(_delta: float) -> void:
+	# Update inventory display
+	_update_inventory_display()
+
 	# Optional: Show debug info
 	if Input.is_action_just_pressed("ui_cancel"):
 		print("Rama position:", rama.global_position)
