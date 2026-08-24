@@ -1,70 +1,90 @@
-extends Node
+extends BaseSystemSimple
 
 class_name LeaderboardSimple
 
-class PlayerScore:
+class ScoreEntry:
 	var rank: int
-	var name: String
-	var level: int
-	var experience: float
-	var gold: float
-	var playtime: float
-	var kills: int
-	var deaths: int
-
-	func _init(p_rank: int, p_name: String, p_level: int, p_exp: float, p_gold: float, p_time: float, p_kills: int, p_deaths: int) -> void:
+	var player_name: String
+	var score: float
+	var date: String
+	func _init(p_rank: int, p_name: String, p_score: float, p_date: String) -> void:
 		rank = p_rank
-		name = p_name
-		level = p_level
-		experience = p_exp
-		gold = p_gold
-		playtime = p_time
-		kills = p_kills
-		deaths = p_deaths
+		player_name = p_name
+		score = p_score
+		date = p_date
 
-var leaderboard: Array[PlayerScore] = []
-var player_rank: int = 0
+var leaderboards: Dictionary = {}
 
-signal rank_achieved(rank: int)
-signal new_high_score(score: PlayerScore)
+signal score_submitted(leaderboard: String, rank: int)
+signal new_high_score(leaderboard: String, score: float)
 
 func _ready() -> void:
-	_initialize_leaderboard()
+	_initialize_leaderboards()
 
-func _initialize_leaderboard() -> void:
-	leaderboard.append(PlayerScore.new(1, "Arjun", 50, 5000, 10000, 1000, 250, 5))
-	leaderboard.append(PlayerScore.new(2, "Vikram", 48, 4800, 9500, 950, 240, 8))
-	leaderboard.append(PlayerScore.new(3, "Dhruv", 45, 4500, 8000, 900, 210, 12))
-	leaderboard.append(PlayerScore.new(4, "Sanjay", 42, 4200, 7500, 850, 195, 15))
-	leaderboard.append(PlayerScore.new(5, "Rohan", 40, 4000, 7000, 800, 180, 18))
+func _initialize_leaderboards() -> void:
+	leaderboards = {
+		"score": [
+			ScoreEntry.new(1, "Warrior", 50000.0, "2026-08-24"),
+			ScoreEntry.new(2, "Hunter", 45000.0, "2026-08-23"),
+			ScoreEntry.new(3, "Mage", 40000.0, "2026-08-22")
+		],
+		"speedrun": [
+			ScoreEntry.new(1, "Swift", 600.0, "2026-08-24"),
+			ScoreEntry.new(2, "Quick", 720.0, "2026-08-23"),
+			ScoreEntry.new(3, "Fast", 840.0, "2026-08-22")
+		],
+		"survival": [
+			ScoreEntry.new(1, "Survivor", 120.0, "2026-08-24"),
+			ScoreEntry.new(2, "Tough", 100.0, "2026-08-23"),
+			ScoreEntry.new(3, "Strong", 90.0, "2026-08-22")
+		]
+	}
 
-func submit_score(player_name: String, level: int, experience: float, gold: float, playtime: float, kills: int, deaths: int) -> void:
-	var score = PlayerScore.new(leaderboard.size() + 1, player_name, level, experience, gold, playtime, kills, deaths)
-	leaderboard.append(score)
-	_sort_leaderboard()
-	new_high_score.emit(score)
-	print("🏆 Score submitted!")
+func submit_score(leaderboard: String, player_name: String, score: float) -> int:
+	if leaderboard not in leaderboards:
+		return -1
 
-func _sort_leaderboard() -> void:
-	leaderboard.sort_custom(func(a, b): return a.experience > b.experience)
-	for i in range(leaderboard.size()):
-		leaderboard[i].rank = i + 1
+	var board = leaderboards[leaderboard]
+	var rank = board.size() + 1
 
-func get_leaderboard(limit: int = 10) -> Array[PlayerScore]:
-	var result: Array[PlayerScore] = []
-	for i in range(mini(limit, leaderboard.size())):
-		result.append(leaderboard[i])
-	return result
+	for i in range(board.size()):
+		if score > board[i].score:
+			rank = i + 1
+			break
 
-func get_player_position(player_name: String) -> int:
-	for score in leaderboard:
-		if score.name == player_name:
-			return score.rank
+	if rank <= 10:
+		var entry = ScoreEntry.new(rank, player_name, score, "2026-08-24")
+		board.insert(rank - 1, entry)
+		if board.size() > 10:
+			board.pop_back()
+		
+		for i in range(board.size()):
+			board[i].rank = i + 1
+
+		if rank == 1:
+			new_high_score.emit(leaderboard, score)
+			emit_event("new_high_score", leaderboard)
+		score_submitted.emit(leaderboard, rank)
+		emit_event("score_submitted", leaderboard)
+		return rank
 	return -1
 
-func get_leaderboard_text(limit: int = 10) -> String:
-	var text = "🏆 Top Players:\n"
-	for i in range(mini(limit, leaderboard.size())):
-		var score = leaderboard[i]
-		text += "#%d %s (Lvl %d, Exp: %.0f)\n" % [score.rank, score.name, score.level, score.experience]
+func get_leaderboard(leaderboard: String) -> Array[ScoreEntry]:
+	return leaderboards.get(leaderboard, [])
+
+func get_leaderboards() -> Array:
+	return leaderboards.keys()
+
+func get_player_rank(leaderboard: String, player_name: String) -> int:
+	var board = get_leaderboard(leaderboard)
+	for entry in board:
+		if entry.player_name == player_name:
+			return entry.rank
+	return -1
+
+func get_leaderboard_text(leaderboard: String = "score") -> String:
+	var board = get_leaderboard(leaderboard)
+	var text = "Leaderboard: %s\n" % leaderboard.capitalize()
+	for entry in board.slice(0, 5):
+		text += "#%d %s - %.0f\n" % [entry.rank, entry.player_name, entry.score]
 	return text
