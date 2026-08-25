@@ -103,16 +103,23 @@ func travel_to(point_id: String, player: Node3D, player_level: int = 1, availabl
 				if (Time.get_ticks_msec() - last_travel) < 5000:
 					return false
 			travel_started.emit(point)
+			var origin_id = get_state("current_id", "")
 			var start_time = Time.get_ticks_msec()
 			var adjusted_time = point.travel_time * (1.0 - get_speed_bonus(point_id))
 			await get_tree().create_timer(adjusted_time).timeout
+			var encounters_this_trip = 0
 			if not point.is_safe_point and randf() < _calculate_encounter_probability(point):
 				_trigger_travel_encounter(point)
+				encounters_this_trip = 1
 			player.global_position = point.position
 			set_state("current_id", point_id)
 			cooldowns[point_id] = Time.get_ticks_msec()
 			set_state("travel_cooldowns", cooldowns)
-			_record_travel_history(point_id, point.travel_cost, adjusted_time, Time.get_ticks_msec() - start_time)
+			var actual_ms = Time.get_ticks_msec() - start_time
+			_record_travel_history(point_id, point.travel_cost, adjusted_time, actual_ms)
+			record_route_attempt(origin_id, point_id, true)
+			record_fastest_route(point_id, actual_ms)
+			record_travel_performance(point_id, actual_ms, encounters_this_trip)
 			var total = get_state("total_travels", 0) + 1
 			set_state("total_travels", total)
 			travel_completed.emit(point)
@@ -253,3 +260,16 @@ func record_travel_performance(point_id: String, time_ms: int, encounters: int) 
 	if perf.size() > 50:
 		perf.pop_front()
 	set_state("travel_performance", perf)
+
+func get_fast_travel_statistics() -> Dictionary:
+	return {
+		"total_travels": get_state("total_travels", 0),
+		"discovered_points": get_discovered_points().size(),
+		"total_points": travel_points.size(),
+		"total_cost_paid": get_total_cost_paid(),
+		"distance_covered": get_distance_covered(),
+		"encounters_logged": get_state("travel_encounters_log", []).size(),
+		"routes_attempted": get_state("discovered_routes", []).size(),
+		"achievements_unlocked": get_state("travel_achievements", {}).size(),
+		"current_location": get_state("current_id", "")
+	}

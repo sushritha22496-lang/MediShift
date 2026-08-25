@@ -185,6 +185,12 @@ func update_faction_statistics() -> void:
 		if rank == "legendary":
 			legendary_count += 1
 	stats["legendary_factions"] = legendary_count
+	var outcast_count = 0
+	for rank in all_ranks.values():
+		if rank == "outcast":
+			outcast_count += 1
+	stats["outcast_factions"] = outcast_count
+	stats["average_fame"] = total_fame / float(factions.size()) if factions.size() > 0 else 0.0
 	set_state("faction_statistics", stats)
 
 func get_faction_statistics() -> Dictionary:

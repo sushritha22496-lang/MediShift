@@ -54,6 +54,7 @@ func _ready() -> void:
 	set_state("perfect_catch_tracking", [])
 	set_state("location_statistics", {})
 	set_state("fishing_statistics", {})
+	set_state("equipment_change_history", [])
 
 func start_fishing(location: Vector3, time_of_day: String = "day", weather: String = "clear") -> Fish:
 	var rarity_roll = randf()
@@ -115,16 +116,25 @@ func get_fishing_text() -> String:
 	var equipment = get_state("equipment", {})
 	return "Fishing Level: %d | Catches: %d | Weight: %.1f kg | Rod: %s" % [level, catches, total_weight, equipment.get("rod", "basic")]
 
+func _record_equipment_change(slot: String, item: String) -> void:
+	var history = get_state("equipment_change_history", [])
+	history.append({"slot": slot, "item": item, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("equipment_change_history", history)
+
 func equip_rod(rod_type: String) -> void:
 	var equipment = get_state("equipment", {})
 	equipment["rod"] = rod_type
 	set_state("equipment", equipment)
+	_record_equipment_change("rod", rod_type)
 	emit_event("rod_equipped", rod_type)
 
 func equip_bait(bait_type: String) -> void:
 	var equipment = get_state("equipment", {})
 	equipment["bait"] = bait_type
 	set_state("equipment", equipment)
+	_record_equipment_change("bait", bait_type)
 	emit_event("bait_equipped", bait_type)
 
 func get_catch_history() -> Array:
@@ -169,6 +179,8 @@ func update_fishing_statistics() -> void:
 	stats["unique_locations"] = get_state("location_statistics", {}).size()
 	if history.size() > 0:
 		stats["average_weight"] = get_average_weight()
+	stats["equipment_changes"] = get_state("equipment_change_history", []).size()
+	stats["largest_catch"] = get_largest_catch()
 	set_state("fishing_statistics", stats)
 
 func get_fishing_statistics() -> Dictionary:
