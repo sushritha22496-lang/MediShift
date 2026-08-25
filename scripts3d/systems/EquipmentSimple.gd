@@ -205,6 +205,7 @@ func add_enchantment_to_slot(slot: String, enchantment_id: String) -> bool:
 	if enchs[slot].size() < eq.enchantment_slots:
 		enchs[slot].append(enchantment_id)
 		set_state("equipment_enchantments", enchs)
+		_record_equipment_change(slot, "%s +%s" % [eq.name, enchantment_id], true)
 		emit_event("enchantment_added", {"slot": slot, "enchantment": enchantment_id})
 		return true
 	return false
@@ -251,6 +252,11 @@ func update_equipment_statistics() -> void:
 	stats["repairs_made"] = get_state("repair_history", []).size()
 	stats["total_damage"] = get_total_damage()
 	stats["total_defense"] = get_total_defense()
+	stats["durability_events"] = get_state("durability_tracking", []).size()
+	stats["weight_changes"] = get_state("weight_management_history", []).size()
+	stats["equipment_sets_registered"] = get_state("equipment_sets", {}).size()
+	stats["active_set_bonuses"] = get_active_set_bonuses().size()
+	stats["carrying_capacity_percent"] = get_carrying_capacity_percent()
 	set_state("equipment_statistics", stats)
 
 func get_equipment_statistics() -> Dictionary:

@@ -50,6 +50,7 @@ func _ready() -> void:
 	set_state("synergy_tracking", [])
 	set_state("success_failure_rates", {})
 	set_state("enchantment_statistics", {})
+	set_state("disenchant_history", [])
 	_initialize_enchantments()
 
 func _initialize_enchantments() -> void:
@@ -142,6 +143,11 @@ func disenchant_item(item_name: String, enchantment_id: String) -> float:
 			var ench = enchantments[i]
 			var refund = ench.cost * 0.5 * (ench.level * 0.1 + 1.0)
 			enchantments.remove_at(i)
+			var history = get_state("disenchant_history", [])
+			history.append({"item": item_name, "enchantment": enchantment_id, "refund": refund, "time": Time.get_ticks_msec()})
+			if history.size() > 50:
+				history.pop_front()
+			set_state("disenchant_history", history)
 			emit_event("disenchanted", enchantment_id)
 			return refund
 	return 0.0
@@ -241,6 +247,9 @@ func update_enchantment_statistics() -> void:
 	stats["total_success"] = total_success
 	stats["total_failure"] = total_failure
 	stats["overall_success_rate"] = float(total_success) / float(total_success + total_failure) if (total_success + total_failure) > 0 else 0.0
+	stats["disenchants"] = get_state("disenchant_history", []).size()
+	stats["cascades_triggered"] = get_state("cascade_chains", []).size()
+	stats["available_enchantments"] = available_enchantments.size()
 	set_state("enchantment_statistics", stats)
 
 func get_enchantment_statistics() -> Dictionary:

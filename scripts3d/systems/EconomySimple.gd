@@ -56,6 +56,7 @@ func update_prices() -> void:
 
 		if absf(new_price - price_data.current_price) > 0.1:
 			price_data.current_price = new_price
+			record_price_history(item_name)
 			price_changed.emit(item_name, new_price)
 			emit_event("price_changed", item_name)
 
