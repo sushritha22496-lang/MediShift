@@ -27,7 +27,7 @@ func _initialize_locations() -> void:
 	forest.name = "Badrachalam Forest"
 	forest.location_type = LocationType.FOREST
 	forest.spawn_position = Vector3(0, 2, 0)
-	forest.npcs = ["Hanuman", "Monkey Scouts"]
+	forest.npcs = ["Hanuman", "Monkey Scouts"] as Array[String]
 	forest.description = "The sacred Badrachalam Forest where Rama searches for allies"
 
 	var coast = Location.new()
@@ -35,7 +35,7 @@ func _initialize_locations() -> void:
 	coast.name = "Forest Coast"
 	coast.location_type = LocationType.COAST
 	coast.spawn_position = Vector3(1500, 2, 1500)
-	coast.npcs = ["Scouts", "Monkeys"]
+	coast.npcs = ["Scouts", "Monkeys"] as Array[String]
 	coast.description = "The shoreline where the ocean route to Lanka begins"
 
 	var village = Location.new()
@@ -43,7 +43,7 @@ func _initialize_locations() -> void:
 	village.name = "Monkey Village"
 	village.location_type = LocationType.VILLAGE
 	village.spawn_position = Vector3(-1500, 2, 1000)
-	village.npcs = ["Elder Monkeys", "Village Scouts"]
+	village.npcs = ["Elder Monkeys", "Village Scouts"] as Array[String]
 	village.description = "The settlement of the monkey kingdom"
 
 	locations["badrachalam_forest"] = forest

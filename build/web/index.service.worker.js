@@ -4,7 +4,7 @@
 // Incrementing CACHE_VERSION will kick off the install event and force
 // previously cached resources to be updated from the network.
 /** @type {string} */
-const CACHE_VERSION = '1787698241|8227623';
+const CACHE_VERSION = '1787699790|6679517';
 /** @type {string} */
 const CACHE_PREFIX = 'Ramayana Game-sw-cache-';
 const CACHE_NAME = CACHE_PREFIX + CACHE_VERSION;
