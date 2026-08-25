@@ -31,6 +31,8 @@ func _ready() -> void:
 	set_state("collection_stats", {})
 	set_state("trade_offers", [])
 	set_state("rarity_bonuses", {})
+	set_state("discovery_record", [])
+	set_state("completion_record", [])
 	_initialize_collectibles()
 
 func _initialize_collectibles() -> void:
@@ -40,6 +42,20 @@ func _initialize_collectibles() -> void:
 			var c = Collectible.new("%s_%d" % [cat, i], "%s Collectible %d" % [cat.capitalize(), i+1], cat, "A rare %s" % cat, ["common", "uncommon", "rare"][randi() % 3])
 			collectibles.append(c)
 
+func _record_discovery(collectible_id: String, rarity: String, category: String) -> void:
+	var record = get_state("discovery_record", [])
+	record.append({"id": collectible_id, "rarity": rarity, "category": category, "time": Time.get_ticks_msec()})
+	if record.size() > 50:
+		record.pop_front()
+	set_state("discovery_record", record)
+
+func _record_completion(category: String) -> void:
+	var record = get_state("completion_record", [])
+	record.append({"category": category, "time": Time.get_ticks_msec()})
+	if record.size() > 50:
+		record.pop_front()
+	set_state("completion_record", record)
+
 func find_collectible(collectible_id: String) -> bool:
 	var c = _get_collectible(collectible_id)
 	if c and not c.collected:
@@ -47,10 +63,13 @@ func find_collectible(collectible_id: String) -> bool:
 		var collected = get_state("collected_items", [])
 		collected.append(collectible_id)
 		set_state("collected_items", collected)
+		track_rarity_distribution(collectible_id)
+		_record_discovery(collectible_id, c.rarity, c.category)
 		collectible_found.emit(c)
 		emit_event("collectible_found", collectible_id)
 
 		if _is_category_complete(c.category):
+			_record_completion(c.category)
 			collection_completed.emit(c.category)
 			emit_event("collection_completed", c.category)
 		return true
@@ -134,6 +153,10 @@ func update_collection_stats() -> void:
 	stats["completion_percentage"] = get_total_progress()
 	var dist = get_state("rarity_distribution", {})
 	stats["rarity_counts"] = dist
+	stats["discoveries_recorded"] = get_state("discovery_record", []).size()
+	stats["categories_completed"] = get_state("completion_record", []).size()
+	stats["showcase_count"] = get_state("showcase_items", []).size()
+	stats["duplicate_count"] = get_state("duplicate_items", {}).size()
 	set_state("collection_stats", stats)
 
 func get_collection_stats() -> Dictionary:

@@ -20,6 +20,7 @@ var spawn_time: int = 0
 var collection_effects: Dictionary = {}
 var animation_data: Dictionary = {}
 var particle_effect_name: String = ""
+var collection_attempt_history: Array = []
 
 func _ready() -> void:
 	spawn_time = Time.get_ticks_msec()
@@ -33,9 +34,16 @@ func _on_area_entered(body: Node3D) -> void:
 	if body.is_in_group("player") and global_position.distance_to(body.global_position) < pickup_range:
 		collect(body)
 
+func _record_collection_attempt(collector_name: String, success: bool) -> void:
+	collection_attempt_history.append({"collector": collector_name, "success": success, "lifetime": get_lifetime_ms(), "time": Time.get_ticks_msec()})
+	if collection_attempt_history.size() > 50:
+		collection_attempt_history.pop_front()
+
 func collect(collector: Node3D) -> void:
 	if collector.has_method("add_to_inventory"):
 		collector.add_to_inventory(item_name, item_quantity)
+	_record_collection_attempt(collector.name, true)
+	rarity_collected.emit(rarity)
 	item_collected.emit(item_name, item_quantity)
 	queue_free()
 
@@ -72,3 +80,13 @@ func trigger_collection_effects() -> void:
 	for effect in collection_effects:
 		emit_signal("item_collected", item_name, item_quantity)
 	rarity_collected.emit(rarity)
+
+func get_collectible_statistics() -> Dictionary:
+	return {
+		"item_name": item_name,
+		"rarity": rarity,
+		"lifetime_ms": get_lifetime_ms(),
+		"collection_attempts": collection_attempt_history.size(),
+		"effects_registered": collection_effects.size(),
+		"animations_registered": animation_data.size()
+	}

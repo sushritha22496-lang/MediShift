@@ -33,6 +33,8 @@ func _ready() -> void:
 	set_state("buff_history", [])
 	set_state("death_history", [])
 	set_state("character_statistics", {})
+	set_state("gold_history", [])
+	set_state("skill_allocation_history", [])
 
 func _record_damage(amount: float) -> void:
 	var history = get_state("damage_taken_history", [])
@@ -119,8 +121,16 @@ func level_up_character() -> void:
 func get_exp_requirement(lvl: int) -> float:
 	return (lvl * lvl) * 50.0 + (lvl * 100.0)
 
+func _record_gold_change(amount: float) -> void:
+	var history = get_state("gold_history", [])
+	history.append({"amount": amount, "total_after": gold, "timestamp": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("gold_history", history)
+
 func add_gold(amount: float) -> void:
 	gold += amount
+	_record_gold_change(amount)
 	emit_event("gold_changed", gold)
 
 func add_stat_permanent(stat: String, amount: float) -> void:
@@ -167,6 +177,11 @@ func allocate_skill_point(stat: String) -> bool:
 	if skill_points > 0 and stat in stats:
 		add_stat_permanent(stat, 1)
 		skill_points -= 1
+		var history = get_state("skill_allocation_history", [])
+		history.append({"stat": stat, "timestamp": Time.get_ticks_msec()})
+		if history.size() > 50:
+			history.pop_front()
+		set_state("skill_allocation_history", history)
 		emit_event("skill_point_allocated", stat)
 		return true
 	return false
@@ -240,6 +255,9 @@ func update_character_statistics() -> void:
 	stats["current_gold"] = gold
 	stats["current_skill_points"] = skill_points
 	stats["current_hp"] = get_stat("hp")
+	stats["gold_transactions"] = get_state("gold_history", []).size()
+	stats["skill_points_allocated"] = get_state("skill_allocation_history", []).size()
+	stats["milestones_reached"] = get_state("milestones", {}).size()
 	set_state("character_statistics", stats)
 
 func get_character_statistics() -> Dictionary:
