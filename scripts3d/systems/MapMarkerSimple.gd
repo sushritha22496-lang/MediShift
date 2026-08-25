@@ -27,6 +27,9 @@ signal marker_unpinned(marker_id: String)
 func _ready() -> void:
 	set_state("discovered_markers", [])
 	set_state("pinned_markers", [])
+	set_state("discovery_history", [])
+	set_state("visit_history", [])
+	set_state("pin_history", [])
 	_initialize_markers()
 
 func _initialize_markers() -> void:
@@ -52,6 +55,11 @@ func discover_marker(marker_id: String) -> bool:
 			var discovered = get_state("discovered_markers", [])
 			discovered.append(marker_id)
 			set_state("discovered_markers", discovered)
+			var history = get_state("discovery_history", [])
+			history.append({"marker": marker_id, "type": marker.marker_type, "time": Time.get_ticks_msec()})
+			if history.size() > 50:
+				history.pop_front()
+			set_state("discovery_history", history)
 			marker_discovered.emit(marker)
 			emit_event("marker_discovered", marker_id)
 			return true
@@ -59,6 +67,11 @@ func discover_marker(marker_id: String) -> bool:
 
 func visit_marker(marker_id: String) -> void:
 	if discover_marker(marker_id):
+		var history = get_state("visit_history", [])
+		history.append({"marker": marker_id, "time": Time.get_ticks_msec()})
+		if history.size() > 50:
+			history.pop_front()
+		set_state("visit_history", history)
 		marker_visited.emit(marker_id)
 		emit_event("marker_visited", marker_id)
 
@@ -69,6 +82,7 @@ func pin_marker(marker_id: String) -> bool:
 		if marker_id not in pinned:
 			pinned.append(marker_id)
 			set_state("pinned_markers", pinned)
+			_record_pin_event(marker_id, true)
 			marker_pinned.emit(marker_id)
 			emit_event("marker_pinned", marker_id)
 			return true
@@ -79,10 +93,18 @@ func unpin_marker(marker_id: String) -> bool:
 	if marker_id in pinned:
 		pinned.erase(marker_id)
 		set_state("pinned_markers", pinned)
+		_record_pin_event(marker_id, false)
 		marker_unpinned.emit(marker_id)
 		emit_event("marker_unpinned", marker_id)
 		return true
 	return false
+
+func _record_pin_event(marker_id: String, pinned: bool) -> void:
+	var history = get_state("pin_history", [])
+	history.append({"marker": marker_id, "pinned": pinned, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("pin_history", history)
 
 func set_marker_description(marker_id: String, desc: String) -> void:
 	var marker = _get_marker(marker_id)
@@ -124,3 +146,13 @@ func _get_marker(marker_id: String) -> Marker:
 		if marker.id == marker_id:
 			return marker
 	return null
+
+func get_map_marker_statistics() -> Dictionary:
+	return {
+		"total_markers": markers.size(),
+		"discovered_markers": get_discovered_markers().size(),
+		"pinned_markers": get_state("pinned_markers", []).size(),
+		"discovery_events": get_state("discovery_history", []).size(),
+		"visit_events": get_state("visit_history", []).size(),
+		"pin_events": get_state("pin_history", []).size()
+	}

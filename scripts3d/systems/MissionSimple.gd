@@ -90,3 +90,17 @@ func get_missions_text() -> String:
 				time_left = " [%.0fs]" % remaining
 		text += "%s (%d/%d)%s\n" % [mission.title, mission.progress, mission.target, time_left]
 	return text if not active.is_empty() else "Missions: None"
+
+func get_mission_statistics() -> Dictionary:
+	var total_bonus_gold = 0
+	var total_bonus_exp = 0
+	for mission in active:
+		var bonuses = get_mission_bonus_rewards(mission.id)
+		total_bonus_gold += bonuses.get("bonus_gold", 0)
+		total_bonus_exp += bonuses.get("bonus_exp", 0)
+	return {
+		"active_missions": active.size(),
+		"completed_missions": completed.size(),
+		"pending_bonus_gold": total_bonus_gold,
+		"pending_bonus_exp": total_bonus_exp
+	}
