@@ -291,3 +291,20 @@ func get_average_fatigue() -> float:
 func get_member_fatigue(member_id: String) -> float:
 	var fatigue = get_state("member_fatigue", {})
 	return fatigue.get(member_id, 0.0)
+
+func get_party_statistics() -> Dictionary:
+	var total_battles = get_state("total_battles", 0)
+	var victories = get_state("victories", 0)
+	return {
+		"party_size": party.size(),
+		"active_members": get_active_members().size(),
+		"total_battles": total_battles,
+		"victories": victories,
+		"win_rate_percent": (float(victories) / float(total_battles) * 100.0) if total_battles > 0 else 0.0,
+		"exp_pool": get_state("exp_pool", 0.0),
+		"gold_pool": get_gold(),
+		"average_fatigue": get_average_fatigue(),
+		"combat_actions_recorded": get_state("combat_history", []).size(),
+		"equipment_changes_tracked": get_state("member_equipment_history", {}).size(),
+		"formation": get_state("party_formation", "standard")
+	}

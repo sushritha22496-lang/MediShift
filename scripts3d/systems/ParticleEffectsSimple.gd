@@ -179,3 +179,18 @@ func get_effect_text() -> String:
 		total_instances += get_effect_instances(effect_id)
 	var text = "Effects: %d active | %d instances" % [active.size(), total_instances]
 	return text
+
+func get_particle_statistics() -> Dictionary:
+	var instances = get_state("effect_instances", [])
+	var pooled = get_state("effect_pool", {})
+	var total_pooled = 0
+	for count in pooled.values():
+		total_pooled += count
+	return {
+		"total_effects_defined": particle_effects.size(),
+		"active_effects": get_active_effects().size(),
+		"effect_instances_recorded": instances.size(),
+		"effects_pooled": total_pooled,
+		"effect_types_pooled": pooled.size(),
+		"total_stacks": get_state("effect_stacks", {}).size()
+	}

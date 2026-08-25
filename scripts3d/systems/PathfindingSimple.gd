@@ -146,7 +146,10 @@ func get_path_statistics() -> Dictionary:
 		"calculations": get_state("path_calculations", 0),
 		"cache_hits": get_state("cache_hits", 0),
 		"cache_misses": get_state("cache_misses", 0),
-		"cache_size": path_cache.size()
+		"cache_size": path_cache.size(),
+		"total_waypoints": waypoints.size(),
+		"obstacles_active": get_state("obstacles", []).size(),
+		"paths_found_history": get_state("pathfinding_history", []).size()
 	}
 
 func get_pathfinding_history() -> Array:
