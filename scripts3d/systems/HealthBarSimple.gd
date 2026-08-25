@@ -24,6 +24,7 @@ func _ready() -> void:
 	set_state("health_restoration_history", [])
 	set_state("shield_history", [])
 	set_state("health_statistics", {})
+	set_state("status_effect_history", [])
 
 func _process(delta: float) -> void:
 	var regen_delay = get_state("health_regen_delay", 0.0)
@@ -115,6 +116,11 @@ func add_status_effect(effect_name: String, duration: float = 5.0) -> void:
 	var effects = get_state("status_effects", [])
 	effects.append({"name": effect_name, "duration": duration, "start_time": Time.get_ticks_msec()})
 	set_state("status_effects", effects)
+	var history = get_state("status_effect_history", [])
+	history.append({"effect": effect_name, "duration": duration, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("status_effect_history", history)
 	status_effect_applied.emit(effect_name)
 	emit_event("status_effect_applied", effect_name)
 
@@ -197,6 +203,12 @@ func update_health_statistics() -> void:
 		for entry in damage_hist:
 			avg_damage += entry["amount"]
 		stats["average_damage_per_incident"] = avg_damage / float(damage_hist.size())
+	var type_breakdown = {}
+	for entry in damage_hist:
+		type_breakdown[entry["type"]] = type_breakdown.get(entry["type"], 0) + 1
+	stats["damage_type_breakdown"] = type_breakdown
+	stats["status_effects_applied"] = get_state("status_effect_history", []).size()
+	stats["is_alive"] = is_alive()
 	set_state("health_statistics", stats)
 
 func get_health_statistics() -> Dictionary:

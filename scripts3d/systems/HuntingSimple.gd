@@ -45,6 +45,8 @@ func _ready() -> void:
 	set_state("animal_type_tracking", {})
 	set_state("material_collection_history", [])
 	set_state("hunting_statistics", {})
+	set_state("failed_hunt_history", [])
+	set_state("weapon_equip_history", [])
 	_initialize_game()
 
 func _initialize_game() -> void:
@@ -59,12 +61,14 @@ func hunt(location: Vector3, stealth: float = 0.5, weapon_damage: float = 10.0) 
 	var idx = 0 if difficulty_roll < 0.4 else (1 if difficulty_roll < 0.7 else (2 if difficulty_roll < 0.9 else 3))
 	var selected_game = game_types[idx]
 	if level < selected_game.level_requirement:
+		_record_failed_hunt(selected_game.name, "level_too_low")
 		hunt_failed.emit("Level too low")
 		emit_event("hunt_failed", {"reason": "level_too_low"})
 		return null
 	var success_rate = 0.6 + (level * 0.05) - (selected_game.awareness * 0.1)
 	success_rate += stealth * selected_game.stealth_bonus
 	if randf() > success_rate:
+		_record_failed_hunt(selected_game.name, "escaped")
 		hunt_failed.emit("Animal escaped")
 		emit_event("hunt_failed", {"reason": "escaped"})
 		return null
@@ -109,6 +113,22 @@ func get_hunting_level() -> int:
 
 func get_total_hunts() -> int:
 	return get_state("hunts", 0)
+
+func _record_failed_hunt(animal_name: String, reason: String) -> void:
+	var history = get_state("failed_hunt_history", [])
+	history.append({"animal": animal_name, "reason": reason, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("failed_hunt_history", history)
+
+func equip_weapon(weapon_type: String) -> void:
+	set_state("weapon_equipped", weapon_type)
+	var history = get_state("weapon_equip_history", [])
+	history.append({"weapon": weapon_type, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("weapon_equip_history", history)
+	emit_event("weapon_equipped", weapon_type)
 
 func _record_perfect_hunt(animal_name: String) -> void:
 	var tracking = get_state("perfect_hunt_tracking", [])
@@ -156,6 +176,9 @@ func update_hunting_statistics() -> void:
 	stats["total_meat"] = materials.get("meat", 0.0)
 	stats["total_pelts"] = materials.get("pelt", 0.0)
 	stats["total_bones"] = materials.get("bones", 0)
+	stats["failed_hunts"] = get_state("failed_hunt_history", []).size()
+	stats["weapon_changes"] = get_state("weapon_equip_history", []).size()
+	stats["current_weapon"] = get_state("weapon_equipped", "bow")
 	set_state("hunting_statistics", stats)
 
 func get_hunting_statistics() -> Dictionary:
