@@ -152,6 +152,9 @@ func update_character_statistics() -> void:
 	stats["level_ups"] = get_state("level_progression", []).size()
 	stats["class_changes"] = get_state("class_change_history", []).size()
 	stats["session_duration"] = get_session_duration()
+	stats["experience_events"] = get_state("experience_history", []).size()
+	stats["stat_changes"] = get_state("stat_change_history", []).size()
+	stats["playtime_milestones"] = get_state("playtime_milestones", []).size()
 	set_state("character_statistics", stats)
 
 func get_character_statistics() -> Dictionary:

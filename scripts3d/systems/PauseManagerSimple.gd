@@ -130,3 +130,14 @@ func get_most_common_pause_reason() -> String:
 			max_count = reasons[reason]
 			max_reason = reason
 	return max_reason
+
+func get_pause_statistics() -> Dictionary:
+	return {
+		"total_pauses": get_pause_session_count(),
+		"total_pause_time_ms": get_total_pause_time_ms(),
+		"average_pause_duration_ms": get_average_pause_duration(),
+		"most_common_reason": get_most_common_pause_reason(),
+		"unique_reasons": get_state("pause_reasons_count", {}).size(),
+		"is_currently_paused": is_paused(),
+		"performance_samples": get_state("pause_performance", []).size()
+	}
