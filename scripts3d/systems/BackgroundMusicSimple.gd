@@ -32,6 +32,9 @@ func _ready() -> void:
 	set_state("fade_history", [])
 	set_state("music_preferences", {})
 	set_state("crossfade_effects", [])
+	set_state("track_play_history", [])
+	set_state("track_stop_history", [])
+	set_state("music_statistics", {})
 	_initialize_tracks()
 
 func _initialize_tracks() -> void:
@@ -46,10 +49,26 @@ func _initialize_tracks() -> void:
 		"defeat": Track.new("defeat", "Defeat Theme", "defeat", 0.8)
 	}
 
+func _record_track_play(track_id: String, category: String) -> void:
+	var history = get_state("track_play_history", [])
+	history.append({"track_id": track_id, "category": category, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("track_play_history", history)
+
+func _record_track_stop(track_id: String) -> void:
+	var history = get_state("track_stop_history", [])
+	history.append({"track_id": track_id, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("track_stop_history", history)
+
 func play_track(track_id: String) -> bool:
 	if track_id in tracks:
 		var track = tracks[track_id]
 		set_state("current_track", track_id)
+		_record_track_play(track_id, track.category)
+		increment_replay_count(track_id)
 		music_started.emit(track_id)
 		track_changed.emit(track)
 		emit_event("track_changed", track_id)
@@ -57,6 +76,9 @@ func play_track(track_id: String) -> bool:
 	return false
 
 func stop_music() -> void:
+	var current = get_state("current_track", "")
+	if current != "":
+		_record_track_stop(current)
 	set_state("current_track", "")
 	music_stopped.emit()
 	emit_event("music_stopped", "")
@@ -157,3 +179,30 @@ func get_most_played_track() -> String:
 
 func get_mood() -> String:
 	return get_state("mood_state", "neutral")
+
+func update_music_statistics() -> void:
+	var stats = get_state("music_statistics", {})
+	var play_hist = get_state("track_play_history", [])
+	var stop_hist = get_state("track_stop_history", [])
+	var transitions = get_state("track_transitions", [])
+	var fades = get_state("fade_history", [])
+	var replays = get_state("track_replay_count", {})
+	stats["tracks_played"] = play_hist.size()
+	stats["tracks_stopped"] = stop_hist.size()
+	var unique_tracks = {}
+	for entry in play_hist:
+		unique_tracks[entry["track_id"]] = true
+	stats["unique_tracks_played"] = unique_tracks.size()
+	stats["total_transitions"] = transitions.size()
+	stats["total_fades"] = fades.size()
+	stats["most_played"] = get_most_played_track()
+	stats["current_track"] = get_state("current_track", "")
+	stats["current_mood"] = get_state("mood_state", "neutral")
+	stats["current_volume"] = get_state("current_volume", 1.0)
+	var prefs = get_state("music_preferences", {})
+	stats["preferences_set"] = prefs.size()
+	set_state("music_statistics", stats)
+
+func get_music_statistics() -> Dictionary:
+	update_music_statistics()
+	return get_state("music_statistics", {})

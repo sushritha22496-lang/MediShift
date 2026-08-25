@@ -44,6 +44,9 @@ func _ready() -> void:
 	set_state("effect_stacking_stats", {})
 	set_state("duration_tracking", [])
 	set_state("removal_tracking", [])
+	set_state("buff_apply_record", [])
+	set_state("debuff_apply_record", [])
+	set_state("cure_record", [])
 	set_state("buff_debuff_statistics", {})
 
 func _process(delta: float) -> void:
@@ -55,6 +58,27 @@ func _process(delta: float) -> void:
 			effects.remove_at(i)
 			effect_expired.emit(expired)
 			emit_event("effect_expired", expired.id)
+
+func _record_buff_apply(buff_id: String, power: float, duration: float) -> void:
+	var history = get_state("buff_apply_record", [])
+	history.append({"buff_id": buff_id, "power": power, "duration": duration, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("buff_apply_record", history)
+
+func _record_debuff_apply(debuff_id: String, power: float, duration: float) -> void:
+	var history = get_state("debuff_apply_record", [])
+	history.append({"debuff_id": debuff_id, "power": power, "duration": duration, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("debuff_apply_record", history)
+
+func _record_cure(effect_id: String) -> void:
+	var history = get_state("cure_record", [])
+	history.append({"effect_id": effect_id, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("cure_record", history)
 
 func apply_buff(buff_id: String, power: float, duration: float, element: String = "none") -> bool:
 	if is_immune(buff_id):
@@ -70,6 +94,7 @@ func apply_buff(buff_id: String, power: float, duration: float, element: String 
 	else:
 		effects.append(effect)
 	_record_effect_history(buff_id, "buff", power, duration)
+	_record_buff_apply(buff_id, power, duration)
 	buff_applied.emit(effect)
 	emit_event("buff_applied", buff_id)
 	return true
@@ -88,6 +113,7 @@ func apply_debuff(debuff_id: String, power: float, duration: float, element: Str
 	else:
 		effects.append(effect)
 	_record_effect_history(debuff_id, "debuff", power, duration)
+	_record_debuff_apply(debuff_id, power, duration)
 	debuff_applied.emit(effect)
 	emit_event("debuff_applied", debuff_id)
 	return true
@@ -157,6 +183,7 @@ func cure_effect(effect_id: String) -> bool:
 			var effect = effects[i]
 			effects.remove_at(i)
 			_record_removal(effect_id, "cured")
+			_record_cure(effect_id)
 			effect_expired.emit(effect)
 			emit_event("effect_cured", effect_id)
 			return true
@@ -220,6 +247,10 @@ func get_max_stack_count(effect_id: String) -> int:
 func update_buff_debuff_statistics() -> void:
 	var stats = get_state("buff_debuff_statistics", {})
 	var effects = get_state("effects", []) as Array[StatusEffect]
+	var buff_rec = get_state("buff_apply_record", [])
+	var debuff_rec = get_state("debuff_apply_record", [])
+	var cure_rec = get_state("cure_record", [])
+	var removal_track = get_state("removal_tracking", [])
 	var buffs = 0
 	var debuffs = 0
 	for effect in effects:
@@ -230,7 +261,12 @@ func update_buff_debuff_statistics() -> void:
 	stats["active_buffs"] = buffs
 	stats["active_debuffs"] = debuffs
 	stats["total_effects"] = effects.size()
-	stats["removals"] = get_state("removal_tracking", []).size()
+	stats["buffs_applied"] = buff_rec.size()
+	stats["debuffs_applied"] = debuff_rec.size()
+	stats["effects_cured"] = cure_rec.size()
+	stats["effects_removed"] = removal_track.size()
+	stats["total_applications"] = buff_rec.size() + debuff_rec.size()
+	stats["immunities_active"] = get_state("immunities", []).size()
 	set_state("buff_debuff_statistics", stats)
 
 func get_buff_debuff_statistics() -> Dictionary:

@@ -46,6 +46,9 @@ func _ready() -> void:
 	set_state("completion_history", [])
 	set_state("evidence_history", [])
 	set_state("risk_assessment_tracking", [])
+	set_state("bounty_accept_record", [])
+	set_state("bounty_complete_record", [])
+	set_state("bounty_abandon_record", [])
 	set_state("bounty_statistics", {})
 	_initialize_bounties()
 
@@ -80,6 +83,27 @@ func _initialize_bounties() -> void:
 	bounties[4].evidence_required = 2
 	bounties[4].risk_level = 0.9
 
+func _record_bounty_accept(bounty_id: String, difficulty: int) -> void:
+	var history = get_state("bounty_accept_record", [])
+	history.append({"bounty_id": bounty_id, "difficulty": difficulty, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("bounty_accept_record", history)
+
+func _record_bounty_complete(bounty_id: String, reward: float) -> void:
+	var history = get_state("bounty_complete_record", [])
+	history.append({"bounty_id": bounty_id, "reward": reward, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("bounty_complete_record", history)
+
+func _record_bounty_abandon(bounty_id: String) -> void:
+	var history = get_state("bounty_abandon_record", [])
+	history.append({"bounty_id": bounty_id, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("bounty_abandon_record", history)
+
 func accept_bounty(bounty_id: String) -> bool:
 	var bounty = _get_bounty(bounty_id)
 	if bounty and bounty.status == "active":
@@ -92,6 +116,7 @@ func accept_bounty(bounty_id: String) -> bool:
 		evidence_tracker[bounty_id] = 0
 		set_state("evidence_tracker", evidence_tracker)
 		_record_acceptance(bounty_id, bounty.difficulty, bounty.risk_level)
+		_record_bounty_accept(bounty_id, bounty.difficulty)
 		bounty_accepted.emit(bounty)
 		emit_event("bounty_accepted", bounty_id)
 		return true
@@ -119,6 +144,7 @@ func complete_bounty(bounty_id: String) -> float:
 		total += reward
 		set_state("total_earned", total)
 		_record_completion(bounty_id, reward)
+		_record_bounty_complete(bounty_id, reward)
 		_update_bounty_reputation(bounty_id, true)
 		bounty_completed.emit(bounty, reward)
 		emit_event("bounty_completed", {"id": bounty_id, "reward": reward})
@@ -150,6 +176,7 @@ func abandon_bounty(bounty_id: String) -> bool:
 		var bounty = _get_bounty(bounty_id)
 		if bounty:
 			_record_abandonment(bounty_id, bounty.risk_level)
+		_record_bounty_abandon(bounty_id)
 		_update_bounty_reputation(bounty_id, false)
 		bounty_abandoned.emit(bounty_id)
 		emit_event("bounty_abandoned", bounty_id)
@@ -246,12 +273,22 @@ func _record_risk_assessment(difficulty: int, risk: float, abandoned: bool = fal
 
 func update_bounty_statistics() -> void:
 	var stats = get_state("bounty_statistics", {})
-	stats["total_completed"] = get_state("completed_bounties", []).size()
-	stats["total_abandoned"] = get_state("failed_bounties", []).size()
+	var completed = get_state("completed_bounties", [])
+	var abandoned = get_state("failed_bounties", [])
+	var accept_rec = get_state("bounty_accept_record", [])
+	var complete_rec = get_state("bounty_complete_record", [])
+	var abandon_rec = get_state("bounty_abandon_record", [])
+	stats["total_completed"] = completed.size()
+	stats["total_abandoned"] = abandoned.size()
 	stats["total_earned"] = get_total_earned()
 	stats["active_count"] = get_active_bounties().size()
-	stats["acceptance_history_size"] = get_state("acceptance_history", []).size()
+	stats["acceptance_history_size"] = accept_rec.size()
+	stats["completion_history_size"] = complete_rec.size()
+	stats["abandonment_history_size"] = abandon_rec.size()
 	stats["average_reward"] = stats["total_earned"] / float(stats["total_completed"]) if stats["total_completed"] > 0 else 0.0
+	var success_rate = float(completed.size()) / float(completed.size() + abandoned.size()) if (completed.size() + abandoned.size()) > 0 else 0.0
+	stats["success_rate_percent"] = success_rate * 100.0
+	stats["accept_attempts"] = accept_rec.size()
 	set_state("bounty_statistics", stats)
 
 func get_bounty_statistics() -> Dictionary:
