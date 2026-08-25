@@ -30,12 +30,21 @@ func _initialize_commands() -> void:
 		"clear": func(): return ""
 	}
 
+var cheat_commands: Array = ["heal", "give_gold", "level_up"]
+
 func execute_command(input: String) -> String:
 	var parts = input.split(" ")
 	var command = parts[0].to_lower()
 	var args = parts.slice(1) if parts.size() > 1 else []
+	var start_time = Time.get_ticks_msec()
+
+	var aliases = get_state("command_aliases", {})
+	if command in aliases:
+		command = aliases[command]
 
 	if command not in commands:
+		record_error("Unknown command: %s" % command)
+		record_command_execution(command, false, Time.get_ticks_msec() - start_time)
 		return "Unknown command: %s" % command
 
 	var history = get_state("console_history", [])
@@ -45,6 +54,9 @@ func execute_command(input: String) -> String:
 	set_state("console_history", history)
 
 	var result = commands[command].call(args)
+	record_command_execution(command, true, Time.get_ticks_msec() - start_time)
+	if command in cheat_commands:
+		detect_cheat(command)
 	command_executed.emit(command)
 	emit_event("command_executed", command)
 	return result
@@ -137,3 +149,16 @@ func get_total_command_executions() -> int:
 
 func get_error_count() -> int:
 	return get_state("error_log", []).size()
+
+func get_debug_console_statistics() -> Dictionary:
+	return {
+		"total_commands_executed": get_total_command_executions(),
+		"unique_commands_used": get_state("command_stats", {}).size(),
+		"error_count": get_error_count(),
+		"history_size": get_state("console_history", []).size(),
+		"cheat_detections": get_state("cheat_detection_log", []).size(),
+		"aliases_registered": get_state("command_aliases", {}).size(),
+		"variables_set": get_state("variables", {}).size(),
+		"performance_entries": get_state("performance_data", []).size(),
+		"is_open": is_open()
+	}
