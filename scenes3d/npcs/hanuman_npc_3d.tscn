@@ -1,7 +1,11 @@
-[gd_scene load_steps=3 format=3 uid="uid://c5a4bx6ypv1w8"]
+[gd_scene load_steps=4 format=3 uid="uid://c5a4bx6ypv1w8"]
 
 [ext_resource type="PackedScene" path="res://assets/models/characters/processed/hanuman_final.glb" id="1"]
 [ext_resource type="Script" path="res://scripts3d/npcs/HanumanAI.gd" id="2"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_hanuman"]
+radius = 0.6
+height = 2.2
 
 [node name="Hanuman" type="CharacterBody3D"]
 script = ExtResource("2")
@@ -20,9 +24,8 @@ transform = Transform3D(1.1, 0, 0, 0, 1.1, 0, 0, 0, 1.1, 0, 0, 0)
 
 [node name="AnimationPlayer" type="AnimationPlayer" parent="Model"]
 
-[node name="CollisionShape3D" type="CapsuleShape3D" parent="."]
-radius = 0.6
-height = 2.2
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+shape = SubResource("CapsuleShape3D_hanuman")
 
 [node name="HeadMarker" type="Marker3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.8, 0)

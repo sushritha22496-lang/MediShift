@@ -1,4 +1,4 @@
-[gd_scene load_steps=18 format=3 uid="uid://dfj5mxpwn0qo31"]
+[gd_scene load_steps=25 format=3 uid="uid://dfj5mxpwn0qo31"]
 
 [ext_resource type="Script" path="res://scripts3d/managers/ForestManager.gd" id="1"]
 [ext_resource type="PackedScene" path="res://scenes3d/characters/rama_character_3d.tscn" id="2"]
@@ -35,28 +35,74 @@ fog_aerial_perspective = 0.05
 [sub_resource type="BoxMesh" id="ground_mesh"]
 size = Vector3(1000, 3, 1000)
 
+[sub_resource type="FastNoiseLite" id="ground_noise"]
+noise_type = 1
+frequency = 0.045
+fractal_octaves = 4
+
+[sub_resource type="NoiseTexture2D" id="ground_noise_tex"]
+seamless = true
+seamless_blend_skirt = 0.3
+width = 512
+height = 512
+noise = SubResource("ground_noise")
+color_ramp = null
+
 [sub_resource type="StandardMaterial3D" id="ground_mat"]
-albedo_color = Color(0.25, 0.3, 0.15, 1)
+albedo_color = Color(0.32, 0.38, 0.18, 1)
+albedo_texture = SubResource("ground_noise_tex")
+uv1_scale = Vector3(60, 60, 1)
 roughness = 0.98
 ao_enabled = true
 
 [sub_resource type="BoxShape3D" id="ground_shape"]
 size = Vector3(1000, 3, 1000)
 
+[sub_resource type="CylinderShape3D" id="tree_trunk_shape"]
+radius = 1.5
+height = 25.0
+
 [sub_resource type="CylinderMesh" id="tree_trunk"]
 radius = 1.5
 height = 25.0
 
+[sub_resource type="FastNoiseLite" id="bark_noise"]
+noise_type = 2
+frequency = 0.25
+fractal_octaves = 3
+
+[sub_resource type="NoiseTexture2D" id="bark_noise_tex"]
+seamless = true
+width = 128
+height = 256
+noise = SubResource("bark_noise")
+
 [sub_resource type="StandardMaterial3D" id="tree_trunk_mat"]
 albedo_color = Color(0.35, 0.25, 0.1, 1)
+albedo_texture = SubResource("bark_noise_tex")
+uv1_scale = Vector3(2, 6, 1)
 roughness = 1.0
 
 [sub_resource type="SphereMesh" id="tree_foliage"]
 radius = 12.0
 height = 24.0
 
+[sub_resource type="FastNoiseLite" id="foliage_noise"]
+noise_type = 1
+frequency = 0.08
+fractal_octaves = 3
+
+[sub_resource type="NoiseTexture2D" id="foliage_noise_tex"]
+seamless = true
+seamless_blend_skirt = 0.4
+width = 256
+height = 256
+noise = SubResource("foliage_noise")
+
 [sub_resource type="StandardMaterial3D" id="foliage_mat"]
 albedo_color = Color(0.15, 0.4, 0.1, 1)
+albedo_texture = SubResource("foliage_noise_tex")
+uv1_scale = Vector3(4, 4, 1)
 roughness = 0.9
 
 [node name="GameMain" type="Node3D"]
@@ -94,7 +140,7 @@ material_override = SubResource("foliage_mat")
 
 [node name="TreeCollider" type="StaticBody3D" parent="Trees/Tree1"]
 [node name="TreeShape" type="CollisionShape3D" parent="Trees/Tree1/TreeCollider"]
-shape = SubResource("ground_shape")
+shape = SubResource("tree_trunk_shape")
 
 [node name="Tree2" type="Node3D" parent="Trees"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 80, 0, -100)
@@ -110,7 +156,7 @@ material_override = SubResource("foliage_mat")
 
 [node name="TreeCollider" type="StaticBody3D" parent="Trees/Tree2"]
 [node name="TreeShape" type="CollisionShape3D" parent="Trees/Tree2/TreeCollider"]
-shape = SubResource("ground_shape")
+shape = SubResource("tree_trunk_shape")
 
 [node name="Tree3" type="Node3D" parent="Trees"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -80, 0, 100)
@@ -126,7 +172,7 @@ material_override = SubResource("foliage_mat")
 
 [node name="TreeCollider" type="StaticBody3D" parent="Trees/Tree3"]
 [node name="TreeShape" type="CollisionShape3D" parent="Trees/Tree3/TreeCollider"]
-shape = SubResource("ground_shape")
+shape = SubResource("tree_trunk_shape")
 
 [node name="Tree4" type="Node3D" parent="Trees"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 150, 0, 80)
@@ -142,7 +188,136 @@ material_override = SubResource("foliage_mat")
 
 [node name="TreeCollider" type="StaticBody3D" parent="Trees/Tree4"]
 [node name="TreeShape" type="CollisionShape3D" parent="Trees/Tree4/TreeCollider"]
-shape = SubResource("ground_shape")
+shape = SubResource("tree_trunk_shape")
+
+
+[node name="Tree5" type="Node3D" parent="Trees"]
+transform = Transform3D(1.08595, 0, 0.17525, 0, 1.1, 0, -0.17525, 0, 1.08595, -200, 0, -50)
+
+[node name="Trunk" type="MeshInstance3D" parent="Trees/Tree5"]
+mesh = SubResource("tree_trunk")
+material_override = SubResource("tree_trunk_mat")
+
+[node name="Foliage" type="MeshInstance3D" parent="Trees/Tree5"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, 0)
+mesh = SubResource("tree_foliage")
+material_override = SubResource("foliage_mat")
+
+[node name="TreeCollider" type="StaticBody3D" parent="Trees/Tree5"]
+[node name="TreeShape" type="CollisionShape3D" parent="Trees/Tree5/TreeCollider"]
+shape = SubResource("tree_trunk_shape")
+
+[node name="Tree6" type="Node3D" parent="Trees"]
+transform = Transform3D(0.15297, 0, 0.886905, 0, 0.9, 0, -0.886905, 0, 0.15297, 200, 0, -200)
+
+[node name="Trunk" type="MeshInstance3D" parent="Trees/Tree6"]
+mesh = SubResource("tree_trunk")
+material_override = SubResource("tree_trunk_mat")
+
+[node name="Foliage" type="MeshInstance3D" parent="Trees/Tree6"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, 0)
+mesh = SubResource("tree_foliage")
+material_override = SubResource("foliage_mat")
+
+[node name="TreeCollider" type="StaticBody3D" parent="Trees/Tree6"]
+[node name="TreeShape" type="CollisionShape3D" parent="Trees/Tree6/TreeCollider"]
+shape = SubResource("tree_trunk_shape")
+
+[node name="Tree7" type="Node3D" parent="Trees"]
+transform = Transform3D(-0.517461, 0, -1.038188, 0, 1.16, 0, 1.038188, 0, -0.517461, -40, 0, 220)
+
+[node name="Trunk" type="MeshInstance3D" parent="Trees/Tree7"]
+mesh = SubResource("tree_trunk")
+material_override = SubResource("tree_trunk_mat")
+
+[node name="Foliage" type="MeshInstance3D" parent="Trees/Tree7"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, 0)
+mesh = SubResource("tree_foliage")
+material_override = SubResource("foliage_mat")
+
+[node name="TreeCollider" type="StaticBody3D" parent="Trees/Tree7"]
+[node name="TreeShape" type="CollisionShape3D" parent="Trees/Tree7/TreeCollider"]
+shape = SubResource("tree_trunk_shape")
+
+[node name="Tree8" type="Node3D" parent="Trees"]
+transform = Transform3D(1.05713, 0, 0.648132, 0, 1.24, 0, -0.648132, 0, 1.05713, 40, 0, -250)
+
+[node name="Trunk" type="MeshInstance3D" parent="Trees/Tree8"]
+mesh = SubResource("tree_trunk")
+material_override = SubResource("tree_trunk_mat")
+
+[node name="Foliage" type="MeshInstance3D" parent="Trees/Tree8"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, 0)
+mesh = SubResource("tree_foliage")
+material_override = SubResource("foliage_mat")
+
+[node name="TreeCollider" type="StaticBody3D" parent="Trees/Tree8"]
+[node name="TreeShape" type="CollisionShape3D" parent="Trees/Tree8/TreeCollider"]
+shape = SubResource("tree_trunk_shape")
+
+[node name="Tree9" type="Node3D" parent="Trees"]
+transform = Transform3D(0.962364, 0, 0.185082, 0, 0.98, 0, -0.185082, 0, 0.962364, 250, 0, 150)
+
+[node name="Trunk" type="MeshInstance3D" parent="Trees/Tree9"]
+mesh = SubResource("tree_trunk")
+material_override = SubResource("tree_trunk_mat")
+
+[node name="Foliage" type="MeshInstance3D" parent="Trees/Tree9"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, 0)
+mesh = SubResource("tree_foliage")
+material_override = SubResource("foliage_mat")
+
+[node name="TreeCollider" type="StaticBody3D" parent="Trees/Tree9"]
+[node name="TreeShape" type="CollisionShape3D" parent="Trees/Tree9/TreeCollider"]
+shape = SubResource("tree_trunk_shape")
+
+[node name="Tree10" type="Node3D" parent="Trees"]
+transform = Transform3D(-0.869649, 0, -0.024711, 0, 0.87, 0, 0.024711, 0, -0.869649, -250, 0, 20)
+
+[node name="Trunk" type="MeshInstance3D" parent="Trees/Tree10"]
+mesh = SubResource("tree_trunk")
+material_override = SubResource("tree_trunk_mat")
+
+[node name="Foliage" type="MeshInstance3D" parent="Trees/Tree10"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, 0)
+mesh = SubResource("tree_foliage")
+material_override = SubResource("foliage_mat")
+
+[node name="TreeCollider" type="StaticBody3D" parent="Trees/Tree10"]
+[node name="TreeShape" type="CollisionShape3D" parent="Trees/Tree10/TreeCollider"]
+shape = SubResource("tree_trunk_shape")
+
+[node name="Tree11" type="Node3D" parent="Trees"]
+transform = Transform3D(0.239645, 0, 0.721228, 0, 0.76, 0, -0.721228, 0, 0.239645, 10, 0, 60)
+
+[node name="Trunk" type="MeshInstance3D" parent="Trees/Tree11"]
+mesh = SubResource("tree_trunk")
+material_override = SubResource("tree_trunk_mat")
+
+[node name="Foliage" type="MeshInstance3D" parent="Trees/Tree11"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, 0)
+mesh = SubResource("tree_foliage")
+material_override = SubResource("foliage_mat")
+
+[node name="TreeCollider" type="StaticBody3D" parent="Trees/Tree11"]
+[node name="TreeShape" type="CollisionShape3D" parent="Trees/Tree11/TreeCollider"]
+shape = SubResource("tree_trunk_shape")
+
+[node name="Tree12" type="Node3D" parent="Trees"]
+transform = Transform3D(-1.067259, 0, -0.305055, 0, 1.11, 0, 0.305055, 0, -1.067259, -150, 0, 200)
+
+[node name="Trunk" type="MeshInstance3D" parent="Trees/Tree12"]
+mesh = SubResource("tree_trunk")
+material_override = SubResource("tree_trunk_mat")
+
+[node name="Foliage" type="MeshInstance3D" parent="Trees/Tree12"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, 0)
+mesh = SubResource("tree_foliage")
+material_override = SubResource("foliage_mat")
+
+[node name="TreeCollider" type="StaticBody3D" parent="Trees/Tree12"]
+[node name="TreeShape" type="CollisionShape3D" parent="Trees/Tree12/TreeCollider"]
+shape = SubResource("tree_trunk_shape")
 
 [node name="Characters" type="Node3D" parent="."]
 

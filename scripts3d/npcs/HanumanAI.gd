@@ -45,6 +45,10 @@ func _ready() -> void:
 		if anim_player.has_animation("idle"):
 			anim_player.play("idle")
 
+	# Muscular build, Gada, and dhoti
+	if model:
+		HanumanBuildEnhancer.enhance(model)
+
 func _physics_process(delta: float) -> void:
 	if not is_on_floor():
 		velocity.y -= gravity * delta

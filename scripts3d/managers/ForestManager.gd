@@ -87,12 +87,12 @@ func _on_hanuman_agrees() -> void:
 
 	await get_tree().create_timer(4.0).timeout
 
-	print("\n" + "="*60)
+	print("\n" + "=".repeat(60))
 	print("✅ CHAPTER 1 COMPLETE")
-	print("="*60)
+	print("=".repeat(60))
 	print("Rama has found his ally in Hanuman")
 	print("Together they will search for Sita")
-	print("="*60 + "\n")
+	print("=".repeat(60) + "\n")
 
 	# Chapter complete - transition could happen here
 	# For now, just show the completion state
