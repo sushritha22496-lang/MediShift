@@ -178,3 +178,18 @@ func increment_victory_count() -> void:
 
 func get_victory_count() -> int:
 	return get_state("victory_count", 0)
+
+func get_game_flow_statistics() -> Dictionary:
+	return {
+		"current_state": GameState.keys()[current_state],
+		"game_time": get_game_time(),
+		"session_length": get_session_length(),
+		"death_count": get_death_count(),
+		"pause_count": get_pause_count(),
+		"difficulty": get_difficulty(),
+		"checkpoints_reached": get_checkpoints_reached().size(),
+		"milestones_reached": get_milestones().size(),
+		"runs_completed": get_run_history().size(),
+		"victory_count": get_victory_count(),
+		"best_times_recorded": get_state("best_times", {}).size()
+	}

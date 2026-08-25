@@ -221,6 +221,11 @@ func update_guild_statistics() -> void:
 		stats["prestige"] = guild.prestige
 		stats["contributions"] = get_state("contribution_history", []).size()
 		stats["upgrades_made"] = get_state("upgrade_history", []).size()
+		stats["storage_capacity"] = guild.storage_capacity
+		stats["rivals"] = guild.rival_guilds.size()
+		stats["allies"] = guild.allied_guilds.size()
+	stats["total_guilds"] = guilds.size()
+	stats["joins_recorded"] = get_state("join_history", []).size()
 	set_state("guild_statistics", stats)
 
 func get_guild_statistics() -> Dictionary:

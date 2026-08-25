@@ -13,6 +13,12 @@ var experience: float = 0.0
 var level: int = 1
 var gold: float = 0.0
 
+var damage_history: Array = []
+var healing_history: Array = []
+var level_up_history: Array = []
+var gold_history: Array = []
+var death_count: int = 0
+
 signal health_changed(current: float, max_val: float)
 signal stamina_changed(current: float, max_val: float)
 signal mana_changed(current: float, max_val: float)
@@ -25,12 +31,18 @@ func _ready() -> void:
 
 func take_damage(amount: float) -> void:
 	current_health = maxf(current_health - amount, 0.0)
+	damage_history.append({"amount": amount, "hp_after": current_health, "time": Time.get_ticks_msec()})
+	if damage_history.size() > 50:
+		damage_history.pop_front()
 	health_changed.emit(current_health, max_health)
 	if current_health <= 0:
 		_on_death()
 
 func heal(amount: float) -> void:
 	current_health = minf(current_health + amount, max_health)
+	healing_history.append({"amount": amount, "hp_after": current_health, "time": Time.get_ticks_msec()})
+	if healing_history.size() > 50:
+		healing_history.pop_front()
 	health_changed.emit(current_health, max_health)
 
 func use_stamina(amount: float) -> bool:
@@ -65,10 +77,16 @@ func _level_up() -> void:
 	current_health = max_health
 	current_stamina = max_stamina
 	current_mana = max_mana
+	level_up_history.append({"level": level, "experience": experience, "time": Time.get_ticks_msec()})
+	if level_up_history.size() > 50:
+		level_up_history.pop_front()
 	level_up.emit(level)
 
 func add_gold(amount: float) -> void:
 	gold += amount
+	gold_history.append({"amount": amount, "total_after": gold, "time": Time.get_ticks_msec()})
+	if gold_history.size() > 50:
+		gold_history.pop_front()
 
 func get_stats_text() -> String:
 	var text = "Stats:\n"
@@ -79,4 +97,25 @@ func get_stats_text() -> String:
 	return text
 
 func _on_death() -> void:
+	death_count += 1
 	print("💀 Rama has fallen!")
+
+func get_game_state_statistics() -> Dictionary:
+	var total_damage = 0.0
+	for entry in damage_history:
+		total_damage += entry["amount"]
+	var total_healing = 0.0
+	for entry in healing_history:
+		total_healing += entry["amount"]
+	return {
+		"current_level": level,
+		"current_health": current_health,
+		"total_damage_taken": total_damage,
+		"total_healing_received": total_healing,
+		"damage_events": damage_history.size(),
+		"healing_events": healing_history.size(),
+		"level_ups": level_up_history.size(),
+		"gold_transactions": gold_history.size(),
+		"current_gold": gold,
+		"death_count": death_count
+	}
