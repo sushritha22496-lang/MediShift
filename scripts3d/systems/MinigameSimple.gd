@@ -186,6 +186,8 @@ func update_minigame_statistics() -> void:
 	stats["total_winnings"] = get_total_winnings()
 	stats["win_streak"] = get_current_win_streak()
 	stats["loss_streak"] = get_current_loss_streak()
+	stats["total_games_available"] = minigames.size()
+	stats["difficulty_progression_events"] = get_state("difficulty_progression", []).size()
 	set_state("minigame_statistics", stats)
 
 func get_minigame_statistics() -> Dictionary:

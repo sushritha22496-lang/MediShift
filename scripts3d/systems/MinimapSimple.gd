@@ -14,6 +14,9 @@ class_name MinimapSimple
 var player: Node3D = null
 var npcs: Array[Node3D] = []
 var enemies: Array[Node3D] = []
+var visibility_toggle_history: Array = []
+var peak_npc_count: int = 0
+var peak_enemy_count: int = 0
 
 func _ready() -> void:
 	if minimap_panel:
@@ -37,6 +40,8 @@ func _find_entities() -> void:
 
 	npcs = get_tree().get_nodes_in_group("npcs")
 	enemies = get_tree().get_nodes_in_group("enemies")
+	peak_npc_count = maxi(peak_npc_count, npcs.size())
+	peak_enemy_count = maxi(peak_enemy_count, enemies.size())
 
 func _draw_minimap() -> void:
 	if minimap_draw == null:
@@ -66,3 +71,17 @@ func _world_to_minimap(world_pos: Vector3) -> Vector2:
 func set_minimap_visible(visible: bool) -> void:
 	if minimap_panel:
 		minimap_panel.visible = visible
+		visibility_toggle_history.append({"visible": visible, "time": Time.get_ticks_msec()})
+		if visibility_toggle_history.size() > 50:
+			visibility_toggle_history.pop_front()
+
+func get_minimap_statistics() -> Dictionary:
+	return {
+		"tracked_npcs": npcs.size(),
+		"tracked_enemies": enemies.size(),
+		"peak_npc_count": peak_npc_count,
+		"peak_enemy_count": peak_enemy_count,
+		"has_player": player != null,
+		"visibility_toggles": visibility_toggle_history.size(),
+		"is_visible": minimap_panel.visible if minimap_panel else false
+	}
