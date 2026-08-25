@@ -133,6 +133,10 @@ func update_legacy_statistics() -> void:
 	stats["milestones"] = get_milestones().size()
 	stats["total_value"] = get_total_value()
 	stats["categories"] = get_state("record_categories", {}).size()
+	var progression = get_state("value_progression", [])
+	stats["value_progression_entries"] = progression.size()
+	if not records.is_empty():
+		stats["average_record_value"] = get_total_value() / float(records.size())
 	set_state("legacy_statistics", stats)
 
 func get_legacy_statistics() -> Dictionary:

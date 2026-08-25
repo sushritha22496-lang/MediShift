@@ -152,6 +152,8 @@ func update_language_statistics() -> void:
 	for lang_keys in get_state("missing_keys", {}).values():
 		missing_total += lang_keys.size()
 	stats["missing_keys"] = missing_total
+	stats["preference_changes"] = get_state("language_preference_history", []).size()
+	stats["quality_scores_set"] = get_state("translation_quality_scores", {}).size()
 	set_state("language_statistics", stats)
 
 func get_language_statistics() -> Dictionary:

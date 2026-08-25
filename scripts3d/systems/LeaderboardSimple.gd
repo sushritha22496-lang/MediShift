@@ -32,6 +32,7 @@ func _ready() -> void:
 	set_state("total_entries", 0)
 	set_state("leaderboard_updates", [])
 	set_state("suspicious_scores", [])
+	set_state("leaderboard_statistics", {})
 	_initialize_leaderboards()
 
 func _initialize_leaderboards() -> void:
@@ -165,3 +166,19 @@ func get_leaderboard_text(leaderboard: String = "score", count: int = 5) -> Stri
 		var medal = ["🥇", "🥈", "🥉"][i] if i < 3 else " "
 		text += "%s#%d %s - %.0f\n" % [medal, entry.rank, entry.player_name, entry.score]
 	return text
+
+func update_leaderboard_statistics() -> void:
+	var stats = get_state("leaderboard_statistics", {})
+	stats["total_leaderboards"] = leaderboards.size()
+	stats["total_updates"] = get_state("leaderboard_updates", []).size()
+	stats["suspicious_scores_flagged"] = get_state("suspicious_scores", []).size()
+	stats["unique_players_tracked"] = player_personal_bests.size()
+	var total_entries = 0
+	for board in leaderboards.values():
+		total_entries += board.size()
+	stats["total_entries"] = total_entries
+	set_state("leaderboard_statistics", stats)
+
+func get_leaderboard_statistics() -> Dictionary:
+	update_leaderboard_statistics()
+	return get_state("leaderboard_statistics", {})
