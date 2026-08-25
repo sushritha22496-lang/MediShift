@@ -58,6 +58,8 @@ func update_schedules(current_hour: int) -> void:
 		if prev_activity != current_activity:
 			activities[npc_id] = current_activity
 			set_state("current_activities", activities)
+			record_activity_pattern(npc_id, current_activity)
+			record_location_preference(npc_id, get_npc_location(npc_id, current_hour))
 			npc_activity_changed.emit(npc_id, current_activity)
 			emit_event("npc_activity_changed", npc_id)
 
@@ -160,6 +162,17 @@ func modify_npc_schedule(npc_id: String, new_schedule: Array[ScheduleEntry]) -> 
 func get_npc_mood(npc_id: String) -> String:
 	var moods = get_state("npc_moods", {})
 	return moods.get(npc_id, "neutral")
+
+func get_npc_schedule_statistics() -> Dictionary:
+	return {
+		"npcs_scheduled": npc_schedules.size(),
+		"schedule_deviations": get_state("schedule_deviations", []).size(),
+		"routine_interruptions": get_state("routine_interruptions", []).size(),
+		"schedule_modifications": get_state("schedule_modifications", []).size(),
+		"moods_tracked": get_state("npc_moods", {}).size(),
+		"activity_patterns_tracked": get_state("activity_patterns", {}).size(),
+		"location_preferences_tracked": get_state("location_preferences", {}).size()
+	}
 
 func get_most_preferred_location(npc_id: String) -> String:
 	var prefs = get_state("location_preferences", {})

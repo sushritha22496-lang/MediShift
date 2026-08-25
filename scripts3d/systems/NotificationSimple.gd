@@ -202,6 +202,10 @@ func update_notification_statistics() -> void:
 	for notif in active_notifications:
 		category_counts[notif.category] = category_counts.get(notif.category, 0) + 1
 	stats["category_breakdown"] = category_counts
+	var type_counts = {}
+	for entry in display_history:
+		type_counts[entry["type"]] = type_counts.get(entry["type"], 0) + 1
+	stats["type_breakdown"] = type_counts
 	set_state("notification_statistics", stats)
 
 func get_notification_statistics() -> Dictionary:
