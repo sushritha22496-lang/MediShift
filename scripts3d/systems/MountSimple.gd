@@ -66,6 +66,9 @@ func _ready() -> void:
 	set_state("affection_progression", [])
 	set_state("stamina_tracking", [])
 	set_state("mount_statistics", {})
+	set_state("special_ability_history", [])
+	set_state("injury_history", [])
+	set_state("level_up_history", [])
 	_initialize_mounts()
 
 func _initialize_mounts() -> void:
@@ -131,6 +134,11 @@ func injure_mount(mount_id: String, injury: String) -> void:
 	if mount and injury not in mount.injuries:
 		mount.injuries.append(injury)
 		mount.happiness -= 10.0
+		var history = get_state("injury_history", [])
+		history.append({"mount": mount_id, "injury": injury, "time": Time.get_ticks_msec()})
+		if history.size() > 50:
+			history.pop_front()
+		set_state("injury_history", history)
 		emit_event("mount_injured", {"id": mount_id, "injury": injury})
 
 func _increase_mount_affection(mount_id: String, amount: float) -> void:
@@ -146,6 +154,11 @@ func use_special_ability(mount_id: String) -> bool:
 	var mount = _get_mount_from_list(mount_id, owned_mounts)
 	if mount and mount.special_ability != "":
 		mount.stamina -= 20.0
+		var history = get_state("special_ability_history", [])
+		history.append({"mount": mount_id, "ability": mount.special_ability, "time": Time.get_ticks_msec()})
+		if history.size() > 50:
+			history.pop_front()
+		set_state("special_ability_history", history)
 		emit_event("ability_used", {"mount": mount_id, "ability": mount.special_ability})
 		return true
 	return false
@@ -160,6 +173,11 @@ func level_up_mount(mount_id: String) -> void:
 		var stat_gains = {"agility": randi() % 2 + 1, "endurance": randi() % 2 + 1, "power": randi() % 2 + 1}
 		for stat in stat_gains:
 			mount.stats[stat] += stat_gains[stat]
+		var history = get_state("level_up_history", [])
+		history.append({"mount": mount_id, "level": mount.level, "time": Time.get_ticks_msec()})
+		if history.size() > 50:
+			history.pop_front()
+		set_state("level_up_history", history)
 		mount_leveled_up.emit(mount, mount.level)
 		emit_event("mount_leveled_up", mount_id)
 
@@ -260,6 +278,10 @@ func update_mount_statistics() -> void:
 		for mount in owned_mounts:
 			avg_affection += get_mount_affection(mount.id)
 		stats["average_affection"] = avg_affection / float(owned_mounts.size())
+	stats["special_abilities_used"] = get_state("special_ability_history", []).size()
+	stats["injuries_sustained"] = get_state("injury_history", []).size()
+	stats["level_ups"] = get_state("level_up_history", []).size()
+	stats["total_mounts_available"] = mounts.size()
 	set_state("mount_statistics", stats)
 
 func get_mount_statistics() -> Dictionary:
