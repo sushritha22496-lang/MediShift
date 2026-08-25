@@ -158,6 +158,12 @@ func update_loot_drop_statistics() -> void:
 	stats["crafting_materials_found"] = get_state("crafting_material_tracking", {}).size()
 	stats["set_items_found"] = get_state("set_item_tracking", []).size()
 	stats["current_pity"] = get_state("guaranteed_pity", 0)
+	var value_tracking = get_state("value_tracking", [])
+	var total_value = 0.0
+	for entry in value_tracking:
+		total_value += entry["value"]
+	stats["total_loot_value"] = total_value
+	stats["average_loot_value"] = total_value / float(value_tracking.size()) if not value_tracking.is_empty() else 0.0
 	set_state("loot_drop_statistics", stats)
 
 func get_loot_history() -> Array:
