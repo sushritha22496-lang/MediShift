@@ -162,6 +162,10 @@ func update_item_drop_statistics() -> void:
 	stats["total_collected"] = get_state("total_items_collected", 0)
 	stats["most_common_rarity"] = get_most_common_rarity()
 	stats["active_drops"] = get_item_count()
+	var dropped = get_state("total_items_dropped", 0)
+	var collected = get_state("total_items_collected", 0)
+	stats["collection_rate_percent"] = (float(collected) / float(dropped) * 100.0) if dropped > 0 else 0.0
+	stats["unique_item_types"] = get_state("item_tracking", {}).size()
 	set_state("item_drop_statistics", stats)
 
 func get_item_drop_statistics() -> Dictionary:
