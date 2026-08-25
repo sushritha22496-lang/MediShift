@@ -9,6 +9,7 @@ class_name ForestManager
 @onready var main_label: Label = $HUD/MainLabel
 @onready var objective_label: Label = $HUD/ObjectiveLabel
 @onready var inventory_label: Label = $HUD/InventoryLabel
+@onready var debug_label: Label = $HUD/DebugLabel
 
 # Systems
 var quest_system: QuestSystem
@@ -134,6 +135,7 @@ func _update_inventory_display() -> void:
 func _process(_delta: float) -> void:
 	# Update inventory display
 	_update_inventory_display()
+	_update_debug_display()
 
 	# Optional: Show debug info
 	if Input.is_action_just_pressed("ui_cancel"):
@@ -141,3 +143,19 @@ func _process(_delta: float) -> void:
 		print("Hanuman position:", hanuman.global_position)
 		print("Distance:", rama.global_position.distance_to(hanuman.global_position))
 		print("Hanuman state:", HanumanAI.State.keys()[hanuman.current_state])
+
+func _update_debug_display() -> void:
+	"""Keep the debug HUD showing live position, distance, and travel estimate"""
+	if not debug_label or not rama or not hanuman:
+		return
+	var distance = rama.global_position.distance_to(hanuman.global_position)
+	var speed = rama.run_speed if Input.is_action_pressed("dash") else rama.walk_speed
+	var eta_text = "Reached!" if distance < rama.detection_range else "%.1fs at current speed" % (distance / speed)
+	debug_label.text = "Debug Info:\nFPS: %d\nRama: (%.1f, %.1f, %.1f)\nHanuman: (%.1f, %.1f, %.1f)\nDistance to Hanuman: %.1fm\nETA to Hanuman: %s\nHanuman state: %s" % [
+		Engine.get_frames_per_second(),
+		rama.global_position.x, rama.global_position.y, rama.global_position.z,
+		hanuman.global_position.x, hanuman.global_position.y, hanuman.global_position.z,
+		distance,
+		eta_text,
+		HanumanAI.State.keys()[hanuman.current_state]
+	]

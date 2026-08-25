@@ -147,3 +147,31 @@ static func enhance(character_root: Node) -> void:
 		attach_gada(skeleton)
 	if not skeleton.has_node("DhotiAttachment"):
 		attach_dhoti(skeleton)
+	apply_skin_color(character_root, Color(0.55, 0.28, 0.12), Color(0.75, 0.4, 0.15))
+
+static func find_mesh_instances(node: Node, out_list: Array) -> void:
+	if node is MeshInstance3D:
+		out_list.append(node)
+	for child in node.get_children():
+		find_mesh_instances(child, out_list)
+
+static func apply_skin_color(character_root: Node, primary_color: Color, fur_color: Color = Color(0.75, 0.4, 0.15)) -> void:
+	"""Override the untextured flat-gray source material with an actual
+	skin/fur tone so the character isn't a plain white/gray mannequin."""
+	var meshes: Array = []
+	find_mesh_instances(character_root, meshes)
+	for mesh_inst in meshes:
+		for i in range(mesh_inst.mesh.get_surface_count()):
+			var src_mat = mesh_inst.mesh.surface_get_material(i)
+			var mat_name = src_mat.resource_name if src_mat else ""
+			if mat_name == "hanuman_skin":
+				var mat = StandardMaterial3D.new()
+				mat.albedo_color = primary_color
+				mat.roughness = 0.65
+				mat.metallic = 0.0
+				mesh_inst.set_surface_override_material(i, mat)
+			elif mat_name == "Negro_COLOR_0":
+				var mat = StandardMaterial3D.new()
+				mat.albedo_color = fur_color
+				mat.roughness = 0.8
+				mesh_inst.set_surface_override_material(i, mat)
