@@ -30,6 +30,9 @@ class Location:
 
 var locations: Array[Location] = []
 var current_location: Location = null
+var discovery_history: Array = []
+var entry_history: Array = []
+var secret_discovery_history: Array = []
 
 signal location_discovered(location: Location)
 signal location_entered(location: Location)
@@ -91,6 +94,9 @@ func discover_location(location_id: String) -> Dictionary:
 		if location.id == location_id:
 			if not location.visited:
 				location.visited = true
+				discovery_history.append({"location": location_id, "tier": location.difficulty_tier, "time": Time.get_ticks_msec()})
+				if discovery_history.size() > 50:
+					discovery_history.pop_front()
 				location_discovered.emit(location)
 				return location.discovery_reward
 	return {}
@@ -99,6 +105,9 @@ func enter_location(location_id: String) -> bool:
 	for location in locations:
 		if location.id == location_id:
 			current_location = location
+			entry_history.append({"location": location_id, "time": Time.get_ticks_msec()})
+			if entry_history.size() > 50:
+				entry_history.pop_front()
 			location_entered.emit(location)
 			return true
 	return false
@@ -112,6 +121,9 @@ func find_secret(location_id: String) -> bool:
 		if location.id == location_id:
 			if location.secrets_found < location.total_secrets:
 				location.secrets_found += 1
+				secret_discovery_history.append({"location": location_id, "secrets_found": location.secrets_found, "time": Time.get_ticks_msec()})
+				if secret_discovery_history.size() > 50:
+					secret_discovery_history.pop_front()
 				secret_found.emit({"location": location_id, "secrets": location.secrets_found})
 				return true
 	return false
@@ -150,3 +162,23 @@ func get_locations_text() -> String:
 		var secrets = " [%d/%d secrets]" % [location.secrets_found, location.total_secrets]
 		text += "✓ %s %s%s\n" % [location.name, danger, secrets]
 	return text
+
+func get_location_statistics() -> Dictionary:
+	var total_secrets_found = 0
+	var total_secrets_possible = 0
+	var total_time_spent = 0.0
+	for location in locations:
+		total_secrets_found += location.secrets_found
+		total_secrets_possible += location.total_secrets
+		total_time_spent += location.time_spent
+	return {
+		"total_locations": locations.size(),
+		"visited_locations": get_visited_locations().size(),
+		"discoveries_recorded": discovery_history.size(),
+		"entries_recorded": entry_history.size(),
+		"secrets_found_total": total_secrets_found,
+		"secrets_possible_total": total_secrets_possible,
+		"secrets_discovery_events": secret_discovery_history.size(),
+		"total_time_spent": total_time_spent,
+		"current_location": current_location.id if current_location else ""
+	}

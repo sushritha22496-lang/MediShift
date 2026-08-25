@@ -193,6 +193,9 @@ func update_lodge_statistics() -> void:
 	stats["total_nights"] = get_state("total_rest_time", 0)
 	stats["rentals"] = get_state("room_rental_history", []).size()
 	stats["most_used_room"] = get_most_preferred_room()
+	stats["available_rooms"] = get_available_rooms().size()
+	stats["total_rooms"] = rooms.size()
+	stats["healing_events"] = get_state("healing_received_history", []).size()
 	set_state("lodge_statistics", stats)
 
 func get_lodge_statistics() -> Dictionary:

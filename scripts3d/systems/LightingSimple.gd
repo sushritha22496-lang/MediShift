@@ -212,6 +212,20 @@ func get_lighting_history() -> Array:
 func get_available_presets() -> Array:
 	return lighting_presets.keys()
 
+func get_lighting_statistics() -> Dictionary:
+	return {
+		"active_lights": get_active_light_count(),
+		"total_lights_defined": lights.size(),
+		"shadow_casting_lights": get_shadow_casting_lights().size(),
+		"flickering_lights": get_flickering_lights().size(),
+		"animated_lights": get_animated_lights().size(),
+		"history_entries": get_state("lighting_history", []).size(),
+		"fog_enabled": is_fog_enabled(),
+		"bloom_enabled": is_bloom_enabled(),
+		"presets_available": lighting_presets.size(),
+		"global_brightness": get_state("global_brightness", 1.0)
+	}
+
 func get_lighting_text() -> String:
 	var active = get_active_lights()
 	var ambient = get_state("ambient_light", Color.WHITE)
