@@ -32,6 +32,7 @@ func _ready() -> void:
 	set_state("combo_history", [])
 	set_state("stance_change_history", [])
 	set_state("combat_statistics", {})
+	set_state("parry_attempt_history", [])
 
 func _physics_process(delta: float) -> void:
 	if not get_state("can_attack", true):
@@ -136,7 +137,13 @@ func get_stance_defense_multiplier() -> float:
 	return 1.5 if stance == "defensive" else (0.75 if stance == "aggressive" else 1.0)
 
 func attempt_parry() -> bool:
-	if randf() < 0.4:
+	var success = randf() < 0.4
+	var history = get_state("parry_attempt_history", [])
+	history.append({"success": success, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("parry_attempt_history", history)
+	if success:
 		set_state("parry_ready", true)
 		parry_successful.emit()
 		emit_event("parry", true)
@@ -174,6 +181,13 @@ func update_combat_statistics() -> void:
 	stats["stance_changes"] = stance_hist.size()
 	stats["current_stance"] = get_state("current_stance", "normal")
 	stats["current_combo"] = get_state("combo_counter", 0)
+	var parry_hist = get_state("parry_attempt_history", [])
+	var parry_successes = 0
+	for entry in parry_hist:
+		if entry.get("success", false):
+			parry_successes += 1
+	stats["parry_attempts"] = parry_hist.size()
+	stats["parry_successes"] = parry_successes
 	set_state("combat_statistics", stats)
 
 func get_combat_statistics() -> Dictionary:

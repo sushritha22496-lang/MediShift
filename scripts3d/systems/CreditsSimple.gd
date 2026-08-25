@@ -42,11 +42,13 @@ func _initialize_credits() -> void:
 	]
 
 func start_credits() -> void:
+	record_update("started", "")
 	credits_started.emit()
 	emit_event("credits_started", "")
 
 func end_credits() -> void:
 	set_state("credits_viewed", true)
+	record_update("ended", "")
 	credits_ended.emit()
 	emit_event("credits_ended", "")
 
@@ -59,6 +61,7 @@ func get_credits_by_role(role: String) -> Array[CreditEntry]:
 func add_credit(role: String, name: String, contribution: String = "") -> void:
 	var entry = CreditEntry.new(role, name, contribution)
 	credits.append(entry)
+	record_update("credit_added", name)
 	emit_event("credit_added", name)
 
 func get_credits_text() -> String:
@@ -128,6 +131,10 @@ func update_credits_statistics() -> void:
 	stats["view_time"] = get_credits_view_time()
 	stats["was_skipped"] = was_credits_skipped()
 	stats["special_tributes"] = get_state("special_tributes", []).size()
+	stats["update_events"] = get_state("credits_update_history", []).size()
+	stats["performance_entries"] = get_state("credit_performance", []).size()
+	stats["contributors_tracked"] = get_state("contribution_points", {}).size()
+	stats["sections_timed"] = get_state("section_timing", {}).size()
 	set_state("credits_statistics", stats)
 
 func get_credits_statistics() -> Dictionary:

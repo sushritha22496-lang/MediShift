@@ -45,6 +45,7 @@ func _ready() -> void:
 	set_state("quality_tracking", {})
 	set_state("skill_progression", [])
 	set_state("crafting_statistics", {})
+	set_state("ingredient_consumption", {})
 	_initialize_recipes()
 
 func _initialize_recipes() -> void:
@@ -109,6 +110,7 @@ func craft(recipe_id: String, inventory: InventorySimple) -> bool:
 			var success_rate = _calculate_success_rate(recipe, crafting_skill)
 			for ingredient in recipe.ingredients:
 				inventory.remove_item(ingredient, recipe.ingredients[ingredient])
+				_record_ingredient_consumption(ingredient, recipe.ingredients[ingredient])
 			crafting_started.emit(recipe)
 			await get_tree().create_timer(recipe.crafting_time).timeout
 			if randf() < success_rate:
@@ -209,6 +211,11 @@ func _record_quality(recipe_id: String, quality: int) -> void:
 		tracking[recipe_id]["low"] += 1
 	set_state("quality_tracking", tracking)
 
+func _record_ingredient_consumption(ingredient: String, amount: int) -> void:
+	var consumption = get_state("ingredient_consumption", {})
+	consumption[ingredient] = consumption.get(ingredient, 0) + amount
+	set_state("ingredient_consumption", consumption)
+
 func _record_skill_progression(skill_value: float) -> void:
 	var progression = get_state("skill_progression", [])
 	progression.append({"skill": skill_value, "time": Time.get_ticks_msec()})
@@ -229,6 +236,8 @@ func update_crafting_statistics() -> void:
 	stats["success_rate"] = float(successes) / float(attempts.size()) if attempts.size() > 0 else 0.0
 	stats["current_skill"] = get_state("crafting_skill", 0.0)
 	stats["total_mastery"] = get_state("recipe_mastery", {}).size()
+	stats["recipes_available"] = recipes.size()
+	stats["unique_ingredients_used"] = get_state("ingredient_consumption", {}).size()
 	set_state("crafting_statistics", stats)
 
 func get_crafting_statistics() -> Dictionary:
