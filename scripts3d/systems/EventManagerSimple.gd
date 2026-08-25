@@ -147,6 +147,9 @@ func update_event_statistics() -> void:
 	stats["total_events_triggered"] = get_state("event_history", []).size()
 	stats["registered_events"] = event_listeners.size()
 	stats["most_triggered"] = get_most_triggered_event()
+	stats["dependencies_mapped"] = get_state("event_dependency_map", {}).size()
+	stats["priority_events_set"] = get_state("priority_events", []).size()
+	stats["unique_event_types_fired"] = get_state("event_frequency", {}).size()
 	set_state("event_statistics", stats)
 
 func get_event_statistics() -> Dictionary:

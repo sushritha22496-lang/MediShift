@@ -33,6 +33,7 @@ func _ready() -> void:
 	set_state("encounter_rewards", {})
 	set_state("encounter_chains", {})
 	set_state("rare_encounters", [])
+	set_state("completion_history", [])
 	_initialize_encounters()
 
 func _initialize_encounters() -> void:
@@ -76,6 +77,12 @@ func start_encounter(encounter_id: String) -> bool:
 
 func complete_encounter() -> void:
 	if active_encounter:
+		if has_state("completion_history"):
+			var history = get_state("completion_history", [])
+			history.append({"id": active_encounter.id, "difficulty": active_encounter.difficulty, "reward": active_encounter.reward_gold, "time": Time.get_ticks_msec()})
+			if history.size() > 50:
+				history.pop_front()
+			set_state("completion_history", history)
 		encounter_completed.emit(active_encounter)
 		active_encounter = null
 
@@ -131,3 +138,15 @@ func track_encounter_rewards(encounter_id: String, rewards: Dictionary) -> void:
 func get_encounter_rewards(encounter_id: String) -> Dictionary:
 	var reward_tracking = get_state("encounter_rewards", {})
 	return reward_tracking.get(encounter_id, {})
+
+func get_encounter_statistics() -> Dictionary:
+	return {
+		"total_encounters": get_total_encounters(),
+		"completed_encounters": get_completed_encounters(),
+		"completion_percent": (float(get_completed_encounters()) / float(get_total_encounters()) * 100.0) if get_total_encounters() > 0 else 0.0,
+		"completions_recorded": get_state("completion_history", []).size(),
+		"rare_encounters_found": get_state("rare_encounters", []).size(),
+		"chains_triggered": get_state("encounter_chains", {}).size(),
+		"variants_registered": get_state("encounter_variants", {}).size(),
+		"has_active_encounter": active_encounter != null
+	}
