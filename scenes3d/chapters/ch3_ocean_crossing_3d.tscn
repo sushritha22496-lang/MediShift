@@ -53,7 +53,7 @@ mesh = SubResource("ground_mesh")
 material_override = SubResource("ground_mat")
 
 [node name="OceanCollider" type="StaticBody3D" parent="."]
-[node name="CollisionShape3D" parent="OceanCollider" index="0"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="OceanCollider"]
 shape = SubResource("ground_shape")
 
 [node name="DistantIsland" type="MeshInstance3D" parent="."]

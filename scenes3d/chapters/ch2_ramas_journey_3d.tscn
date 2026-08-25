@@ -53,7 +53,7 @@ mesh = SubResource("ground_mesh")
 material_override = SubResource("ground_mat")
 
 [node name="GroundCollider" type="StaticBody3D" parent="."]
-[node name="CollisionShape3D" parent="GroundCollider" index="0"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="GroundCollider"]
 shape = SubResource("ground_shape")
 
 [node name="ForestBackground" type="MeshInstance3D" parent="."]
