@@ -97,6 +97,7 @@ func show_damage(position: Vector3, damage: float, is_critical: bool = false, da
 	set_state("total_damage_shown", total)
 	_track_damage_source(source, damage)
 	_add_to_dps(damage)
+	_record_indicator(damage, display_type, source)
 	damage_displayed.emit(damage, display_type)
 	emit_event("damage_displayed", {"damage": damage, "type": display_type, "source": source})
 	if is_critical:
@@ -121,6 +122,7 @@ func show_heal(position: Vector3, heal_amount: float, source: String = "") -> vo
 	total += heal_amount
 	set_state("total_heals_shown", total)
 	_track_damage_source(source, heal_amount)
+	_record_indicator(heal_amount, "heal", source)
 	heal_displayed.emit(heal_amount)
 	emit_event("heal_displayed", {"heal": heal_amount, "source": source})
 
@@ -133,6 +135,13 @@ func _update_combo(value: float) -> void:
 		if combo_counter % 5 == 0:
 			combo_milestone_reached.emit(combo_counter)
 			emit_event("combo_milestone", combo_counter)
+
+func _record_indicator(value: float, damage_type: String, source: String) -> void:
+	var history = get_state("indicator_history", [])
+	history.append({"value": value, "type": damage_type, "source": source, "time": Time.get_ticks_msec()})
+	if history.size() > 100:
+		history.pop_front()
+	set_state("indicator_history", history)
 
 func _track_damage_source(source: String, amount: float) -> void:
 	if source.is_empty():
@@ -204,3 +213,17 @@ func get_indicator_text() -> String:
 	var text = "Indicators: %d | Damage: %.0f | Heals: %.0f\n" % [active_indicators.size(), get_total_damage_shown(), get_total_heals_shown()]
 	text += "Combo: %d/%d | Crits: %d | DPS: %.0f" % [combo_counter, get_highest_combo(), get_critical_count(), get_current_dps()]
 	return text
+
+func get_damage_indicator_statistics() -> Dictionary:
+	return {
+		"total_indicators_shown": get_state("indicator_history", []).size(),
+		"total_damage_shown": get_total_damage_shown(),
+		"total_heals_shown": get_total_heals_shown(),
+		"critical_count": get_critical_count(),
+		"highest_combo": get_highest_combo(),
+		"current_combo": combo_counter,
+		"current_dps": get_current_dps(),
+		"top_damage_source": get_top_damage_source(),
+		"active_indicator_count": active_indicators.size(),
+		"unique_damage_sources": get_state("damage_source_tracking", {}).size()
+	}

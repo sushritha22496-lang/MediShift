@@ -64,10 +64,15 @@ func start_dialogue(dialogue_id: String) -> void:
 func select_choice(choice_id: String) -> void:
 	for choice in current_dialogue.choices:
 		if choice.id == choice_id:
+			track_choice_selection(choice_id)
+			for influence_type in choice.influence:
+				record_choice_influence(choice_id, influence_type, choice.influence[influence_type])
+			record_player_choice_preference(choice.text, get_choice_selection_count(choice_id))
 			start_dialogue(choice.next_dialogue_id)
 			return
 
 func end_dialogue() -> void:
+	record_dialogue_path(dialogue_history.duplicate())
 	current_dialogue = null
 	dialogue_ended.emit()
 
@@ -99,6 +104,9 @@ func update_dialogue_statistics() -> void:
 	dialogue_statistics["total_choices_made"] = choice_tracking.values().reduce(func(a, b): return a + b, 0)
 	dialogue_statistics["dialogue_history_size"] = dialogue_history.size()
 	dialogue_statistics["consequence_count"] = consequence_tracking.size()
+	dialogue_statistics["paths_recorded"] = dialogue_path_tracking.size()
+	dialogue_statistics["sequences_completed"] = sequence_completion.size()
+	dialogue_statistics["most_popular_choice"] = get_most_popular_choice()
 
 func get_dialogue_statistics() -> Dictionary:
 	update_dialogue_statistics()

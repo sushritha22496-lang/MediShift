@@ -207,6 +207,7 @@ func set_weather(weather_type: String, duration: float = 120.0) -> void:
 	if weather_type in valid:
 		set_state("weather", weather_type)
 		set_state("weather_duration", duration)
+		_record_weather_change(weather_type)
 		weather_changed.emit(weather_type)
 		emit_event("weather_changed", weather_type)
 
