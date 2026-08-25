@@ -81,6 +81,20 @@ func _record_evolution(companion_id: String, new_stage: int) -> void:
 		history.pop_front()
 	set_state("evolution_history", history)
 
+func _record_special_attack(companion_id: String, attack: String) -> void:
+	var history = get_state("special_attack_history", [])
+	history.append({"companion": companion_id, "attack": attack, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("special_attack_history", history)
+
+func _record_stat_point(companion_id: String, stat: String) -> void:
+	var history = get_state("stat_point_history", [])
+	history.append({"companion": companion_id, "stat": stat, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("stat_point_history", history)
+
 func _ready() -> void:
 	set_state("companions", [])
 	set_state("active_id", "")
@@ -92,6 +106,8 @@ func _ready() -> void:
 	set_state("loyalty_tracking", [])
 	set_state("evolution_history", [])
 	set_state("companion_statistics", {})
+	set_state("special_attack_history", [])
+	set_state("stat_point_history", [])
 
 func acquire_companion(name: String, comp_type: String) -> Companion:
 	var companions = get_state("companions", []) as Array[Companion]
@@ -154,6 +170,7 @@ func use_special_attack(companion_id: String) -> bool:
 		if companion.id == companion_id and companion.special_attack != "":
 			if companion.health > 10:
 				companion.health -= 10
+				_record_special_attack(companion_id, companion.special_attack)
 				emit_event("special_attack_used", {"companion": companion_id, "attack": companion.special_attack})
 				return true
 	return false
@@ -187,6 +204,7 @@ func add_stat_point(companion_id: String, stat: String) -> void:
 	for companion in companions:
 		if companion.id == companion_id and stat in companion.stat_points:
 			companion.stat_points[stat] += 1
+			_record_stat_point(companion_id, stat)
 			emit_event("stat_point_added", {"companion": companion_id, "stat": stat})
 
 func heal_companion(amount: float) -> void:
@@ -240,6 +258,8 @@ func update_companion_statistics() -> void:
 	stats["total_levelups"] = get_state("level_progression", []).size()
 	stats["total_evolutions"] = get_state("evolution_history", []).size()
 	stats["loyalty_events"] = get_state("loyalty_tracking", []).size()
+	stats["special_attacks_used"] = get_state("special_attack_history", []).size()
+	stats["stat_points_allocated"] = get_state("stat_point_history", []).size()
 	if not companions.is_empty():
 		var avg_level = 0.0
 		var avg_loyalty = 0.0

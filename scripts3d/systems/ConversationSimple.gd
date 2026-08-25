@@ -45,6 +45,7 @@ func _ready() -> void:
 	set_state("node_completion_tracking", {})
 	set_state("dialogue_influence", {})
 	set_state("conversation_performance", [])
+	set_state("conversation_statistics", {})
 	_initialize_dialogue_trees()
 
 func _initialize_dialogue_trees() -> void:
@@ -263,3 +264,23 @@ func get_total_dialogue_influence() -> float:
 func get_nodes_completed_with_npc(npc_id: String) -> Array:
 	var tracking = get_state("node_completion_tracking", {})
 	return tracking.get(npc_id, [])
+
+func update_conversation_statistics() -> void:
+	var stats = get_state("conversation_statistics", {})
+	var history = get_state("conversation_history", [])
+	var chains = get_state("dialogue_chain_tracking", [])
+	var perf = get_state("conversation_performance", [])
+	var rep = get_state("dialogue_reputation", {})
+	stats["choices_made"] = history.size()
+	stats["dialogue_karma"] = get_state("dialogue_karma", 0)
+	stats["chains_recorded"] = chains.size()
+	stats["performance_sessions"] = perf.size()
+	stats["npcs_with_reputation"] = rep.size()
+	stats["dialogue_trees_loaded"] = dialogue_trees.size()
+	stats["total_influence"] = get_total_dialogue_influence()
+	stats["is_in_conversation"] = get_state("current_conversation", "") != ""
+	set_state("conversation_statistics", stats)
+
+func get_conversation_statistics() -> Dictionary:
+	update_conversation_statistics()
+	return get_state("conversation_statistics", {})

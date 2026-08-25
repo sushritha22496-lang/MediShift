@@ -40,7 +40,9 @@ func complete_item(category: String) -> void:
 		if percentage == 100.0:
 			category_completed.emit(category, percentage)
 			emit_event("category_completed", category)
-		
+
+		record_completion_history(category, completed)
+		record_completion_rate(get_total_completion())
 		completion_updated.emit(get_total_completion())
 		emit_event("completion_updated", category)
 
@@ -135,6 +137,14 @@ func update_completion_statistics() -> void:
 	stats["total_completion"] = get_total_completion()
 	stats["completed_categories"] = get_completed_categories().size()
 	stats["history_entries"] = get_state("completion_history", []).size()
+	stats["total_categories"] = completion_categories.size()
+	stats["categories_unlocked"] = get_state("category_unlocks", {}).size()
+	stats["speedruns_recorded"] = get_state("speedrun_times", {}).size()
+	stats["reward_categories"] = get_state("completion_rewards", {}).size()
+	var total_completed = 0
+	for cat in completion_categories.values():
+		total_completed += cat["completed"]
+	stats["total_items_completed"] = total_completed
 	set_state("completion_statistics", stats)
 
 func record_completion_rate(completion_rate: float) -> void:
