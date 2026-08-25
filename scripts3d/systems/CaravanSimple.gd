@@ -31,6 +31,9 @@ func _ready() -> void:
 	set_state("caravan_location_tracking", {})
 	set_state("merchant_preference", {})
 	set_state("caravan_statistics", {})
+	set_state("encounter_record", [])
+	set_state("departure_record", [])
+	set_state("arrival_record", [])
 	_initialize_caravans()
 
 func _initialize_caravans() -> void:
@@ -46,6 +49,27 @@ func _initialize_caravans() -> void:
 			"rare_gem": 5
 		}
 
+func _record_encounter(caravan_id: String) -> void:
+	var record = get_state("encounter_record", [])
+	record.append({"caravan": caravan_id, "time": Time.get_ticks_msec()})
+	if record.size() > 50:
+		record.pop_front()
+	set_state("encounter_record", record)
+
+func _record_departure(caravan_id: String, destination: String) -> void:
+	var record = get_state("departure_record", [])
+	record.append({"caravan": caravan_id, "destination": destination, "time": Time.get_ticks_msec()})
+	if record.size() > 50:
+		record.pop_front()
+	set_state("departure_record", record)
+
+func _record_arrival(caravan_id: String, location: String) -> void:
+	var record = get_state("arrival_record", [])
+	record.append({"caravan": caravan_id, "location": location, "time": Time.get_ticks_msec()})
+	if record.size() > 50:
+		record.pop_front()
+	set_state("arrival_record", record)
+
 func encounter_caravan(caravan_id: String) -> bool:
 	var caravan = _get_caravan(caravan_id)
 	if caravan:
@@ -55,6 +79,7 @@ func encounter_caravan(caravan_id: String) -> bool:
 			set_state("active_caravans", active)
 		_record_visit_history(caravan_id)
 		_record_merchant_preference(caravan.merchant_name)
+		_record_encounter(caravan_id)
 		caravan_encountered.emit(caravan)
 		emit_event("caravan_encountered", caravan_id)
 		return true
@@ -65,9 +90,11 @@ func depart_caravan(caravan_id: String, destination: String) -> bool:
 	if caravan:
 		caravan.current_location = destination
 		_track_caravan_location(caravan_id, destination)
+		_record_departure(caravan_id, destination)
 		caravan_departed.emit(caravan_id)
 		emit_event("caravan_departed", caravan_id)
 		await get_tree().create_timer(3.0).timeout
+		_record_arrival(caravan_id, destination)
 		caravan_arrived.emit(caravan_id, destination)
 		emit_event("caravan_arrived", destination)
 		return true
@@ -166,6 +193,12 @@ func update_caravan_statistics() -> void:
 	stats["total_trades"] = get_state("trade_history", []).size()
 	stats["active_caravans"] = get_state("active_caravans", []).size()
 	stats["most_visited"] = get_most_visited_caravan()
+	stats["encounters_recorded"] = get_state("encounter_record", []).size()
+	stats["departures_recorded"] = get_state("departure_record", []).size()
+	stats["arrivals_recorded"] = get_state("arrival_record", []).size()
+	stats["total_caravans"] = caravans.size()
+	var prefs = get_state("merchant_preference", {})
+	stats["unique_merchants_known"] = prefs.size()
 	set_state("caravan_statistics", stats)
 
 func get_caravan_statistics() -> Dictionary:

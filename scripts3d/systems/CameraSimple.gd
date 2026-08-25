@@ -15,6 +15,11 @@ var target: Node3D = null
 var horizontal_angle: float = 0.0
 var vertical_angle: float = 0.5
 
+var mode_change_history: Array = []
+var target_change_history: Array = []
+var sensitivity_change_history: Array = []
+var camera_statistics: Dictionary = {}
+
 func _ready() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	if target == null:
@@ -23,6 +28,21 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	_handle_camera_input()
 	_update_camera_position(delta)
+
+func _record_mode_change(mode: CameraMode) -> void:
+	mode_change_history.append({"mode": CameraMode.keys()[mode], "time": Time.get_ticks_msec()})
+	if mode_change_history.size() > 50:
+		mode_change_history.pop_front()
+
+func _record_target_change(new_target: Node3D) -> void:
+	target_change_history.append({"target": new_target.name if new_target else "none", "time": Time.get_ticks_msec()})
+	if target_change_history.size() > 50:
+		target_change_history.pop_front()
+
+func _record_sensitivity_change(sensitivity: float) -> void:
+	sensitivity_change_history.append({"sensitivity": sensitivity, "time": Time.get_ticks_msec()})
+	if sensitivity_change_history.size() > 50:
+		sensitivity_change_history.pop_front()
 
 func _handle_camera_input() -> void:
 	var mouse_delta = Input.get_last_mouse_velocity()
@@ -71,16 +91,33 @@ func _update_cinematic(delta: float) -> void:
 
 func set_camera_mode(mode: CameraMode) -> void:
 	current_mode = mode
+	_record_mode_change(mode)
 	print("Camera mode: %s" % CameraMode.keys()[mode])
 
 func set_target(new_target: Node3D) -> void:
 	target = new_target
+	_record_target_change(new_target)
 
 func set_sensitivity(sensitivity: float) -> void:
 	mouse_sensitivity = sensitivity
+	_record_sensitivity_change(sensitivity)
 
 func toggle_mouse_capture() -> void:
 	if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	else:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+
+func update_camera_statistics() -> void:
+	camera_statistics["mode_changes"] = mode_change_history.size()
+	camera_statistics["target_changes"] = target_change_history.size()
+	camera_statistics["sensitivity_changes"] = sensitivity_change_history.size()
+	camera_statistics["current_mode"] = CameraMode.keys()[current_mode]
+	camera_statistics["current_sensitivity"] = mouse_sensitivity
+	camera_statistics["current_distance"] = camera_distance
+	camera_statistics["current_height"] = camera_height
+	camera_statistics["has_target"] = target != null
+
+func get_camera_statistics() -> Dictionary:
+	update_camera_statistics()
+	return camera_statistics

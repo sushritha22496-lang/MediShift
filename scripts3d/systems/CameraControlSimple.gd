@@ -40,6 +40,11 @@ func _ready() -> void:
 	set_state("motion_blur", 0.0)
 	set_state("screen_position", Vector2(0.5, 0.4))
 	set_state("camera_history", [])
+	set_state("mode_switch_record", [])
+	set_state("zoom_record", [])
+	set_state("shake_record", [])
+	set_state("preset_apply_record", [])
+	set_state("camera_control_statistics", {})
 	_initialize_presets()
 
 func _initialize_presets() -> void:
@@ -60,6 +65,34 @@ func _initialize_presets() -> void:
 		"cinematic": cinematic_preset
 	}
 
+func _record_mode_switch(mode: CameraMode, transitioned: bool) -> void:
+	var record = get_state("mode_switch_record", [])
+	record.append({"mode": CameraMode.keys()[mode], "transitioned": transitioned, "time": Time.get_ticks_msec()})
+	if record.size() > 50:
+		record.pop_front()
+	set_state("mode_switch_record", record)
+
+func _record_zoom(zoom_level: float) -> void:
+	var record = get_state("zoom_record", [])
+	record.append({"zoom": zoom_level, "time": Time.get_ticks_msec()})
+	if record.size() > 50:
+		record.pop_front()
+	set_state("zoom_record", record)
+
+func _record_shake(intensity: float, duration: float) -> void:
+	var record = get_state("shake_record", [])
+	record.append({"intensity": intensity, "duration": duration, "time": Time.get_ticks_msec()})
+	if record.size() > 50:
+		record.pop_front()
+	set_state("shake_record", record)
+
+func _record_preset_apply(preset_name: String) -> void:
+	var record = get_state("preset_apply_record", [])
+	record.append({"preset": preset_name, "time": Time.get_ticks_msec()})
+	if record.size() > 50:
+		record.pop_front()
+	set_state("preset_apply_record", record)
+
 func set_camera_mode(mode: CameraMode, use_transition: bool = true) -> void:
 	if use_transition and is_transitioning:
 		return
@@ -69,6 +102,7 @@ func set_camera_mode(mode: CameraMode, use_transition: bool = true) -> void:
 		await get_tree().create_timer(transition_speed).timeout
 	set_state("camera_mode", mode)
 	is_transitioning = false
+	_record_mode_switch(mode, use_transition)
 	camera_mode_changed.emit(CameraMode.keys()[mode])
 	emit_event("camera_mode_changed", {"mode": CameraMode.keys()[mode], "transitioned": use_transition})
 
@@ -79,6 +113,7 @@ func zoom(factor: float) -> void:
 	var zoom = get_state("zoom_level", 1.0)
 	zoom = clampf(zoom + factor, 0.5, 3.0)
 	set_state("zoom_level", zoom)
+	_record_zoom(zoom)
 	camera_zoomed.emit(zoom)
 	emit_event("zoom_changed", {"zoom": zoom})
 
@@ -96,6 +131,7 @@ func set_fov(fov: float) -> void:
 
 func apply_camera_shake(intensity: float, duration: float = 0.3) -> void:
 	set_state("camera_shake_intensity", intensity)
+	_record_shake(intensity, duration)
 	camera_shake_started.emit(intensity)
 	await get_tree().create_timer(duration).timeout
 	set_state("camera_shake_intensity", 0.0)
@@ -153,6 +189,7 @@ func apply_preset(preset_name: String) -> bool:
 	set_fov(preset.fov)
 	set_state("transition_speed", preset.transition_speed)
 	set_state("look_ahead", preset.look_ahead)
+	_record_preset_apply(preset_name)
 	return true
 
 func get_camera_history() -> Array:
@@ -176,3 +213,24 @@ func get_camera_text() -> String:
 	var shake = get_state("camera_shake_intensity", 0.0)
 	var locked = "🔒" if target_locked else "📷"
 	return "%s Camera: %s | Zoom: %.1fx | Shake: %.1f" % [locked, mode, zoom, shake]
+
+func update_camera_control_statistics() -> void:
+	var stats = get_state("camera_control_statistics", {})
+	var mode_rec = get_state("mode_switch_record", [])
+	var zoom_rec = get_state("zoom_record", [])
+	var shake_rec = get_state("shake_record", [])
+	var preset_rec = get_state("preset_apply_record", [])
+	stats["mode_switches"] = mode_rec.size()
+	stats["zoom_changes"] = zoom_rec.size()
+	stats["shakes_applied"] = shake_rec.size()
+	stats["presets_applied"] = preset_rec.size()
+	stats["current_mode"] = CameraMode.keys()[get_camera_mode()]
+	stats["current_zoom"] = get_state("zoom_level", 1.0)
+	stats["current_fov"] = get_state("fov", 70.0)
+	stats["is_target_locked"] = target_locked != null
+	stats["presets_available"] = camera_presets.size()
+	set_state("camera_control_statistics", stats)
+
+func get_camera_control_statistics() -> Dictionary:
+	update_camera_control_statistics()
+	return get_state("camera_control_statistics", {})
