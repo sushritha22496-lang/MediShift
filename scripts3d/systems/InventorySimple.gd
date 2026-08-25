@@ -204,6 +204,14 @@ func update_inventory_statistics() -> void:
 	stats["weight_percent"] = get_inventory_weight_percent()
 	stats["total_additions"] = add_hist.size()
 	stats["total_removals"] = remove_hist.size()
+	stats["favorite_items"] = get_state("favorite_items", []).size()
+	stats["locked_items"] = get_state("locked_items", []).size()
+	var equipped = get_state("equipment_slots", {})
+	var equipped_count = 0
+	for slot in equipped:
+		if equipped[slot] != null:
+			equipped_count += 1
+	stats["equipment_slots_filled"] = equipped_count
 	set_state("inventory_statistics", stats)
 
 func get_inventory_statistics() -> Dictionary:

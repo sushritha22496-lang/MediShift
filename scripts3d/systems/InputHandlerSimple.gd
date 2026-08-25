@@ -170,3 +170,17 @@ func _get_action_from_key(keycode: int) -> String:
 
 func get_input_text() -> String:
 	return "Input: %s | Buffer: %d | History: %d" % [current_input_mode.capitalize(), input_buffer.size(), get_state("input_history", []).size()]
+
+func get_input_statistics() -> Dictionary:
+	var history = get_state("input_history", [])
+	var action_counts = {}
+	for entry in history:
+		action_counts[entry["action"]] = action_counts.get(entry["action"], 0) + 1
+	return {
+		"total_inputs": history.size(),
+		"current_mode": current_input_mode,
+		"buffer_size": input_buffer.size(),
+		"bindings_count": input_bindings.size(),
+		"action_counts": action_counts,
+		"last_input_time": last_input_time
+	}

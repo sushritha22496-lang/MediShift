@@ -29,6 +29,10 @@ func _ready() -> void:
 	set_state("inn_reputation", 0.0)
 	set_state("current_room_type", "standard")
 	set_state("status_effects_removed", {})
+	set_state("rest_history", [])
+	set_state("meal_purchase_history", [])
+	set_state("room_upgrade_history", [])
+	set_state("inn_statistics", {})
 	_initialize_rooms()
 
 func _initialize_rooms() -> void:
@@ -66,6 +70,11 @@ func rest(player: Node3D, rest_hours: int = 1, room_type: String = "standard") -
 	var total_rests = get_state("total_rests", 0) + 1
 	set_state("total_rests", total_rests)
 	set_state("is_resting", false)
+	var history = get_state("rest_history", [])
+	history.append({"room": room_type, "hours": rest_hours, "healing": healing, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("rest_history", history)
 	rest_completed.emit(healing)
 	emit_event("rest_completed", {"healing": healing, "room": room_type})
 	return true
@@ -85,6 +94,11 @@ func purchase_meal(meal_type: String) -> Dictionary:
 		"exotic":
 			bonus = {"healing": 150.0, "strength_bonus": 1.0, "magic_bonus": 0.5, "cost": 100.0}
 	if bonus.size() > 0:
+		var history = get_state("meal_purchase_history", [])
+		history.append({"meal": meal_type, "bonus": bonus, "time": Time.get_ticks_msec()})
+		if history.size() > 50:
+			history.pop_front()
+		set_state("meal_purchase_history", history)
 		meal_purchased.emit(meal_type, bonus)
 		emit_event("meal_purchased", meal_type)
 	return bonus
@@ -93,6 +107,11 @@ func upgrade_room(new_room_type: String) -> bool:
 	var current = get_state("current_room_type", "standard")
 	if current != new_room_type:
 		set_state("current_room_type", new_room_type)
+		var history = get_state("room_upgrade_history", [])
+		history.append({"from": current, "to": new_room_type, "time": Time.get_ticks_msec()})
+		if history.size() > 50:
+			history.pop_front()
+		set_state("room_upgrade_history", history)
 		room_upgraded.emit(new_room_type)
 		emit_event("room_upgraded", new_room_type)
 		return true
@@ -122,3 +141,21 @@ func get_inn_text() -> String:
 func set_rest_quality(quality: String) -> void:
 	set_state("quality", quality)
 	emit_event("quality_set", quality)
+
+func update_inn_statistics() -> void:
+	var stats = get_state("inn_statistics", {})
+	var meal_hist = get_state("meal_purchase_history", [])
+	var total_healing = 0.0
+	for entry in get_state("rest_history", []):
+		total_healing += entry["healing"]
+	stats["total_rests"] = get_state("total_rests", 0)
+	stats["total_healing_from_rest"] = total_healing
+	stats["meals_purchased"] = meal_hist.size()
+	stats["room_upgrades"] = get_state("room_upgrade_history", []).size()
+	stats["inn_reputation"] = get_state("inn_reputation", 0.0)
+	stats["current_room"] = get_state("current_room_type", "standard")
+	set_state("inn_statistics", stats)
+
+func get_inn_statistics() -> Dictionary:
+	update_inn_statistics()
+	return get_state("inn_statistics", {})
