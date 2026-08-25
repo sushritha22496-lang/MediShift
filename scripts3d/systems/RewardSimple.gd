@@ -43,6 +43,7 @@ func give_reward(reward_id: String) -> bool:
 			var pending = get_state("pending_rewards", [])
 			pending.append(reward_id)
 			set_state("pending_rewards", pending)
+			_record_reward_event(reward_id, "given", reward.value)
 			reward_given.emit(reward)
 			emit_event("reward_given", reward_id)
 			return true
@@ -57,10 +58,18 @@ func claim_reward(reward_id: String) -> Reward:
 			claimed.append(reward_id)
 			set_state("pending_rewards", pending)
 			set_state("claimed_rewards", claimed)
+			_record_reward_event(reward_id, "claimed", reward.value * get_reward_multiplier())
 			reward_claimed.emit(reward_id)
 			emit_event("reward_claimed", reward_id)
 			return reward
 	return null
+
+func _record_reward_event(reward_id: String, action: String, value: float) -> void:
+	var history = get_state("reward_history", [])
+	history.append({"reward": reward_id, "action": action, "value": value, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("reward_history", history)
 
 func get_pending_rewards() -> Array[Reward]:
 	var pending_ids = get_state("pending_rewards", [])
@@ -110,3 +119,14 @@ func get_total_rewards_value() -> float:
 		if reward.id in claimed_ids:
 			total += reward.value * get_reward_multiplier()
 	return total
+
+func get_reward_statistics() -> Dictionary:
+	return {
+		"total_rewards_defined": reward_pool.size(),
+		"pending_count": get_reward_count(),
+		"claimed_count": get_claimed_reward_count(),
+		"total_value_claimed": get_total_rewards_value(),
+		"reward_events_logged": get_state("reward_history", []).size(),
+		"current_multiplier": get_reward_multiplier(),
+		"conditions_registered": get_state("reward_conditions", {}).size()
+	}

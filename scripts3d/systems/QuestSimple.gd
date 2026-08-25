@@ -32,8 +32,18 @@ func add_quest(title: String, description: String = "", quest_id: String = "") -
 	track.progress += 0
 	return track
 
+func _record_quest_event(quest_id: String, event: String) -> void:
+	var history = get_state("quest_history", [])
+	history.append({"quest": quest_id, "event": event, "time": Time.get_ticks_msec()})
+	if history.size() > 50:
+		history.pop_front()
+	set_state("quest_history", history)
+
 func complete_quest(quest_id: String) -> bool:
-	return complete(quest_id)
+	var result = complete(quest_id)
+	if result:
+		_record_quest_event(quest_id, "completed")
+	return result
 
 func get_quest(quest_id: String) -> Track:
 	for track in active:
@@ -121,6 +131,7 @@ func abandon_quest(quest_id: String) -> bool:
 	var quest = get_quest(quest_id)
 	if quest and quest in active:
 		active.erase(quest)
+		_record_quest_event(quest_id, "abandoned")
 		quest_abandoned.emit(quest_id)
 		emit_event("quest_abandoned", quest_id)
 		return true
@@ -129,3 +140,18 @@ func abandon_quest(quest_id: String) -> bool:
 func get_quest_branches(quest_id: String) -> Array:
 	var branches = get_state("quest_branches", {})
 	return branches.get(quest_id, [])
+
+func get_quest_statistics() -> Dictionary:
+	var history = get_state("quest_history", [])
+	var abandoned_count = 0
+	for entry in history:
+		if entry["event"] == "abandoned":
+			abandoned_count += 1
+	return {
+		"active_quests": active.size(),
+		"completed_quests": completed.size(),
+		"abandoned_quests": abandoned_count,
+		"quest_events_logged": history.size(),
+		"markers_set": get_state("quest_markers", {}).size(),
+		"branches_tracked": get_state("quest_branches", {}).size()
+	}

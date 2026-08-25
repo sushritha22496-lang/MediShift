@@ -213,6 +213,12 @@ func update_relationship_statistics() -> void:
 	stats["total_lovers"] = lovers
 	stats["affection_history_size"] = get_state("affection_history", {}).size()
 	stats["romance_advancements"] = get_state("romance_advancement_history", []).size()
+	stats["total_relationships"] = relationships.size()
+	var gift_hist = get_state("gift_history", {})
+	var total_gifts = 0
+	for npc_gifts in gift_hist.values():
+		total_gifts += npc_gifts.size()
+	stats["total_gifts_given"] = total_gifts
 	set_state("relationship_statistics", stats)
 
 func get_relationship_statistics() -> Dictionary:
