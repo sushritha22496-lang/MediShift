@@ -99,38 +99,32 @@ func _on_hanuman_agrees() -> void:
 	# For now, just show the completion state
 
 func _show_hud_message(message: String) -> void:
-	"""Display a message on the HUD"""
 	if main_label:
 		main_label.text = message
 	if objective_label and "Objective:" not in message:
 		objective_label.text = "📍 " + message.split("\n")[0]
 
 func _on_item_collected(item_name: String, quantity: int) -> void:
-	"""Called when player collects an item"""
 	_update_inventory_display()
 
 func _on_quest_completed(quest: QuestSystem.Quest) -> void:
-	"""Called when a quest is completed"""
 	_show_hud_message("✅ QUEST COMPLETE: " + quest.title)
 
 func _on_objective_updated(objective: String) -> void:
-	"""Called when objective changes"""
 	if objective_label:
 		objective_label.text = "📍 " + objective
 
 func _update_inventory_display() -> void:
-	"""Update the inventory HUD display"""
-	if not inventory_label or not rama.inventory:
+	if not inventory_label or not rama or not rama.inventory:
 		return
-
-	var inventory = rama.inventory.get_inventory()
-	if inventory.is_empty():
+	var inv = rama.inventory.get_inventory()
+	if inv.is_empty():
 		inventory_label.text = "🎒 Inventory: Empty"
 	else:
-		var items_text = "🎒 Inventory:\n"
-		for item_name in inventory.keys():
-			items_text += "%s: %d\n" % [item_name, inventory[item_name]]
-		inventory_label.text = items_text.strip_edges()
+		var txt = "🎒 Inventory:\n"
+		for item_name in inv.keys():
+			txt += "%s: %d\n" % [item_name, inv[item_name]]
+		inventory_label.text = txt.strip_edges()
 
 func _process(_delta: float) -> void:
 	# Update inventory display
@@ -145,17 +139,14 @@ func _process(_delta: float) -> void:
 		print("Hanuman state:", HanumanAI.State.keys()[hanuman.current_state])
 
 func _update_debug_display() -> void:
-	"""Keep the debug HUD showing live position, distance, and travel estimate"""
 	if not debug_label or not rama or not hanuman:
 		return
-	var distance = rama.global_position.distance_to(hanuman.global_position)
-	var speed = rama.run_speed if Input.is_action_pressed("dash") else rama.walk_speed
-	var eta_text = "Reached!" if distance < rama.detection_range else "%.1fs at current speed" % (distance / speed)
-	debug_label.text = "Debug Info:\nFPS: %d\nRama: (%.1f, %.1f, %.1f)\nHanuman: (%.1f, %.1f, %.1f)\nDistance to Hanuman: %.1fm\nETA to Hanuman: %s\nHanuman state: %s" % [
-		Engine.get_frames_per_second(),
-		rama.global_position.x, rama.global_position.y, rama.global_position.z,
-		hanuman.global_position.x, hanuman.global_position.y, hanuman.global_position.z,
-		distance,
-		eta_text,
+	var dist = rama.global_position.distance_to(hanuman.global_position)
+	var spd = rama.run_speed if Input.is_action_pressed("dash") else rama.walk_speed
+	var eta = "Reached!" if dist < rama.detection_range else "%.1fs" % (dist / spd)
+	var rp = rama.global_position
+	var hp = hanuman.global_position
+	debug_label.text = "FPS: %d | Rama: (%.1f, %.1f, %.1f) | Hanuman: (%.1f, %.1f, %.1f) | Dist: %.1fm | ETA: %s | State: %s" % [
+		Engine.get_frames_per_second(), rp.x, rp.y, rp.z, hp.x, hp.y, hp.z, dist, eta,
 		HanumanAI.State.keys()[hanuman.current_state]
 	]

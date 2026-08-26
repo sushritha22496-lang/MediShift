@@ -37,116 +37,90 @@ static func find_skeleton(node: Node) -> Skeleton3D:
 	return null
 
 static func attach_gada(skeleton: Skeleton3D, hand_bone: String = "hand.r") -> BoneAttachment3D:
-	"""Build a procedural Gada (mace) and attach it to the given hand bone."""
-	if not skeleton:
+	if not skeleton or skeleton.find_bone(hand_bone) == -1:
 		return null
-	var bone_idx = skeleton.find_bone(hand_bone)
-	if bone_idx == -1:
-		return null
-
 	var attachment = BoneAttachment3D.new()
-	attachment.name = "GadaAttachment"
 	attachment.bone_name = hand_bone
 	skeleton.add_child(attachment)
-
 	var gada = Node3D.new()
-	gada.name = "Gada"
 	attachment.add_child(gada)
-	gada.transform = Transform3D(Basis(), Vector3(0.0, -0.05, 0.0))
+	gada.position.y = -0.05
 
 	var handle = MeshInstance3D.new()
-	var handle_mesh = CylinderMesh.new()
-	handle_mesh.top_radius = 0.03
-	handle_mesh.bottom_radius = 0.035
-	handle_mesh.height = 0.55
-	handle.mesh = handle_mesh
-	var handle_mat = StandardMaterial3D.new()
-	handle_mat.albedo_color = Color(0.45, 0.32, 0.12)
-	handle_mat.roughness = 0.7
-	handle_mesh.material = handle_mat
-	handle.position = Vector3(0, -0.3, 0)
+	var h_mesh = CylinderMesh.new()
+	h_mesh.top_radius = 0.03
+	h_mesh.bottom_radius = 0.035
+	h_mesh.height = 0.55
+	var h_mat = StandardMaterial3D.new()
+	h_mat.albedo_color = Color(0.45, 0.32, 0.12)
+	h_mat.roughness = 0.7
+	handle.mesh = h_mesh
+	handle.position.y = -0.3
 	gada.add_child(handle)
 
 	var head = MeshInstance3D.new()
-	var head_mesh = SphereMesh.new()
-	head_mesh.radius = 0.16
-	head_mesh.height = 0.32
-	head.mesh = head_mesh
-	var head_mat = StandardMaterial3D.new()
-	head_mat.albedo_color = Color(0.7, 0.62, 0.25)
-	head_mat.metallic = 0.4
-	head_mat.roughness = 0.35
-	head_mesh.material = head_mat
-	head.position = Vector3(0, 0.02, 0)
+	var h_mesh2 = SphereMesh.new()
+	h_mesh2.radius = 0.16
+	h_mesh2.height = 0.32
+	var h_mat2 = StandardMaterial3D.new()
+	h_mat2.albedo_color = Color(0.7, 0.62, 0.25)
+	h_mat2.metallic = 0.4
+	h_mat2.roughness = 0.35
+	head.mesh = h_mesh2
 	gada.add_child(head)
 
 	for i in range(6):
 		var spike = MeshInstance3D.new()
-		var spike_mesh = CylinderMesh.new()
-		spike_mesh.top_radius = 0.0
-		spike_mesh.bottom_radius = 0.035
-		spike_mesh.height = 0.12
-		spike.mesh = spike_mesh
-		spike_mesh.material = head_mat
+		var s_mesh = CylinderMesh.new()
+		s_mesh.top_radius = 0.0
+		s_mesh.bottom_radius = 0.035
+		s_mesh.height = 0.12
+		spike.mesh = s_mesh
 		var angle = i * TAU / 6.0
-		var direction = Vector3(cos(angle), 0, sin(angle))
-		spike.transform = Transform3D(Basis.looking_at(direction, Vector3.UP), Vector3(direction.x * 0.16, 0.02, direction.z * 0.16))
-		spike.rotate_object_local(Vector3.RIGHT, PI / 2.0)
+		var dir = Vector3(cos(angle), 0, sin(angle))
+		spike.position = dir * 0.16
+		spike.look_at(spike.global_position + dir, Vector3.UP)
 		gada.add_child(spike)
 
 	return attachment
 
 static func attach_dhoti(skeleton: Skeleton3D, pelvis_bone: String = "pelvis") -> BoneAttachment3D:
-	"""Build a simple traditional dhoti garment around the waist/thighs."""
-	if not skeleton:
+	if not skeleton or skeleton.find_bone(pelvis_bone) == -1:
 		return null
-	var bone_idx = skeleton.find_bone(pelvis_bone)
-	if bone_idx == -1:
-		return null
-
 	var attachment = BoneAttachment3D.new()
-	attachment.name = "DhotiAttachment"
 	attachment.bone_name = pelvis_bone
 	skeleton.add_child(attachment)
 
 	var dhoti = MeshInstance3D.new()
-	dhoti.name = "Dhoti"
-	var dhoti_mesh = CylinderMesh.new()
-	dhoti_mesh.top_radius = 0.32
-	dhoti_mesh.bottom_radius = 0.42
-	dhoti_mesh.height = 0.65
-	dhoti.mesh = dhoti_mesh
-	var dhoti_mat = StandardMaterial3D.new()
-	dhoti_mat.albedo_color = Color(0.85, 0.35, 0.1)
-	dhoti_mat.roughness = 0.9
-	dhoti_mesh.material = dhoti_mat
-	dhoti.position = Vector3(0, -0.35, 0)
+	var d_mesh = CylinderMesh.new()
+	d_mesh.top_radius = 0.32
+	d_mesh.bottom_radius = 0.42
+	d_mesh.height = 0.65
+	var d_mat = StandardMaterial3D.new()
+	d_mat.albedo_color = Color(0.85, 0.35, 0.1)
+	d_mat.roughness = 0.9
+	dhoti.mesh = d_mesh
+	dhoti.position.y = -0.35
 	attachment.add_child(dhoti)
 
 	var sash = MeshInstance3D.new()
-	sash.name = "Sash"
-	var sash_mesh = BoxMesh.new()
-	sash_mesh.size = Vector3(0.5, 0.12, 0.08)
-	sash.mesh = sash_mesh
-	var sash_mat = StandardMaterial3D.new()
-	sash_mat.albedo_color = Color(0.95, 0.8, 0.2)
-	sash_mesh.material = sash_mat
+	var s_mesh = BoxMesh.new()
+	s_mesh.size = Vector3(0.5, 0.12, 0.08)
+	var s_mat = StandardMaterial3D.new()
+	s_mat.albedo_color = Color(0.95, 0.8, 0.2)
+	sash.mesh = s_mesh
 	sash.position = Vector3(0, 0.05, 0.35)
 	attachment.add_child(sash)
 
 	return attachment
 
 static func enhance(character_root: Node) -> void:
-	"""Apply full muscular build + gada + dhoti to a Hanuman character instance."""
 	var skeleton = find_skeleton(character_root)
 	if not skeleton:
-		push_warning("HanumanBuildEnhancer: no Skeleton3D found under " + str(character_root))
 		return
 	apply_muscular_build(skeleton)
-	if not skeleton.has_node("GadaAttachment"):
-		attach_gada(skeleton)
-	if not skeleton.has_node("DhotiAttachment"):
-		attach_dhoti(skeleton)
+	attach_gada(skeleton)
+	attach_dhoti(skeleton)
 	apply_skin_color(character_root, Color(0.55, 0.28, 0.12), Color(0.75, 0.4, 0.15))
 
 static func find_mesh_instances(node: Node, out_list: Array) -> void:
@@ -156,22 +130,20 @@ static func find_mesh_instances(node: Node, out_list: Array) -> void:
 		find_mesh_instances(child, out_list)
 
 static func apply_skin_color(character_root: Node, primary_color: Color, fur_color: Color = Color(0.75, 0.4, 0.15)) -> void:
-	"""Override the untextured flat-gray source material with an actual
-	skin/fur tone so the character isn't a plain white/gray mannequin."""
 	var meshes: Array = []
 	find_mesh_instances(character_root, meshes)
 	for mesh_inst in meshes:
 		for i in range(mesh_inst.mesh.get_surface_count()):
 			var src_mat = mesh_inst.mesh.surface_get_material(i)
-			var mat_name = src_mat.resource_name if src_mat else ""
+			if not src_mat:
+				continue
+			var mat_name = src_mat.resource_name
+			var mat = StandardMaterial3D.new()
 			if mat_name == "hanuman_skin":
-				var mat = StandardMaterial3D.new()
 				mat.albedo_color = primary_color
 				mat.roughness = 0.65
-				mat.metallic = 0.0
 				mesh_inst.set_surface_override_material(i, mat)
 			elif mat_name == "Negro_COLOR_0":
-				var mat = StandardMaterial3D.new()
 				mat.albedo_color = fur_color
 				mat.roughness = 0.8
 				mesh_inst.set_surface_override_material(i, mat)

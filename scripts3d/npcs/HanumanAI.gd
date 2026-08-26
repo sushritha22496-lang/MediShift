@@ -13,7 +13,7 @@ enum State { IDLE, FORAGING, CURIOUS, APPROACHING, MEETING, FOLLOWING }
 
 # Behavior
 @export var hearing_range: float = 50.0  # How far Hanuman can hear Rama's call
-@export var approach_distance: float = 3.0  # How close to get before initiating meeting
+@export var approach_distance: float = 5.5  # How close to get before initiating meeting
 @export var curiosity_threshold: float = 0.7  # How interesting the call is
 
 # State
@@ -70,126 +70,86 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 
 func _idle_behavior(delta: float) -> void:
-	"""Hanuman does nothing, waiting and watching"""
 	velocity.x = lerp(velocity.x, 0.0, 5.0 * delta)
 	velocity.z = lerp(velocity.z, 0.0, 5.0 * delta)
-
 	if anim_player and anim_player.current_animation != "idle":
 		anim_player.play("idle")
 
 func _foraging_behavior(delta: float) -> void:
-	"""Hanuman searches for fruits and food"""
-	# Wander around looking for food
 	if global_position.distance_to(target_position) < 2.0:
-		# Reached target, find new location
 		target_position = global_position + Vector3(randf_range(-10, 10), 0, randf_range(-10, 10))
-
-	var direction = (target_position - global_position).normalized()
-	direction.y = 0.0
-
-	velocity.x = direction.x * walk_speed
-	velocity.z = direction.z * walk_speed
-
-	if direction.length() > 0.1:
-		model.rotation.y = atan2(direction.x, direction.z)
+	var dir = (target_position - global_position).normalized()
+	velocity.x = dir.x * walk_speed
+	velocity.z = dir.z * walk_speed
+	if dir.length() > 0.1:
+		model.rotation.y = atan2(dir.x, dir.z)
 		if anim_player and anim_player.current_animation != "walk":
 			anim_player.play("walk")
-	else:
-		if anim_player and anim_player.current_animation != "idle":
-			anim_player.play("idle")
-
-func _curious_behavior(delta: float) -> void:
-	"""Hanuman is curious about the sound, listening carefully"""
-	velocity.x = lerp(velocity.x, 0.0, 5.0 * delta)
-	velocity.z = lerp(velocity.z, 0.0, 5.0 * delta)
-
-	if anim_player and anim_player.current_animation != "idle":
+	elif anim_player and anim_player.current_animation != "idle":
 		anim_player.play("idle")
 
-	# After listening, move to investigate
+func _curious_behavior(delta: float) -> void:
+	velocity.x = lerp(velocity.x, 0.0, 5.0 * delta)
+	velocity.z = lerp(velocity.z, 0.0, 5.0 * delta)
+	if anim_player and anim_player.current_animation != "idle":
+		anim_player.play("idle")
 	if rama and rama.is_in_group("player"):
-		var distance = global_position.distance_to(rama.global_position)
-		if distance < hearing_range and distance > approach_distance:
+		var dist = global_position.distance_to(rama.global_position)
+		if dist < hearing_range and dist > approach_distance:
 			current_state = State.APPROACHING
 			rama_detected.emit()
 
 func _approaching_behavior(delta: float) -> void:
-	"""Hanuman moves toward Rama"""
 	if not rama:
 		current_state = State.IDLE
 		return
-
-	var distance = global_position.distance_to(rama.global_position)
-
-	# Check if close enough to meet
-	if distance < approach_distance:
+	var dist = global_position.distance_to(rama.global_position)
+	if dist < approach_distance:
 		current_state = State.MEETING
 		meeting_initiated.emit()
 		_initiate_meeting()
 		return
-
-	# Move toward Rama
-	var direction = (rama.global_position - global_position).normalized()
-	direction.y = 0.0
-
-	velocity.x = direction.x * run_speed
-	velocity.z = direction.z * run_speed
-
-	if direction.length() > 0.1:
-		model.rotation.y = atan2(direction.x, direction.z)
+	var dir = (rama.global_position - global_position).normalized()
+	velocity.x = dir.x * run_speed
+	velocity.z = dir.z * run_speed
+	if dir.length() > 0.1:
+		model.rotation.y = atan2(dir.x, dir.z)
 		if anim_player and anim_player.current_animation != "run":
 			anim_player.play("run")
 
 func _meeting_behavior(delta: float) -> void:
-	"""Hanuman has met Rama - dialogue time"""
 	velocity.x = lerp(velocity.x, 0.0, 10.0 * delta)
 	velocity.z = lerp(velocity.z, 0.0, 10.0 * delta)
-
 	if anim_player and anim_player.current_animation != "idle":
 		anim_player.play("idle")
 
 func _following_behavior(delta: float) -> void:
-	"""Hanuman follows Rama on the mission"""
 	if not rama:
 		current_state = State.IDLE
 		return
-
-	var distance = global_position.distance_to(rama.global_position)
-
-	# Stay close to Rama
-	if distance > 5.0:
-		var direction = (rama.global_position - global_position).normalized()
-		direction.y = 0.0
-
-		velocity.x = direction.x * walk_speed
-		velocity.z = direction.z * walk_speed
-
-		if direction.length() > 0.1:
-			model.rotation.y = atan2(direction.x, direction.z)
+	var dist = global_position.distance_to(rama.global_position)
+	if dist > 5.0:
+		var dir = (rama.global_position - global_position).normalized()
+		velocity.x = dir.x * walk_speed
+		velocity.z = dir.z * walk_speed
+		if dir.length() > 0.1:
+			model.rotation.y = atan2(dir.x, dir.z)
 			if anim_player and anim_player.current_animation != "walk":
 				anim_player.play("walk")
 	else:
 		velocity.x = lerp(velocity.x, 0.0, 5.0 * delta)
 		velocity.z = lerp(velocity.z, 0.0, 5.0 * delta)
-
 		if anim_player and anim_player.current_animation != "idle":
 			anim_player.play("idle")
 
 func detect_rama_call(rama_node: Node3D, call_intensity: float) -> void:
-	"""Called when Rama calls for Sita"""
 	if has_met_rama:
 		return
-
 	rama = rama_node
-	var distance = global_position.distance_to(rama.global_position)
-
-	# Check if within hearing range
-	if distance < hearing_range:
-		# Check if call is interesting/desperate enough
-		if call_intensity >= curiosity_threshold:
-			if current_state != State.APPROACHING and current_state != State.MEETING:
-				current_state = State.CURIOUS
-				print("🐵 Hanuman hears a desperate cry! Investigating...")
+	var dist = global_position.distance_to(rama.global_position)
+	if dist < hearing_range and call_intensity >= curiosity_threshold:
+		if current_state != State.APPROACHING and current_state != State.MEETING:
+			current_state = State.CURIOUS
 
 func _initiate_meeting() -> void:
 	"""Start the meeting scene between Rama and Hanuman"""

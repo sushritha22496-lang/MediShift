@@ -66,53 +66,28 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 
 func _handle_movement(delta: float) -> void:
-	"""Handle Rama's movement through forest"""
-	var input_dir = Vector2(
-		Input.get_axis("move_left", "move_right"),
-		Input.get_axis("move_up", "move_down")
-	)
+	var input_dir = Vector2(Input.get_axis("move_left", "move_right"), Input.get_axis("move_up", "move_down"))
 
 	if input_dir.length() > 0.01:
 		input_dir = input_dir.normalized()
-
-		# Get camera basis for movement direction
-		var cam_basis = camera.global_transform.basis
-		var forward = -cam_basis.z
-		forward.y = 0.0
-		forward = forward.normalized()
-
-		var right = cam_basis.x
-		right.y = 0.0
-		right = right.normalized()
-
-		var move_dir = right * input_dir.x + forward * input_dir.y
-		move_dir.y = 0.0
-		move_dir = move_dir.normalized()
-
-		# Calculate speed based on sprinting
-		var is_sprinting = Input.is_action_pressed("dash")
-		var speed = run_speed if is_sprinting else walk_speed
-
-		velocity.x = move_dir.x * speed
-		velocity.z = move_dir.z * speed
-
-		# Rotate character to face movement direction
-		var target_angle = atan2(move_dir.x, move_dir.z)
-		model.rotation.y = lerp_angle(model.rotation.y, target_angle, rotate_speed * delta)
-
-		# Play walk/run animation
-		if not is_calling:
-			var target_anim = "run" if is_sprinting else "walk"
-			if anim_player and anim_player.current_animation != target_anim:
-				anim_player.play(target_anim)
+		var cam = camera.global_transform.basis
+		var fwd = (-cam.z).normalized()
+		var rgt = cam.x.normalized()
+		var move_dir = (rgt * input_dir.x + fwd * input_dir.y).normalized()
+		var is_sprint = Input.is_action_pressed("dash")
+		var spd = run_speed if is_sprint else walk_speed
+		velocity.x = move_dir.x * spd
+		velocity.z = move_dir.z * spd
+		model.rotation.y = lerp_angle(model.rotation.y, atan2(move_dir.x, move_dir.z), rotate_speed * delta)
+		if not is_calling and anim_player:
+			var target = "run" if is_sprint else "walk"
+			if anim_player.current_animation != target:
+				anim_player.play(target)
 	else:
-		# Idle when not moving
 		velocity.x = lerp(velocity.x, 0.0, 5.0 * delta)
 		velocity.z = lerp(velocity.z, 0.0, 5.0 * delta)
-
-		if not is_calling and anim_player:
-			if anim_player.current_animation != "idle":
-				anim_player.play("idle")
+		if not is_calling and anim_player and anim_player.current_animation != "idle":
+			anim_player.play("idle")
 
 func _handle_calling(delta: float) -> void:
 	"""Handle Rama calling for Sita"""
