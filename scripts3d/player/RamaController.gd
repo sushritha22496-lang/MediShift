@@ -24,6 +24,7 @@ var call_intensity: float = 0.0  # How loud/emotional the call is
 
 # Systems
 var inventory: InventorySystem
+var anim_state: AnimationStateMachine
 var detection_range: float = 10.0
 
 # Signals
@@ -41,11 +42,12 @@ func _ready() -> void:
 	inventory = InventorySystem.new()
 	add_child(inventory)
 
-	# Load animations for Rama
 	if anim_player:
 		CharacterAnimationSetup.load_animations_for_player(anim_player, "hanuman_final")
-		if anim_player.has_animation("idle"):
-			anim_player.play("idle")
+		anim_state = AnimationStateMachine.new()
+		anim_state.anim_player = anim_player
+		add_child(anim_state)
+		anim_state.play("idle")
 
 	if model:
 		HanumanBuildEnhancer.apply_skin_color(model, Color(0.65, 0.45, 0.3), Color(0.15, 0.25, 0.55))
@@ -79,15 +81,13 @@ func _handle_movement(delta: float) -> void:
 		velocity.x = move_dir.x * spd
 		velocity.z = move_dir.z * spd
 		model.rotation.y = lerp_angle(model.rotation.y, atan2(move_dir.x, move_dir.z), rotate_speed * delta)
-		if not is_calling and anim_player:
-			var target = "run" if is_sprint else "walk"
-			if anim_player.current_animation != target:
-				anim_player.play(target)
+		if not is_calling and anim_state:
+			anim_state.play("run" if is_sprint else "walk")
 	else:
 		velocity.x = lerp(velocity.x, 0.0, 5.0 * delta)
 		velocity.z = lerp(velocity.z, 0.0, 5.0 * delta)
-		if not is_calling and anim_player and anim_player.current_animation != "idle":
-			anim_player.play("idle")
+		if not is_calling and anim_state:
+			anim_state.play("idle")
 
 func _handle_calling(delta: float) -> void:
 	"""Handle Rama calling for Sita"""
@@ -98,13 +98,11 @@ func _handle_calling(delta: float) -> void:
 		_call_for_sita()
 
 func _call_for_sita() -> void:
-	"""Rama calls out desperately for Sita"""
 	is_calling = true
-	call_cooldown = 5.0  # 5 second cooldown between calls
+	call_cooldown = 5.0
 
-	# Animation
-	if anim_player:
-		anim_player.play("call")
+	if anim_state:
+		anim_state.play("call")
 
 	# Emit signal (for NPC reactions)
 	call_intensity = randf_range(0.8, 1.0)  # Random emotional intensity
@@ -129,12 +127,11 @@ func get_character_name() -> String:
 	return "Rama"
 
 func talk_to_npc(npc_name: String) -> void:
-	"""Start dialogue with an NPC"""
 	velocity.x = 0.0
 	velocity.z = 0.0
 	dialogue_started.emit()
-	if anim_player:
-		anim_player.play("idle")
+	if anim_state:
+		anim_state.play("idle")
 
 func end_dialogue() -> void:
 	"""End dialogue with NPC"""

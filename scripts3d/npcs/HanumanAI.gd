@@ -28,6 +28,8 @@ var has_met_rama: bool = false
 @onready var anim_player: AnimationPlayer = $Model/AnimationPlayer
 @onready var collision_shape: CollisionShape3D = $CollisionShape3D
 
+var anim_state: AnimationStateMachine
+
 # Signals
 signal rama_detected
 signal meeting_initiated
@@ -39,13 +41,13 @@ func _ready() -> void:
 	current_state = State.IDLE
 	target_position = global_position
 
-	# Load animations for Hanuman
 	if anim_player:
 		CharacterAnimationSetup.load_animations_for_player(anim_player, "hanuman_final")
-		if anim_player.has_animation("idle"):
-			anim_player.play("idle")
+		anim_state = AnimationStateMachine.new()
+		anim_state.anim_player = anim_player
+		add_child(anim_state)
+		anim_state.play("idle")
 
-	# Muscular build, Gada, and dhoti
 	if model:
 		HanumanBuildEnhancer.enhance(model)
 
@@ -72,8 +74,8 @@ func _physics_process(delta: float) -> void:
 func _idle_behavior(delta: float) -> void:
 	velocity.x = lerp(velocity.x, 0.0, 5.0 * delta)
 	velocity.z = lerp(velocity.z, 0.0, 5.0 * delta)
-	if anim_player and anim_player.current_animation != "idle":
-		anim_player.play("idle")
+	if anim_state:
+		anim_state.play("idle")
 
 func _foraging_behavior(delta: float) -> void:
 	if global_position.distance_to(target_position) < 2.0:
@@ -83,16 +85,16 @@ func _foraging_behavior(delta: float) -> void:
 	velocity.z = dir.z * walk_speed
 	if dir.length() > 0.1:
 		model.rotation.y = atan2(dir.x, dir.z)
-		if anim_player and anim_player.current_animation != "walk":
-			anim_player.play("walk")
-	elif anim_player and anim_player.current_animation != "idle":
-		anim_player.play("idle")
+		if anim_state:
+			anim_state.play("walk")
+	elif anim_state:
+		anim_state.play("idle")
 
 func _curious_behavior(delta: float) -> void:
 	velocity.x = lerp(velocity.x, 0.0, 5.0 * delta)
 	velocity.z = lerp(velocity.z, 0.0, 5.0 * delta)
-	if anim_player and anim_player.current_animation != "idle":
-		anim_player.play("idle")
+	if anim_state:
+		anim_state.play("idle")
 	if rama and rama.is_in_group("player"):
 		var dist = global_position.distance_to(rama.global_position)
 		if dist < hearing_range and dist > approach_distance:
@@ -114,14 +116,14 @@ func _approaching_behavior(delta: float) -> void:
 	velocity.z = dir.z * run_speed
 	if dir.length() > 0.1:
 		model.rotation.y = atan2(dir.x, dir.z)
-		if anim_player and anim_player.current_animation != "run":
-			anim_player.play("run")
+		if anim_state:
+			anim_state.play("run")
 
 func _meeting_behavior(delta: float) -> void:
 	velocity.x = lerp(velocity.x, 0.0, 10.0 * delta)
 	velocity.z = lerp(velocity.z, 0.0, 10.0 * delta)
-	if anim_player and anim_player.current_animation != "idle":
-		anim_player.play("idle")
+	if anim_state:
+		anim_state.play("idle")
 
 func _following_behavior(delta: float) -> void:
 	if not rama:
@@ -134,13 +136,13 @@ func _following_behavior(delta: float) -> void:
 		velocity.z = dir.z * walk_speed
 		if dir.length() > 0.1:
 			model.rotation.y = atan2(dir.x, dir.z)
-			if anim_player and anim_player.current_animation != "walk":
-				anim_player.play("walk")
+			if anim_state:
+				anim_state.play("walk")
 	else:
 		velocity.x = lerp(velocity.x, 0.0, 5.0 * delta)
 		velocity.z = lerp(velocity.z, 0.0, 5.0 * delta)
-		if anim_player and anim_player.current_animation != "idle":
-			anim_player.play("idle")
+		if anim_state:
+			anim_state.play("idle")
 
 func detect_rama_call(rama_node: Node3D, call_intensity: float) -> void:
 	if has_met_rama:
