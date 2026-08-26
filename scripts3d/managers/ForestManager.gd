@@ -15,10 +15,12 @@ class_name ForestManager
 var quest_system: QuestSystem
 var location_manager: LocationManager
 var progression: GameProgression
+var monkey_spawner: MonkeySpawner
 
 # State
 var has_met: bool = false
 var game_started: bool = false
+var monkeys_spawned: bool = false
 
 func _ready() -> void:
 	quest_system = QuestSystem.new()
@@ -29,6 +31,9 @@ func _ready() -> void:
 
 	progression = GameProgression.new()
 	add_child(progression)
+
+	monkey_spawner = MonkeySpawner.new()
+	add_child(monkey_spawner)
 
 	# Connect Rama's calling signal to Hanuman
 	rama.rama_called.connect(_on_rama_called)
@@ -85,10 +90,27 @@ func _on_hanuman_agrees() -> void:
 		progression.advance_stage()
 
 	await get_tree().create_timer(2.0).timeout
-	_show_hud_message("✅ HANUMAN JOINS THE QUEST!\n\nStage 1 Complete: %s" % progression.get_stage_name() if progression else "Stage 1 Complete")
+	_show_hud_message("✅ HANUMAN JOINS THE QUEST!")
 
-	await get_tree().create_timer(3.0).timeout
-	print("\n✅ CHAPTER 1 COMPLETE - " + progression.get_stage_name() if progression else "")
+	if not monkeys_spawned and monkey_spawner:
+		monkeys_spawned = true
+		await get_tree().create_timer(2.0).timeout
+		_show_hud_message("🐵 Hanuman calls other monkeys to join the quest...")
+
+		var spawn_positions = [
+			hanuman.global_position + Vector3(3, 0, 0),
+			hanuman.global_position + Vector3(-3, 0, 0),
+			hanuman.global_position + Vector3(0, 0, 3),
+			hanuman.global_position + Vector3(0, 0, -3)
+		]
+		for pos in spawn_positions:
+			await get_tree().create_timer(0.5).timeout
+			monkey_spawner.spawn_monkey(pos, rama)
+
+	await get_tree().create_timer(2.0).timeout
+	if progression:
+		_show_hud_message("🌟 Stage %d: %s" % [int(progression.current_stage) + 1, progression.get_stage_name()])
+	print("\n✅ CHAPTER 1 COMPLETE")
 
 func _show_hud_message(message: String) -> void:
 	if main_label:
