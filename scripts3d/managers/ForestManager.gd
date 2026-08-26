@@ -14,6 +14,7 @@ class_name ForestManager
 # Systems
 var quest_system: QuestSystem
 var location_manager: LocationManager
+var progression: GameProgression
 
 # State
 var has_met: bool = false
@@ -25,6 +26,9 @@ func _ready() -> void:
 
 	location_manager = LocationManager.new()
 	add_child(location_manager)
+
+	progression = GameProgression.new()
+	add_child(progression)
 
 	# Connect Rama's calling signal to Hanuman
 	rama.rama_called.connect(_on_rama_called)
@@ -63,40 +67,28 @@ func _on_hanuman_detects_rama() -> void:
 	_show_hud_message("🐵 Hanuman hears a cry of anguish...\nHe investigates the source of the voice...")
 
 func _on_meeting_initiated() -> void:
-	"""Hanuman is meeting Rama face to face"""
-	_show_hud_message("🐵 Hanuman: Who are you? Why do you call with such sorrow?")
-	await get_tree().create_timer(2.0).timeout
-
-	_show_hud_message("🟦 Rama: I am Rama, son of Dasharatha. My beloved Sita has been taken by the demon Ravana. I search for her with all my might.")
-	await get_tree().create_timer(3.0).timeout
-
-	_show_hud_message("🐵 Hanuman: Sita? Taken by Ravana? I know of Ravana's Lanka. It lies across the ocean, far to the south.")
-	await get_tree().create_timer(2.5).timeout
-
-	_show_hud_message("🐵 Hanuman: I am Hanuman, mighty warrior of the monkey kingdom. I will help you find Sita!")
-	await get_tree().create_timer(2.0).timeout
-
-	_show_hud_message("🐵 Hanuman: I swear by my strength and loyalty - we shall bring her back!")
+	var lines = [
+		["🐵 Hanuman: Who are you? Why do you call with such sorrow?", 2.5],
+		["🟦 Rama: I am Rama, son of Dasharatha. My beloved Sita has been taken by Ravana.", 3.0],
+		["🐵 Hanuman: Ravana? I know of his fortress Lanka across the ocean!", 2.5],
+		["🐵 Hanuman: I am Hanuman! I will help you rescue Sita!", 2.5],
+		["🐵 Hanuman: I swear by my strength - we shall bring her back!!", 2.0]
+	]
+	for line in lines:
+		_show_hud_message(line[0])
+		await get_tree().create_timer(line[1]).timeout
 
 func _on_hanuman_agrees() -> void:
-	"""Hanuman has agreed to help Rama"""
 	has_met = true
+	if progression:
+		progression.hanuman_met = true
+		progression.advance_stage()
 
 	await get_tree().create_timer(2.0).timeout
+	_show_hud_message("✅ HANUMAN JOINS THE QUEST!\n\nStage 1 Complete: %s" % progression.get_stage_name() if progression else "Stage 1 Complete")
 
-	_show_hud_message("✅ HANUMAN JOINS THE QUEST!\n\nTogether, Rama and Hanuman begin their journey to Lanka...")
-
-	await get_tree().create_timer(4.0).timeout
-
-	print("\n" + "=".repeat(60))
-	print("✅ CHAPTER 1 COMPLETE")
-	print("=".repeat(60))
-	print("Rama has found his ally in Hanuman")
-	print("Together they will search for Sita")
-	print("=".repeat(60) + "\n")
-
-	# Chapter complete - transition could happen here
-	# For now, just show the completion state
+	await get_tree().create_timer(3.0).timeout
+	print("\n✅ CHAPTER 1 COMPLETE - " + progression.get_stage_name() if progression else "")
 
 func _show_hud_message(message: String) -> void:
 	if main_label:

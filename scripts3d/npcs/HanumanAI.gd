@@ -152,10 +152,8 @@ func detect_rama_call(rama_node: Node3D, call_intensity: float) -> void:
 			current_state = State.CURIOUS
 
 func _initiate_meeting() -> void:
-	"""Start the meeting scene between Rama and Hanuman"""
 	has_met_rama = true
-	print("🐵 Hanuman: Who are you? Why do you call with such sorrow?")
-	await get_tree().create_timer(2.0).timeout
+	await get_tree().create_timer(3.5).timeout
 	agreement_reached.emit()
 	current_state = State.FOLLOWING
 
