@@ -24,7 +24,7 @@ func _ready() -> void:
 	current_state = State.IDLE
 	target_position = global_position
 	if model:
-		CharacterVisualEnhancer.enhance_monkey(self)
+		ProfessionalCharacterBuilder.build_monkey_professional(self)
 	_start_new_activity()
 
 func _physics_process(delta: float) -> void:

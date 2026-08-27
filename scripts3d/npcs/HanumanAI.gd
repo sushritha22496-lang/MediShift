@@ -49,8 +49,7 @@ func _ready() -> void:
 		anim_state.play("idle")
 
 	if model:
-		HanumanBuildEnhancer.enhance(model)
-		CharacterVisualEnhancer.enhance_hanuman(self)
+		ProfessionalCharacterBuilder.build_hanuman_professional(self)
 
 func _physics_process(delta: float) -> void:
 	if not is_on_floor():
