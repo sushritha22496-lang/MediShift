@@ -75,6 +75,7 @@ func _create_environment() -> void:
 	env.name = "Environment"
 	add_child(env)
 	EnvironmentBuilder.create_ocean_environment(env)
+	LightingSetup.setup_ocean_lighting(env)
 
 func create_ocean_environment() -> void:
 	var water = MeshInstance3D.new()

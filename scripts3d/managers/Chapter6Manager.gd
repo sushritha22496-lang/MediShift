@@ -166,3 +166,5 @@ func _create_environment() -> void:
 	throne.set_surface_override_material(0, throne_mat)
 	throne.position = Vector3(0, 5, 30)
 	throne_room.add_child(throne)
+
+	LightingSetup.setup_throne_lighting(throne_room)

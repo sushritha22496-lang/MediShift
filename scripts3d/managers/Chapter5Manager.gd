@@ -124,3 +124,4 @@ func _create_environment() -> void:
 	env.name = "Environment"
 	add_child(env)
 	EnvironmentBuilder.create_fortress_environment(env)
+	LightingSetup.setup_fortress_lighting(env)

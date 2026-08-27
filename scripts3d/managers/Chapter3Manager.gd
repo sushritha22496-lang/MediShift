@@ -86,3 +86,4 @@ func _create_environment() -> void:
 	env.name = "Environment"
 	add_child(env)
 	EnvironmentBuilder.create_coast_environment(env)
+	LightingSetup.setup_coast_lighting(env)

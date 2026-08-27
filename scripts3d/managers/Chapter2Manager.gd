@@ -81,3 +81,4 @@ func _create_environment() -> void:
 	env.name = "Environment"
 	add_child(env)
 	EnvironmentBuilder.create_forest_environment(env, "sparse")
+	LightingSetup.setup_forest_lighting(env)
