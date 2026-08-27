@@ -28,6 +28,7 @@ func _ready() -> void:
 	quest_system = SimpleQuestSystem.new()
 	add_child(quest_system)
 
+	_create_environment()
 	_setup_chapter_2()
 
 func _setup_chapter_2() -> void:
@@ -72,3 +73,11 @@ func _show_message(text: String) -> void:
 		hud.show_message(text)
 	else:
 		print(text)
+
+func _create_environment() -> void:
+	if has_node("Environment"):
+		get_node("Environment").queue_free()
+	var env = Node3D.new()
+	env.name = "Environment"
+	add_child(env)
+	EnvironmentBuilder.create_forest_environment(env, "sparse")

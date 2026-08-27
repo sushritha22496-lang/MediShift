@@ -35,6 +35,8 @@ func _ready() -> void:
 	monkey_spawner = MonkeySpawner.new()
 	add_child(monkey_spawner)
 
+	_create_environment()
+
 	# Connect Rama's calling signal to Hanuman
 	rama.rama_called.connect(_on_rama_called)
 	rama.inventory.item_added.connect(_on_item_collected)
@@ -164,3 +166,11 @@ func _update_debug_display() -> void:
 		Engine.get_frames_per_second(), rp.x, rp.y, rp.z, hp.x, hp.y, hp.z, dist, eta,
 		HanumanAI.State.keys()[hanuman.current_state]
 	]
+
+func _create_environment() -> void:
+	if has_node("Environment"):
+		get_node("Environment").queue_free()
+	var env = Node3D.new()
+	env.name = "Environment"
+	add_child(env)
+	EnvironmentBuilder.create_forest_environment(env, "dense")

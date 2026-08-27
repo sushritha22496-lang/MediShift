@@ -13,6 +13,7 @@ signal ocean_crossing_complete
 func _ready() -> void:
 	rama = $Characters/Rama
 	hanuman = $Characters/Hanuman
+	_create_environment()
 	setup_ocean_scene()
 
 func setup_ocean_scene() -> void:
@@ -66,6 +67,14 @@ func get_ocean_progress() -> float:
 
 func _show_message(text: String) -> void:
 	print(text)
+
+func _create_environment() -> void:
+	if has_node("Environment"):
+		get_node("Environment").queue_free()
+	var env = Node3D.new()
+	env.name = "Environment"
+	add_child(env)
+	EnvironmentBuilder.create_ocean_environment(env)
 
 func create_ocean_environment() -> void:
 	var water = MeshInstance3D.new()
