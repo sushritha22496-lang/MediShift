@@ -23,6 +23,8 @@ func _ready() -> void:
 	add_to_group("monkeys")
 	current_state = State.IDLE
 	target_position = global_position
+	if model:
+		CharacterVisualEnhancer.enhance_monkey(self)
 	_start_new_activity()
 
 func _physics_process(delta: float) -> void:

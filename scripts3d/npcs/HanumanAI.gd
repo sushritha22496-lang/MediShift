@@ -50,6 +50,7 @@ func _ready() -> void:
 
 	if model:
 		HanumanBuildEnhancer.enhance(model)
+		CharacterVisualEnhancer.enhance_hanuman(self)
 
 func _physics_process(delta: float) -> void:
 	if not is_on_floor():

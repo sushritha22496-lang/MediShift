@@ -51,6 +51,7 @@ func _ready() -> void:
 
 	if model:
 		HanumanBuildEnhancer.apply_skin_color(model, Color(0.65, 0.45, 0.3), Color(0.15, 0.25, 0.55))
+		CharacterVisualEnhancer.enhance_rama(self)
 
 func _physics_process(delta: float) -> void:
 	# Apply gravity

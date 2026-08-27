@@ -12,6 +12,8 @@ static func create_forest_environment(root: Node3D, theme: String = "dense") -> 
 	var foliage = create_foliage_ground(root)
 	root.add_child(foliage)
 
+	EnvironmentDetailsPack.add_forest_details(root)
+
 static func create_coast_environment(root: Node3D) -> void:
 	var sand = create_sand_plane(50, 30)
 	sand.position = Vector3(0, -0.1, 50)
@@ -25,6 +27,8 @@ static func create_coast_environment(root: Node3D) -> void:
 		var pos = Vector3(randf_range(-80, 80), 0, randf_range(-80, 0))
 		var tree = create_tree(pos, randf_range(0.6, 0.9))
 		root.add_child(tree)
+
+	EnvironmentDetailsPack.add_coast_details(root)
 
 static func create_ocean_environment(root: Node3D) -> void:
 	var water = create_water(300, 300)
@@ -162,6 +166,8 @@ static func create_fortress_structure() -> Node3D:
 
 	var main_building = create_building(Vector3(0, 0, 20), 20, 15, 15)
 	fortress.add_child(main_building)
+
+	EnvironmentDetailsPack.add_fortress_details(fortress)
 
 	return fortress
 
