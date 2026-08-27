@@ -2,28 +2,21 @@ extends Control
 
 class_name MainMenu
 
-@onready var title = $VBoxContainer/Title
-@onready var start_btn = $VBoxContainer/StartButton
-@onready var settings_btn = $VBoxContainer/SettingsButton
-@onready var quit_btn = $VBoxContainer/QuitButton
+@onready var title = $Title
+@onready var start_btn = $StartButton
+@onready var quit_btn = $QuitButton
 
 signal game_started
-signal settings_opened
 signal game_quit
 
 func _ready() -> void:
 	start_btn.pressed.connect(_on_start_pressed)
-	settings_btn.pressed.connect(_on_settings_pressed)
 	quit_btn.pressed.connect(_on_quit_pressed)
-	title.text = "RAMAYANA QUEST"
+	title.text = "🏹 THE RAMAYANA\nAn Epic Journey"
 
 func _on_start_pressed() -> void:
 	game_started.emit()
-	get_tree().root.remove_child(self)
-	queue_free()
-
-func _on_settings_pressed() -> void:
-	settings_opened.emit()
+	get_tree().change_scene_to_file("res://scenes3d/chapters/game_main.tscn")
 
 func _on_quit_pressed() -> void:
 	game_quit.emit()
