@@ -131,6 +131,8 @@ static func _build_character(character: Node3D, spec: Dictionary) -> void:
 		_add_primate_marks(model)
 		_add_gauntlets(model, Color(0.3, 0.3, 0.3))
 		_add_arm_bindings(model)
+		_add_battle_scars(model)
+		_add_leg_wraps(model, Color(0.7, 0.6, 0.4))
 	else:
 		_add_human_hair(model, spec["skin_color"])
 		_add_facial_makeup(model)
@@ -138,6 +140,9 @@ static func _build_character(character: Node3D, spec: Dictionary) -> void:
 		_add_gauntlets(model, Color(0.4, 0.35, 0.3))
 		if spec.has("has_crown") and spec["has_crown"]:
 			_add_necklace(model)
+			_add_shoulder_guards(model)
+			_add_leg_armor(model)
+			_add_chest_embellishment(model)
 
 static func _create_body_part(part: String, muscular: bool, color: Color, scale: float) -> Node3D:
 	if part == "torso":
@@ -658,6 +663,93 @@ static func _add_arm_bindings(model: Node3D) -> void:
 			binding.mesh.size = Vector3(0.5, 0.08, 0.02)
 			binding.position = Vector3(side * 0.8, 0.5 - wrap * 0.25, 0.2)
 			model.add_child(binding)
+
+static func _add_battle_scars(model: Node3D) -> void:
+	# Battle scarification on chest and shoulders
+	var scar_color = Color(0.3, 0.2, 0.1)
+
+	# Chest scars (3 diagonal lines)
+	for i in range(3):
+		var scar = _create_mesh_instance(BoxMesh.new(), scar_color, 0.8)
+		scar.mesh.size = Vector3(0.08, 0.4, 0.01)
+		scar.position = Vector3(-0.15 + i * 0.15, 1.2, 0.3)
+		scar.rotation.z = 0.3
+		model.add_child(scar)
+
+	# Arm scars (wrapped pattern)
+	for side in [-1, 1]:
+		for wrap in range(3):
+			var scar = _create_mesh_instance(BoxMesh.new(), scar_color, 0.8)
+			scar.mesh.size = Vector3(0.5, 0.03, 0.01)
+			scar.position = Vector3(side * 0.8, 0.8 - wrap * 0.3, 0.22)
+			model.add_child(scar)
+
+static func _add_leg_wraps(model: Node3D, color: Color) -> void:
+	# Warrior leg wraps/bindings
+	for side in [-1, 1]:
+		for wrap in range(5):
+			var leg_wrap = _create_mesh_instance(BoxMesh.new(), color, 0.7)
+			leg_wrap.mesh.size = Vector3(0.5, 0.06, 0.02)
+			leg_wrap.position = Vector3(side * 0.4, -0.8 - wrap * 0.25, 0.15)
+			model.add_child(leg_wrap)
+
+static func _add_shoulder_guards(model: Node3D) -> void:
+	# Additional shoulder protection for Rama
+	var guard_color = Color(0.35, 0.35, 0.35)
+	var trim_color = Color(0.8, 0.7, 0.5)
+
+	for side in [-1, 1]:
+		# Extended shoulder plate
+		var plate = _create_mesh_instance(BoxMesh.new(), guard_color, MAT_METAL_ROUGH)
+		plate.mesh.size = Vector3(0.4, 0.3, 0.15)
+		plate.material_override.metallic = 0.8
+		plate.position = Vector3(side * 0.7, 1.5, 0.1)
+		model.add_child(plate)
+
+		# Shoulder trim
+		var trim = _create_mesh_instance(BoxMesh.new(), trim_color, MAT_LEATHER_ROUGH)
+		trim.mesh.size = Vector3(0.42, 0.06, 0.02)
+		trim.position = Vector3(side * 0.7, 1.35, 0.16)
+		model.add_child(trim)
+
+static func _add_leg_armor(model: Node3D) -> void:
+	# Greaves/leg plates for Rama
+	var armor_color = Color(0.35, 0.35, 0.35)
+	var trim_color = Color(0.8, 0.7, 0.5)
+
+	for side in [-1, 1]:
+		# Main greave
+		var greave = _create_mesh_instance(BoxMesh.new(), armor_color, MAT_METAL_ROUGH)
+		greave.mesh.size = Vector3(0.3, 0.6, 0.12)
+		greave.material_override.metallic = 0.7
+		greave.position = Vector3(side * 0.35, -1.2, 0.1)
+		model.add_child(greave)
+
+		# Greave trim bands
+		for band in range(2):
+			var trim = _create_mesh_instance(BoxMesh.new(), trim_color, MAT_LEATHER_ROUGH)
+			trim.mesh.size = Vector3(0.35, 0.06, 0.02)
+			trim.position = Vector3(side * 0.35, -1.4 + band * 0.5, 0.15)
+			model.add_child(trim)
+
+static func _add_chest_embellishment(model: Node3D) -> void:
+	# Sacred emblem on chest for Rama
+	var emblem_color = Color(1.0, 0.84, 0.0)
+
+	# Central jewel
+	var jewel = _create_mesh_instance(SphereMesh.new(), emblem_color, 0.9)
+	jewel.mesh.radius = 0.1
+	jewel.position = Vector3(0, 1.0, 0.3)
+	model.add_child(jewel)
+
+	# Radial lines from jewel
+	for i in range(4):
+		var line = _create_mesh_instance(BoxMesh.new(), emblem_color, 0.8)
+		line.mesh.size = Vector3(0.08, 0.25, 0.02)
+		var angle = (TAU / 4.0) * i
+		line.position = Vector3(cos(angle) * 0.2, 0.8, sin(angle) * 0.2)
+		line.rotation.z = angle
+		model.add_child(line)
 
 static func _clear_character(model: Node3D) -> void:
 	for child in model.get_children():
