@@ -139,13 +139,17 @@ static func _build_character(character: Node3D, spec: Dictionary) -> void:
 	else:
 		_add_human_hair(model, spec["skin_color"])
 		_add_facial_makeup(model)
+		_add_facial_tattoos(model)
 		_add_eye_detail(model)
 		_add_gauntlets(model, Color(0.4, 0.35, 0.3))
+		_add_anklets(model)
 		if spec.has("has_crown") and spec["has_crown"]:
 			_add_necklace(model)
 			_add_shoulder_guards(model)
 			_add_leg_armor(model)
+			_add_back_plate(model)
 			_add_chest_embellishment(model)
+			_add_ornate_boots(model)
 
 static func _create_body_part(part: String, muscular: bool, color: Color, scale: float) -> Node3D:
 	if part == "torso":
@@ -821,6 +825,102 @@ static func _add_hair_adornments(model: Node3D) -> void:
 		bead.mesh.radius = 0.04
 		bead.position = pos
 		model.add_child(bead)
+
+static func _add_facial_tattoos(model: Node3D) -> void:
+	# Spiritual facial tattoos for Rama
+	var tattoo_color = Color(0.2, 0.2, 0.2)
+
+	# Forehead line (vertical)
+	var forehead_line = _create_mesh_instance(BoxMesh.new(), tattoo_color, 0.8)
+	forehead_line.mesh.size = Vector3(0.08, 0.2, 0.01)
+	forehead_line.position = Vector3(0, 2.4, 0.42)
+	model.add_child(forehead_line)
+
+	# Cheek marks (curved)
+	for side in [-1, 1]:
+		for mark in range(2):
+			var cheek = _create_mesh_instance(BoxMesh.new(), tattoo_color, 0.8)
+			cheek.mesh.size = Vector3(0.05, 0.08, 0.01)
+			cheek.position = Vector3(side * 0.2, 1.9 - mark * 0.15, 0.35)
+			cheek.rotation.z = side * 0.2
+			model.add_child(cheek)
+
+static func _add_anklets(model: Node3D) -> void:
+	# Ornamental anklets (jewelry)
+	var anklet_color = Color(1.0, 0.84, 0.0)
+
+	for side in [-1, 1]:
+		# Main anklet band
+		var anklet = _create_mesh_instance(TorusMesh.new(), anklet_color, 0.9)
+		anklet.mesh.inner_radius = 0.2
+		anklet.mesh.outer_radius = 0.25
+		anklet.position = Vector3(side * 0.35, -1.8, 0)
+		model.add_child(anklet)
+
+		# Anklet gems
+		for gem in range(4):
+			var gem_node = _create_mesh_instance(SphereMesh.new(), Color(1.0, 0.0, 0.0), 0.9)
+			gem_node.mesh.radius = 0.03
+			var angle = (TAU / 4.0) * gem
+			gem_node.position = Vector3(side * 0.35 + cos(angle) * 0.25, -1.8, sin(angle) * 0.25)
+			model.add_child(gem_node)
+
+static func _add_back_plate(model: Node3D) -> void:
+	# Back armor plate for Rama (rear protection)
+	var armor_color = Color(0.35, 0.35, 0.35)
+	var trim_color = Color(0.8, 0.7, 0.5)
+
+	# Main back plate
+	var back = _create_mesh_instance(BoxMesh.new(), armor_color, MAT_METAL_ROUGH)
+	back.mesh.size = Vector3(1.0, 1.4, 0.25)
+	back.material_override.metallic = 0.8
+	back.position = Vector3(0, 1.0, -0.3)
+	model.add_child(back)
+
+	# Back plate center ridge (ornamental)
+	var ridge = _create_mesh_instance(BoxMesh.new(), trim_color, MAT_METAL_ROUGH)
+	ridge.mesh.size = Vector3(0.1, 1.5, 0.05)
+	ridge.position = Vector3(0, 1.0, -0.25)
+	model.add_child(ridge)
+
+	# Back plate trim bands
+	for band in range(3):
+		var trim = _create_mesh_instance(BoxMesh.new(), trim_color, MAT_LEATHER_ROUGH)
+		trim.mesh.size = Vector3(1.1, 0.08, 0.02)
+		trim.position = Vector3(0, 1.7 - band * 0.5, -0.28)
+		model.add_child(trim)
+
+static func _add_ornate_boots(model: Node3D) -> void:
+	# Detailed ornate boots for Rama
+	var boot_color = Color(0.3, 0.25, 0.15)
+	var trim_color = Color(0.8, 0.7, 0.5)
+	var gem_color = Color(1.0, 0.0, 0.0)
+
+	for side in [-1, 1]:
+		# Boot shaft
+		var boot = _create_mesh_instance(BoxMesh.new(), boot_color, MAT_LEATHER_ROUGH)
+		boot.mesh.size = Vector3(0.32, 0.5, 0.28)
+		boot.position = Vector3(side * 0.35, -1.55, 0.1)
+		model.add_child(boot)
+
+		# Sole (gold)
+		var sole = _create_mesh_instance(BoxMesh.new(), trim_color, 0.8)
+		sole.mesh.size = Vector3(0.32, 0.06, 0.28)
+		sole.position = Vector3(side * 0.35, -1.95, 0.15)
+		model.add_child(sole)
+
+		# Boot ornamental gem
+		var gem = _create_mesh_instance(SphereMesh.new(), gem_color, 0.9)
+		gem.mesh.radius = 0.05
+		gem.position = Vector3(side * 0.35, -1.4, 0.2)
+		model.add_child(gem)
+
+		# Boot laces (decorative)
+		for lace in range(3):
+			var lace_line = _create_mesh_instance(BoxMesh.new(), Color(0.1, 0.1, 0.1), 0.8)
+			lace_line.mesh.size = Vector3(0.02, 0.35, 0.02)
+			lace_line.position = Vector3(side * 0.35, -1.5 + lace * 0.15, 0.2)
+			model.add_child(lace_line)
 
 static func _clear_character(model: Node3D) -> void:
 	for child in model.get_children():
