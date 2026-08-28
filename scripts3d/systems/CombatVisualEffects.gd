@@ -6,10 +6,14 @@ static func play_hit_effect(position: Vector3, parent: Node3D, damage: int) -> v
 	ParticleEffects.spawn_hit_effect(position, parent, Color.RED)
 	ParticleEffects.spawn_damage_numbers(damage, position + Vector3(0, 1, 0), parent)
 	_create_impact_shockwave(position, parent)
+	_create_blood_splatter(position, parent)
+	_create_dust_cloud(position, parent)
 
 static func play_critical_hit(position: Vector3, parent: Node3D) -> void:
 	_create_critical_flash(position, parent)
 	_create_explosion_effect(position, parent, Color.YELLOW)
+	_create_radiant_burst(position, parent)
+	_create_critical_spark_rain(position, parent)
 
 static func play_heal_effect(position: Vector3, parent: Node3D, amount: int) -> void:
 	_create_heal_aura(position, parent)
@@ -181,3 +185,104 @@ static func _play_default_attack(attacker: Node3D) -> void:
 	tween.set_ease(Tween.EASE_IN_OUT)
 	tween.tween_property(model, "position", original_pos + Vector3(0.2, 0, 0), 0.1)
 	tween.tween_property(model, "position", original_pos, 0.1)
+
+static func _create_blood_splatter(position: Vector3, parent: Node3D) -> void:
+	var splatter = MeshInstance3D.new()
+	var sphere = SphereMesh.new()
+	sphere.radius = 0.3
+	splatter.mesh = sphere
+
+	var mat = StandardMaterial3D.new()
+	mat.albedo_color = Color(0.8, 0.1, 0.1, 0.7)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	splatter.set_surface_override_material(0, mat)
+	splatter.position = position + Vector3(randf_range(-0.2, 0.2), 0, randf_range(-0.2, 0.2))
+
+	parent.add_child(splatter)
+
+	var tween = parent.create_tween()
+	tween.set_parallel(true)
+	tween.set_trans(Tween.TRANS_QUAD)
+	tween.set_ease(Tween.EASE_OUT)
+	tween.tween_property(splatter, "scale", Vector3(0.2, 0.2, 0.2), 0.4)
+	tween.tween_property(splatter, "modulate:a", 0.0, 0.5)
+	await tween.finished
+	splatter.queue_free()
+
+static func _create_dust_cloud(position: Vector3, parent: Node3D) -> void:
+	var dust = MeshInstance3D.new()
+	var box = BoxMesh.new()
+	box.size = Vector3(1.5, 1.5, 1.5)
+	dust.mesh = box
+
+	var mat = StandardMaterial3D.new()
+	mat.albedo_color = Color(0.7, 0.6, 0.5, 0.4)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	dust.set_surface_override_material(0, mat)
+	dust.position = position
+
+	parent.add_child(dust)
+
+	var tween = parent.create_tween()
+	tween.set_parallel(true)
+	tween.set_trans(Tween.TRANS_QUAD)
+	tween.set_ease(Tween.EASE_OUT)
+	tween.tween_property(dust, "scale", Vector3(2.5, 2.5, 2.5), 0.5)
+	tween.tween_property(dust, "modulate:a", 0.0, 0.5)
+	await tween.finished
+	dust.queue_free()
+
+static func _create_radiant_burst(position: Vector3, parent: Node3D) -> void:
+	# Multiple radiating rays for critical effect
+	for i in range(8):
+		var ray = MeshInstance3D.new()
+		var box = BoxMesh.new()
+		box.size = Vector3(0.2, 2.0, 0.2)
+		ray.mesh = box
+
+		var mat = StandardMaterial3D.new()
+		mat.albedo_color = Color(1.0, 0.9, 0.2, 0.8)
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		ray.set_surface_override_material(0, mat)
+
+		var angle = (TAU / 8.0) * i
+		ray.position = position + Vector3(cos(angle) * 0.3, 0, sin(angle) * 0.3)
+		ray.rotation.y = angle
+
+		parent.add_child(ray)
+
+		var tween = parent.create_tween()
+		tween.set_trans(Tween.TRANS_QUAD)
+		tween.set_ease(Tween.EASE_OUT)
+		tween.tween_property(ray, "scale:y", 2.5, 0.3)
+		tween.tween_property(ray, "modulate:a", 0.0, 0.3)
+		await tween.finished
+		ray.queue_free()
+
+static func _create_critical_spark_rain(position: Vector3, parent: Node3D) -> void:
+	# Rain down sparks for critical hit
+	for i in range(12):
+		var spark = MeshInstance3D.new()
+		var sphere = SphereMesh.new()
+		sphere.radius = 0.1
+		spark.mesh = sphere
+
+		var mat = StandardMaterial3D.new()
+		mat.albedo_color = Color(1.0, 0.8, 0.2)
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		spark.set_surface_override_material(0, mat)
+
+		var angle = (TAU / 12.0) * i
+		var start_pos = position + Vector3(cos(angle) * 1.0, 1.5, sin(angle) * 1.0)
+		spark.position = start_pos
+
+		parent.add_child(spark)
+
+		var tween = parent.create_tween()
+		tween.set_parallel(true)
+		tween.set_trans(Tween.TRANS_QUAD)
+		tween.set_ease(Tween.EASE_IN)
+		tween.tween_property(spark, "position", start_pos + Vector3(0, -1.5, 0), 0.6)
+		tween.tween_property(spark, "modulate:a", 0.0, 0.6)
+		await tween.finished
+		spark.queue_free()
