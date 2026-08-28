@@ -118,6 +118,12 @@ func _start_new_activity() -> void:
 	if current_state == State.PLAYING or current_state == State.EXPLORING:
 		target_position = global_position + Vector3(randf_range(-20, 20), 0, randf_range(-20, 20))
 
+	# Use rich animations from Mixamo: dance, sing, chant, gestures, emotes
+	if current_state == State.IDLE and randf() > 0.6:
+		var idle_variants = ["dance", "sing", "chant", "gesture", "emote", "play"]
+		var anim = RiggedCharacterLoader.random_animation(self, idle_variants[randi() % idle_variants.size()])
+		RiggedCharacterLoader.play_animation(self, anim)
+
 func _play_animation(anim_name: String) -> void:
 	"""Play animation safely"""
 	if anim_player and not anim_player.is_playing():
