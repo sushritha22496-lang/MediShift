@@ -136,6 +136,9 @@ static func _build_character(character: Node3D, spec: Dictionary) -> void:
 		_add_arm_bindings(model)
 		_add_battle_scars(model)
 		_add_leg_wraps(model, Color(0.7, 0.6, 0.4))
+		_add_clawed_hands(model)
+		_add_warrior_mark(model)
+		_add_chest_bands(model)
 	else:
 		_add_human_hair(model, spec["skin_color"])
 		_add_facial_makeup(model)
@@ -921,6 +924,56 @@ static func _add_ornate_boots(model: Node3D) -> void:
 			lace_line.mesh.size = Vector3(0.02, 0.35, 0.02)
 			lace_line.position = Vector3(side * 0.35, -1.5 + lace * 0.15, 0.2)
 			model.add_child(lace_line)
+
+static func _add_clawed_hands(model: Node3D) -> void:
+	# Primate clawed hands for Hanuman (warrior appearance)
+	var claw_color = Color(0.2, 0.15, 0.1)
+
+	for side in [-1, 1]:
+		# Claw marks on hand
+		for claw in range(3):
+			var claw_node = _create_mesh_instance(BoxMesh.new(), claw_color, 0.8)
+			claw_node.mesh.size = Vector3(0.08, 0.15, 0.02)
+			claw_node.position = Vector3(side * 0.8, -1.75 - claw * 0.08, 0.2)
+			model.add_child(claw_node)
+
+static func _add_warrior_mark(model: Node3D) -> void:
+	# Divine warrior mark on chest for Hanuman
+	var mark_color = Color(1.0, 0.5, 0.0)
+
+	# Central mark
+	var mark = _create_mesh_instance(SphereMesh.new(), mark_color, 0.9)
+	mark.mesh.radius = 0.12
+	mark.position = Vector3(0, 1.1, 0.3)
+	model.add_child(mark)
+
+	# Radiating lines (4 directions)
+	for i in range(4):
+		var line = _create_mesh_instance(BoxMesh.new(), mark_color, 0.8)
+		line.mesh.size = Vector3(0.08, 0.3, 0.02)
+		var angle = (TAU / 4.0) * i
+		line.position = Vector3(cos(angle) * 0.15, 0.7, sin(angle) * 0.15)
+		line.rotation.z = angle
+		model.add_child(line)
+
+static func _add_chest_bands(model: Node3D) -> void:
+	# Decorative chest bands/straps for Hanuman
+	var band_color = Color(0.7, 0.6, 0.4)
+
+	# Horizontal bands across chest
+	for band in range(3):
+		var chest_band = _create_mesh_instance(BoxMesh.new(), band_color, 0.7)
+		chest_band.mesh.size = Vector3(1.1, 0.08, 0.02)
+		chest_band.position = Vector3(0, 1.3 - band * 0.3, 0.3)
+		model.add_child(chest_band)
+
+	# Diagonal shoulder straps
+	for side in [-1, 1]:
+		var strap = _create_mesh_instance(BoxMesh.new(), band_color, 0.7)
+		strap.mesh.size = Vector3(0.6, 0.08, 0.02)
+		strap.position = Vector3(side * 0.4, 1.5, 0.25)
+		strap.rotation.z = side * 0.3
+		model.add_child(strap)
 
 static func _clear_character(model: Node3D) -> void:
 	for child in model.get_children():
