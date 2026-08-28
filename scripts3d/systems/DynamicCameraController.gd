@@ -2,12 +2,14 @@ extends Camera3D
 
 class_name DynamicCameraController
 
+enum CameraMode { FOLLOW, CINEMATIC, COMBAT, DIALOGUE, TOP_DOWN }
+
 var target: Node3D = null
 var follow_distance: float = 8.0
 var follow_height: float = 4.0
 var follow_smoothness: float = 0.1
 var focus_point: Vector3 = Vector3.ZERO
-var is_combat_mode: bool = false
+var current_camera_mode: CameraMode = CameraMode.FOLLOW
 
 var camera_offset: Vector3 = Vector3(0, 4, 8)
 var rotation_speed: float = 0.05
@@ -20,6 +22,19 @@ var mouse_y: float = 0.0
 var pitch: float = -0.3
 var yaw: float = 0.0
 
+# Camera presets for different modes
+var camera_presets = {
+	CameraMode.FOLLOW: {"distance": 8.0, "height": 4.0, "fov": 75.0, "pitch": -0.3},
+	CameraMode.CINEMATIC: {"distance": 10.0, "height": 5.0, "fov": 60.0, "pitch": -0.4},
+	CameraMode.COMBAT: {"distance": 12.0, "height": 6.0, "fov": 65.0, "pitch": -0.35},
+	CameraMode.DIALOGUE: {"distance": 6.0, "height": 3.0, "fov": 70.0, "pitch": -0.25},
+	CameraMode.TOP_DOWN: {"distance": 15.0, "height": 12.0, "fov": 75.0, "pitch": -1.2}
+}
+
+# Screen shake tracking
+var shake_intensity: float = 0.0
+var shake_time_remaining: float = 0.0
+
 func _ready() -> void:
 	current = true
 	fov = 75.0
@@ -31,23 +46,31 @@ func _process(delta: float) -> void:
 	_handle_input()
 	_update_camera_position(delta)
 	_update_camera_rotation(delta)
+	_update_screen_shake(delta)
 
 func set_target(node: Node3D) -> void:
 	target = node
 	focus_point = target.global_position
 
+func set_camera_mode(mode: CameraMode, transition_time: float = 0.5) -> void:
+	current_camera_mode = mode
+	if camera_presets.has(mode):
+		var preset = camera_presets[mode]
+		var tween = get_tree().create_tween()
+		tween.set_trans(Tween.TRANS_SINE)
+		tween.set_ease(Tween.EASE_IN_OUT)
+
+		tween.tween_parallel()
+		tween.tween_property(self, "follow_distance", preset["distance"], transition_time)
+		tween.tween_property(self, "follow_height", preset["height"], transition_time)
+		tween.tween_property(self, "fov", preset["fov"], transition_time)
+		tween.tween_property(self, "pitch", preset["pitch"], transition_time)
+
 func set_combat_mode(enabled: bool) -> void:
-	is_combat_mode = enabled
 	if enabled:
-		follow_distance = 12.0
-		follow_height = 6.0
-		var tween = get_tree().create_tween()
-		tween.tween_property(self, "fov", 65.0, 0.5)
+		set_camera_mode(CameraMode.COMBAT, 0.5)
 	else:
-		follow_distance = 8.0
-		follow_height = 4.0
-		var tween = get_tree().create_tween()
-		tween.tween_property(self, "fov", 75.0, 0.5)
+		set_camera_mode(CameraMode.FOLLOW, 0.5)
 
 func look_at_target() -> void:
 	if target:
@@ -102,16 +125,14 @@ func _update_camera_rotation(delta: float) -> void:
 	look_at(global_position + new_forward, Vector3.UP)
 
 func apply_screen_shake(intensity: float, duration: float = 0.3) -> void:
-	var original_pos = global_position
-	var tween = get_tree().create_tween()
-	for i in range(int(duration * 60)):
-		var shake_offset = Vector3(
-			randf_range(-intensity, intensity),
-			randf_range(-intensity, intensity),
-			randf_range(-intensity, intensity)
-		)
-		tween.tween_property(self, "global_position", original_pos + shake_offset, 0.01)
-	tween.tween_property(self, "global_position", original_pos, 0.05)
+	shake_intensity = intensity
+	shake_time_remaining = duration
+
+func _update_screen_shake(delta: float) -> void:
+	if shake_time_remaining > 0:
+		shake_time_remaining -= delta
+	else:
+		shake_intensity = 0.0
 
 func focus_on_action(focus_target: Vector3, zoom_level: float = 5.0) -> void:
 	focus_point = focus_target
