@@ -125,11 +125,14 @@ static func _build_character(character: Node3D, spec: Dictionary) -> void:
 			"mace":
 				_add_mace(model)
 
-	# Add detailed features
+	# Add detailed features (hair, makeup, embellishments)
 	if spec.has("is_muscular") and spec["is_muscular"]:
 		_add_monkey_hair(model)
+		_add_primate_marks(model)
 	else:
 		_add_human_hair(model, spec["skin_color"])
+		_add_facial_makeup(model)
+		_add_eye_detail(model)
 
 static func _create_body_part(part: String, muscular: bool, color: Color, scale: float) -> Node3D:
 	if part == "torso":
@@ -302,19 +305,44 @@ static func _create_mesh_instance(mesh: Mesh, color: Color, roughness: float) ->
 	return instance
 
 static func _add_armor(model: Node3D, color: Color) -> void:
-	var chest = _create_mesh_instance(BoxMesh.new(), Color(0.35, 0.35, 0.35), MAT_METAL_ROUGH)
+	var armor_color = Color(0.35, 0.35, 0.35)
+	var trim_color = Color(0.8, 0.7, 0.5)
+
+	# Main chest plate
+	var chest = _create_mesh_instance(BoxMesh.new(), armor_color, MAT_METAL_ROUGH)
 	chest.mesh.size = Vector3(1.15, 1.5, 0.3)
 	chest.material_override.metallic = 0.8
 	chest.position = Vector3(0, 1.0, 0.15)
 	model.add_child(chest)
 
+	# Gold trim on chest
+	var chest_trim = _create_mesh_instance(BoxMesh.new(), trim_color, MAT_LEATHER_ROUGH)
+	chest_trim.mesh.size = Vector3(1.2, 0.08, 0.02)
+	chest_trim.position = Vector3(0, 1.0, 0.17)
+	model.add_child(chest_trim)
+
+	# Shoulder armor
 	for side in [-1, 1]:
-		var shoulder = _create_mesh_instance(SphereMesh.new(), Color(0.35, 0.35, 0.35), MAT_METAL_ROUGH)
+		var shoulder = _create_mesh_instance(SphereMesh.new(), armor_color, MAT_METAL_ROUGH)
 		shoulder.mesh.radius = 0.3
 		shoulder.material_override.metallic = 0.8
 		shoulder.position = Vector3(side * 0.65, 1.5, 0)
 		shoulder.scale = Vector3(1.2, 1.0, 1.0)
 		model.add_child(shoulder)
+
+		# Shoulder studs/rivets
+		for j in range(3):
+			var rivet = _create_mesh_instance(SphereMesh.new(), Color(0.2, 0.2, 0.2), 0.8)
+			rivet.mesh.radius = 0.05
+			rivet.position = Vector3(side * 0.65, 1.5 - j * 0.2, 0.12)
+			model.add_child(rivet)
+
+	# Armor straps
+	for i in range(3):
+		var strap = _create_mesh_instance(BoxMesh.new(), trim_color, MAT_LEATHER_ROUGH)
+		strap.mesh.size = Vector3(1.0, 0.06, 0.02)
+		strap.position = Vector3(0, 1.5 - i * 0.35, 0.17)
+		model.add_child(strap)
 
 static func _add_crown(model: Node3D) -> void:
 	var crown = _create_mesh_instance(TorusMesh.new(), Color(1.0, 0.84, 0.0), MAT_METAL_ROUGH)
@@ -355,55 +383,137 @@ static func _add_sword(model: Node3D) -> void:
 	holder.name = "Sword"
 	model.add_child(holder)
 
-	var blade = _create_mesh_instance(BoxMesh.new(), Color(0.75, 0.78, 0.8), MAT_METAL_ROUGH)
+	var blade_color = Color(0.75, 0.78, 0.8)
+	var guard_color = Color(0.8, 0.7, 0.5)
+
+	# Main blade
+	var blade = _create_mesh_instance(BoxMesh.new(), blade_color, MAT_METAL_ROUGH)
 	blade.mesh.size = Vector3(0.12, 2.5, 0.02)
 	blade.material_override.metallic = 0.98
 	blade.position = Vector3(1.0, 0.8, 0)
 	holder.add_child(blade)
 
-	var guard = _create_mesh_instance(BoxMesh.new(), Color(0.8, 0.7, 0.5), MAT_LEATHER_ROUGH)
+	# Blade edge highlight (sharper look)
+	var edge = _create_mesh_instance(BoxMesh.new(), Color(0.9, 0.92, 0.95), 0.2)
+	edge.mesh.size = Vector3(0.08, 2.5, 0.005)
+	edge.material_override.metallic = 1.0
+	edge.position = Vector3(1.0, 0.8, 0.013)
+	holder.add_child(edge)
+
+	# Crossguard (ornate)
+	var guard = _create_mesh_instance(BoxMesh.new(), guard_color, MAT_LEATHER_ROUGH)
 	guard.mesh.size = Vector3(0.5, 0.1, 0.08)
 	guard.position = Vector3(1.0, 0.0, 0)
 	holder.add_child(guard)
 
-	var hilt = _create_mesh_instance(CylinderMesh.new(), Color(0.8, 0.7, 0.5), MAT_LEATHER_ROUGH)
+	# Guard decorative studs
+	for i in range(3):
+		var stud = _create_mesh_instance(SphereMesh.new(), Color(1.0, 0.84, 0.0), 0.9)
+		stud.mesh.radius = 0.04
+		stud.position = Vector3(1.0 + (i - 1) * 0.15, 0.0, 0.06)
+		holder.add_child(stud)
+
+	# Leather-wrapped hilt
+	var hilt = _create_mesh_instance(CylinderMesh.new(), guard_color, MAT_LEATHER_ROUGH)
 	hilt.mesh.radius = 0.08
 	hilt.mesh.height = 0.4
 	hilt.position = Vector3(1.0, -0.3, 0)
 	holder.add_child(hilt)
 
-	var pommel = _create_mesh_instance(SphereMesh.new(), Color(0.8, 0.7, 0.5), MAT_LEATHER_ROUGH)
+	# Wrapping pattern on hilt
+	for i in range(4):
+		var wrap = _create_mesh_instance(BoxMesh.new(), Color(0.6, 0.5, 0.3), 0.8)
+		wrap.mesh.size = Vector3(0.18, 0.05, 0.01)
+		wrap.position = Vector3(1.0, -0.2 + i * 0.1, 0.08)
+		holder.add_child(wrap)
+
+	# Pommel (ornate sphere)
+	var pommel = _create_mesh_instance(SphereMesh.new(), Color(1.0, 0.84, 0.0), 0.9)
 	pommel.mesh.radius = 0.1
 	pommel.position = Vector3(1.0, -0.6, 0)
 	holder.add_child(pommel)
+
+	# Pommel rim
+	var pommel_rim = _create_mesh_instance(TorusMesh.new(), Color(0.8, 0.7, 0.5), MAT_LEATHER_ROUGH)
+	pommel_rim.mesh.inner_radius = 0.08
+	pommel_rim.mesh.outer_radius = 0.12
+	pommel_rim.position = Vector3(1.0, -0.6, 0)
+	holder.add_child(pommel_rim)
 
 static func _add_mace(model: Node3D) -> void:
 	var holder = Node3D.new()
 	holder.name = "Mace"
 	model.add_child(holder)
 
-	var handle = _create_mesh_instance(CylinderMesh.new(), Color(0.55, 0.4, 0.2), MAT_LEATHER_ROUGH)
+	var handle_color = Color(0.55, 0.4, 0.2)
+	var trim_color = Color(0.8, 0.7, 0.5)
+	var head_color = Color(0.45, 0.35, 0.2)
+
+	# Main handle
+	var handle = _create_mesh_instance(CylinderMesh.new(), handle_color, MAT_LEATHER_ROUGH)
 	handle.mesh.radius = 0.12
 	handle.mesh.height = 1.6
 	handle.position = Vector3(-1.1, 0.5, 0)
 	holder.add_child(handle)
 
-	var head = _create_mesh_instance(SphereMesh.new(), Color(0.45, 0.35, 0.2), MAT_METAL_ROUGH)
+	# Handle wrapping pattern (leather straps)
+	for i in range(5):
+		var wrap = _create_mesh_instance(BoxMesh.new(), trim_color, 0.8)
+		wrap.mesh.size = Vector3(0.28, 0.05, 0.01)
+		wrap.position = Vector3(-1.1, 1.3 - i * 0.25, 0.12)
+		holder.add_child(wrap)
+
+	# Guard/base ring at handle junction
+	var guard = _create_mesh_instance(TorusMesh.new(), trim_color, MAT_LEATHER_ROUGH)
+	guard.mesh.inner_radius = 0.1
+	guard.mesh.outer_radius = 0.16
+	guard.position = Vector3(-1.1, 1.55, 0)
+	holder.add_child(guard)
+
+	# Main mace head
+	var head = _create_mesh_instance(SphereMesh.new(), head_color, MAT_METAL_ROUGH)
 	head.mesh.radius = 0.4
 	head.material_override.metallic = 0.7
 	head.position = Vector3(-1.1, 2.0, 0)
 	holder.add_child(head)
 
+	# Decorative band on head (middle)
+	var head_band = _create_mesh_instance(TorusMesh.new(), trim_color, MAT_METAL_ROUGH)
+	head_band.mesh.inner_radius = 0.35
+	head_band.mesh.outer_radius = 0.42
+	head_band.position = Vector3(-1.1, 2.0, 0)
+	holder.add_child(head_band)
+
+	# Spikes - alternating heights for visual interest
 	for i in range(12):
-		var spike = _create_mesh_instance(CylinderMesh.new(), Color(0.45, 0.35, 0.2), MAT_METAL_ROUGH)
+		var spike = _create_mesh_instance(CylinderMesh.new(), head_color, MAT_METAL_ROUGH)
+		var height_variation = 0.25 if i % 2 == 0 else 0.3
 		spike.mesh.top_radius = 0.02
 		spike.mesh.bottom_radius = 0.1
-		spike.mesh.height = 0.25
+		spike.mesh.height = height_variation
 		spike.material_override.metallic = 0.7
 		var angle = (TAU / 12.0) * i
 		var radius = 0.32
-		spike.position = Vector3(-1.1 + cos(angle) * radius, 2.0 + sin(angle) * radius * 0.7, sin(angle) * radius * 0.5)
+		var z_offset = sin(angle) * radius * 0.5
+		spike.position = Vector3(-1.1 + cos(angle) * radius, 2.0 + sin(angle) * radius * 0.7, z_offset)
 		holder.add_child(spike)
+
+	# Spike tips (ornamental)
+	for i in range(12):
+		if i % 2 == 0:
+			var tip = _create_mesh_instance(SphereMesh.new(), Color(0.6, 0.5, 0.3), 0.9)
+			tip.mesh.radius = 0.05
+			var angle = (TAU / 12.0) * i
+			var radius = 0.32
+			var spike_height = 2.3
+			tip.position = Vector3(-1.1 + cos(angle) * radius, spike_height, sin(angle) * radius * 0.5)
+			holder.add_child(tip)
+
+	# Top ornamental cap
+	var cap = _create_mesh_instance(SphereMesh.new(), trim_color, 0.9)
+	cap.mesh.radius = 0.12
+	cap.position = Vector3(-1.1, 2.55, 0)
+	holder.add_child(cap)
 
 static func _add_human_hair(model: Node3D, base_skin: Color) -> void:
 	# Hair color (darker than skin)
@@ -428,6 +538,7 @@ static func _add_human_hair(model: Node3D, base_skin: Color) -> void:
 
 static func _add_monkey_hair(model: Node3D) -> void:
 	var hair_color = Color(0.3, 0.15, 0.05)
+	var highlight_color = Color(0.45, 0.25, 0.1)
 
 	# Fur on chest
 	var chest_fur = _create_mesh_instance(SphereMesh.new(), hair_color, 0.4)
@@ -436,12 +547,60 @@ static func _add_monkey_hair(model: Node3D) -> void:
 	chest_fur.scale = Vector3(0.8, 1.0, 0.6)
 	model.add_child(chest_fur)
 
+	# Chest fur highlight (lighter shade)
+	var chest_highlight = _create_mesh_instance(SphereMesh.new(), highlight_color, 0.5)
+	chest_highlight.mesh.radius = 0.3
+	chest_highlight.position = Vector3(0, 1.4, 0.3)
+	chest_highlight.scale = Vector3(0.6, 0.7, 0.4)
+	model.add_child(chest_highlight)
+
 	# Back fur
 	var back_fur = _create_mesh_instance(SphereMesh.new(), hair_color, 0.4)
 	back_fur.mesh.radius = 0.3
 	back_fur.position = Vector3(0, 1.2, -0.3)
 	back_fur.scale = Vector3(0.7, 0.9, 0.5)
 	model.add_child(back_fur)
+
+	# Head hair (crown)
+	var head_hair = _create_mesh_instance(SphereMesh.new(), hair_color, 0.4)
+	head_hair.mesh.radius = 0.4
+	head_hair.position = Vector3(0, 2.3, 0)
+	head_hair.scale = Vector3(1.0, 1.2, 0.9)
+	model.add_child(head_hair)
+
+static func _add_primate_marks(model: Node3D) -> void:
+	# Facial markings for Hanuman
+	var mark_color = Color(1.0, 0.8, 0.0)
+
+	# Forehead mark
+	var forehead = _create_mesh_instance(BoxMesh.new(), mark_color, 0.7)
+	forehead.mesh.size = Vector3(0.3, 0.15, 0.02)
+	forehead.position = Vector3(0, 2.3, 0.42)
+	model.add_child(forehead)
+
+static func _add_facial_makeup(model: Node3D) -> void:
+	# Bindi/tilaka (spiritual mark)
+	var bindi = _create_mesh_instance(SphereMesh.new(), Color(1.0, 0.0, 0.0), 0.8)
+	bindi.mesh.radius = 0.08
+	bindi.position = Vector3(0, 2.25, 0.41)
+	model.add_child(bindi)
+
+static func _add_eye_detail(model: Node3D) -> void:
+	# Eye shadow/definition for realism
+	var shadow_color = Color(0.5, 0.4, 0.3)
+
+	for i in range(2):
+		# Under eye shadow
+		var shadow = _create_mesh_instance(BoxMesh.new(), shadow_color, 0.6)
+		shadow.mesh.size = Vector3(0.12, 0.04, 0.02)
+		shadow.position = Vector3(sign(i - 0.5) * 0.15, 0.0, 0.38)
+		model.add_child(shadow)
+
+		# Eyelash definition
+		var lash = _create_mesh_instance(BoxMesh.new(), Color.BLACK, 0.7)
+		lash.mesh.size = Vector3(0.13, 0.02, 0.01)
+		lash.position = Vector3(sign(i - 0.5) * 0.15, 0.14, 0.36)
+		model.add_child(lash)
 
 static func _clear_character(model: Node3D) -> void:
 	for child in model.get_children():
