@@ -125,6 +125,12 @@ static func _build_character(character: Node3D, spec: Dictionary) -> void:
 			"mace":
 				_add_mace(model)
 
+	# Add detailed features
+	if spec.has("is_muscular") and spec["is_muscular"]:
+		_add_monkey_hair(model)
+	else:
+		_add_human_hair(model, spec["skin_color"])
+
 static func _create_body_part(part: String, muscular: bool, color: Color, scale: float) -> Node3D:
 	if part == "torso":
 		return _create_torso(muscular, color, scale)
@@ -181,11 +187,37 @@ static func _create_head(color: Color, pos: Vector3, monkey: bool) -> Node3D:
 	return head
 
 static func _add_human_head_features(head: Node3D) -> void:
+	# Eyes
 	for i in range(2):
-		var eye = _create_mesh_instance(SphereMesh.new(), Color.BLACK, MAT_SKIN_SMOOTH)
-		eye.mesh.radius = 0.1
-		eye.position = Vector3(sign(i - 0.5) * -0.15, 0.1, 0.35)
-		head.add_child(eye)
+		# White of eye
+		var white = _create_mesh_instance(SphereMesh.new(), Color.WHITE, MAT_SKIN_SMOOTH)
+		white.mesh.radius = 0.09
+		white.position = Vector3(sign(i - 0.5) * 0.15, 0.1, 0.36)
+		head.add_child(white)
+
+		# Pupil
+		var pupil = _create_mesh_instance(SphereMesh.new(), Color.BLACK, MAT_SKIN_SMOOTH)
+		pupil.mesh.radius = 0.05
+		pupil.position = Vector3(sign(i - 0.5) * 0.15, 0.1, 0.38)
+		head.add_child(pupil)
+
+		# Eyebrow
+		var brow = _create_mesh_instance(BoxMesh.new(), Color(0.3, 0.15, 0.05), MAT_SKIN_SMOOTH)
+		brow.mesh.size = Vector3(0.15, 0.05, 0.03)
+		brow.position = Vector3(sign(i - 0.5) * 0.15, 0.25, 0.35)
+		head.add_child(brow)
+
+	# Nose bridge
+	var nose = _create_mesh_instance(BoxMesh.new(), Color(0.65, 0.45, 0.3), MAT_SKIN_SMOOTH)
+	nose.mesh.size = Vector3(0.1, 0.15, 0.08)
+	nose.position = Vector3(0, -0.05, 0.38)
+	head.add_child(nose)
+
+	# Mouth line
+	var mouth = _create_mesh_instance(BoxMesh.new(), Color(0.5, 0.25, 0.15), MAT_SKIN_SMOOTH)
+	mouth.mesh.size = Vector3(0.2, 0.04, 0.02)
+	mouth.position = Vector3(0, -0.2, 0.35)
+	head.add_child(mouth)
 
 static func _add_monkey_head_features(head: Node3D) -> void:
 	# Ears
@@ -372,6 +404,44 @@ static func _add_mace(model: Node3D) -> void:
 		var radius = 0.32
 		spike.position = Vector3(-1.1 + cos(angle) * radius, 2.0 + sin(angle) * radius * 0.7, sin(angle) * radius * 0.5)
 		holder.add_child(spike)
+
+static func _add_human_hair(model: Node3D, base_skin: Color) -> void:
+	# Hair color (darker than skin)
+	var hair_color = Color(base_skin.r * 0.4, base_skin.g * 0.4, base_skin.b * 0.4)
+
+	# Main hair mass (sphere)
+	var hair_main = _create_mesh_instance(SphereMesh.new(), hair_color, 0.4)
+	hair_main.mesh.radius = 0.45
+	hair_main.position = Vector3(0, 2.2, 0)
+	hair_main.scale = Vector3(1.0, 1.3, 0.9)
+	model.add_child(hair_main)
+
+	# Hair strands for texture (thin cylinders)
+	for i in range(6):
+		var strand = _create_mesh_instance(CylinderMesh.new(), hair_color, 0.5)
+		strand.mesh.radius = 0.08
+		strand.mesh.height = 0.6
+		var angle = (TAU / 6.0) * i
+		strand.position = Vector3(cos(angle) * 0.35, 2.3, sin(angle) * 0.35)
+		strand.rotation.z = angle
+		model.add_child(strand)
+
+static func _add_monkey_hair(model: Node3D) -> void:
+	var hair_color = Color(0.3, 0.15, 0.05)
+
+	# Fur on chest
+	var chest_fur = _create_mesh_instance(SphereMesh.new(), hair_color, 0.4)
+	chest_fur.mesh.radius = 0.35
+	chest_fur.position = Vector3(0, 1.3, 0.25)
+	chest_fur.scale = Vector3(0.8, 1.0, 0.6)
+	model.add_child(chest_fur)
+
+	# Back fur
+	var back_fur = _create_mesh_instance(SphereMesh.new(), hair_color, 0.4)
+	back_fur.mesh.radius = 0.3
+	back_fur.position = Vector3(0, 1.2, -0.3)
+	back_fur.scale = Vector3(0.7, 0.9, 0.5)
+	model.add_child(back_fur)
 
 static func _clear_character(model: Node3D) -> void:
 	for child in model.get_children():
