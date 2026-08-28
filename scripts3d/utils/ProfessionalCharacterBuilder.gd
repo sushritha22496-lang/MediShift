@@ -108,9 +108,12 @@ static func _build_character(character: Node3D, spec: Dictionary) -> void:
 	# Accessories
 	if spec.has("has_armor") and spec["has_armor"]:
 		_add_armor(model, spec["skin_color"])
+		_add_belt(model)
+		_add_cape(model)
 
 	if spec.has("has_crown") and spec["has_crown"]:
 		_add_crown(model)
+		_add_hair_adornments(model)
 
 	if spec.has("has_tail") and spec["has_tail"]:
 		_add_tail(model, spec["skin_color"])
@@ -750,6 +753,74 @@ static func _add_chest_embellishment(model: Node3D) -> void:
 		line.position = Vector3(cos(angle) * 0.2, 0.8, sin(angle) * 0.2)
 		line.rotation.z = angle
 		model.add_child(line)
+
+static func _add_belt(model: Node3D) -> void:
+	# Ornate belt at waist
+	var belt_color = Color(0.4, 0.35, 0.25)
+	var buckle_color = Color(1.0, 0.84, 0.0)
+
+	# Main belt
+	var belt = _create_mesh_instance(BoxMesh.new(), belt_color, MAT_LEATHER_ROUGH)
+	belt.mesh.size = Vector3(1.2, 0.12, 0.04)
+	belt.position = Vector3(0, 0.6, 0.15)
+	model.add_child(belt)
+
+	# Ornate buckle
+	var buckle = _create_mesh_instance(BoxMesh.new(), buckle_color, 0.9)
+	buckle.mesh.size = Vector3(0.2, 0.15, 0.05)
+	buckle.position = Vector3(0, 0.6, 0.2)
+	model.add_child(buckle)
+
+	# Buckle gem
+	var gem = _create_mesh_instance(SphereMesh.new(), Color(1.0, 0.0, 0.0), 0.9)
+	gem.mesh.radius = 0.05
+	gem.position = Vector3(0, 0.6, 0.28)
+	model.add_child(gem)
+
+static func _add_cape(model: Node3D) -> void:
+	# Royal cape for Rama
+	var cape_color = Color(0.5, 0.1, 0.1)
+
+	# Left cape
+	var cape_left = _create_mesh_instance(BoxMesh.new(), cape_color, 0.4)
+	cape_left.mesh.size = Vector3(0.8, 1.5, 0.05)
+	cape_left.position = Vector3(-0.6, 0.5, -0.4)
+	cape_left.rotation.z = 0.2
+	model.add_child(cape_left)
+
+	# Right cape
+	var cape_right = _create_mesh_instance(BoxMesh.new(), cape_color, 0.4)
+	cape_right.mesh.size = Vector3(0.8, 1.5, 0.05)
+	cape_right.position = Vector3(0.6, 0.5, -0.4)
+	cape_right.rotation.z = -0.2
+	model.add_child(cape_right)
+
+	# Cape trim (gold)
+	var trim_color = Color(1.0, 0.84, 0.0)
+	for side in [-1, 1]:
+		var trim = _create_mesh_instance(BoxMesh.new(), trim_color, 0.8)
+		trim.mesh.size = Vector3(0.8, 0.08, 0.02)
+		trim.position = Vector3(side * 0.6, 1.8, -0.38)
+		model.add_child(trim)
+
+static func _add_hair_adornments(model: Node3D) -> void:
+	# Decorative beads and adornments in hair
+	var bead_color = Color(1.0, 0.84, 0.0)
+
+	# Beads woven into hair (scattered placement)
+	var positions = [
+		Vector3(-0.25, 2.5, 0.2),
+		Vector3(0.25, 2.5, 0.2),
+		Vector3(-0.1, 2.6, 0.35),
+		Vector3(0.1, 2.6, 0.35),
+		Vector3(0, 2.4, -0.1)
+	]
+
+	for pos in positions:
+		var bead = _create_mesh_instance(SphereMesh.new(), bead_color, 0.9)
+		bead.mesh.radius = 0.04
+		bead.position = pos
+		model.add_child(bead)
 
 static func _clear_character(model: Node3D) -> void:
 	for child in model.get_children():
