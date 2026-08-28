@@ -23,8 +23,10 @@ func _ready() -> void:
 	add_to_group("monkeys")
 	current_state = State.IDLE
 	target_position = global_position
-	if model:
-		ProfessionalCharacterBuilder.build_monkey_professional(self)
+	# Load rigged character from Mixamo or fallback to procedural
+	if not RiggedCharacterLoader.load_character(self, "monkey"):
+		if model:
+			ProfessionalCharacterBuilder.build_monkey_professional(self)
 	_start_new_activity()
 
 func _physics_process(delta: float) -> void:

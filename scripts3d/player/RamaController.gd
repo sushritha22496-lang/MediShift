@@ -49,8 +49,10 @@ func _ready() -> void:
 		add_child(anim_state)
 		anim_state.play("idle")
 
-	if model:
-		ProfessionalCharacterBuilder.build_rama_professional(self)
+	# Load rigged character from Mixamo or fallback to procedural
+	if not RiggedCharacterLoader.load_character(self, "rama"):
+		if model:
+			ProfessionalCharacterBuilder.build_rama_professional(self)
 
 func _physics_process(delta: float) -> void:
 	# Apply gravity
