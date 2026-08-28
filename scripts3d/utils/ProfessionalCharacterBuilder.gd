@@ -129,10 +129,15 @@ static func _build_character(character: Node3D, spec: Dictionary) -> void:
 	if spec.has("is_muscular") and spec["is_muscular"]:
 		_add_monkey_hair(model)
 		_add_primate_marks(model)
+		_add_gauntlets(model, Color(0.3, 0.3, 0.3))
+		_add_arm_bindings(model)
 	else:
 		_add_human_hair(model, spec["skin_color"])
 		_add_facial_makeup(model)
 		_add_eye_detail(model)
+		_add_gauntlets(model, Color(0.4, 0.35, 0.3))
+		if spec.has("has_crown") and spec["has_crown"]:
+			_add_necklace(model)
 
 static func _create_body_part(part: String, muscular: bool, color: Color, scale: float) -> Node3D:
 	if part == "torso":
@@ -601,6 +606,58 @@ static func _add_eye_detail(model: Node3D) -> void:
 		lash.mesh.size = Vector3(0.13, 0.02, 0.01)
 		lash.position = Vector3(sign(i - 0.5) * 0.15, 0.14, 0.36)
 		model.add_child(lash)
+
+static func _add_gauntlets(model: Node3D, color: Color) -> void:
+	# Gauntlets/bracers on both wrists for protection
+	for side in [-1, 1]:
+		# Main gauntlet
+		var gauntlet = _create_mesh_instance(BoxMesh.new(), color, MAT_METAL_ROUGH)
+		gauntlet.mesh.size = Vector3(0.3, 0.25, 0.2)
+		gauntlet.material_override.metallic = 0.7
+		gauntlet.position = Vector3(side * 0.8, -1.7, 0)
+		model.add_child(gauntlet)
+
+		# Decorative rivets on gauntlet (3 rows)
+		for row in range(3):
+			var rivet = _create_mesh_instance(SphereMesh.new(), Color(0.2, 0.2, 0.2), 0.8)
+			rivet.mesh.radius = 0.04
+			rivet.position = Vector3(side * 0.8, -1.5 - row * 0.1, 0.12)
+			model.add_child(rivet)
+
+static func _add_necklace(model: Node3D) -> void:
+	# Spiritual necklace for Rama
+	var necklace_color = Color(1.0, 0.84, 0.0)
+
+	# Main necklace chain
+	var chain = _create_mesh_instance(TorusMesh.new(), necklace_color, 0.9)
+	chain.mesh.inner_radius = 0.4
+	chain.mesh.outer_radius = 0.45
+	chain.position = Vector3(0, 1.3, 0)
+	model.add_child(chain)
+
+	# Pendant (sacred jewel)
+	var pendant = _create_mesh_instance(SphereMesh.new(), Color(1.0, 0.0, 0.0), 0.9)
+	pendant.mesh.radius = 0.08
+	pendant.position = Vector3(0, 0.95, 0.25)
+	model.add_child(pendant)
+
+	# Pendant shine/highlight
+	var shine = _create_mesh_instance(SphereMesh.new(), Color(1.0, 0.5, 0.5), 0.85)
+	shine.mesh.radius = 0.04
+	shine.position = Vector3(0.05, 0.98, 0.28)
+	model.add_child(shine)
+
+static func _add_arm_bindings(model: Node3D) -> void:
+	# Rope/cloth bindings on Hanuman's arms for warrior appearance
+	var binding_color = Color(0.7, 0.6, 0.4)
+
+	for side in [-1, 1]:
+		# Spiral wrappings on arms
+		for wrap in range(4):
+			var binding = _create_mesh_instance(BoxMesh.new(), binding_color, 0.7)
+			binding.mesh.size = Vector3(0.5, 0.08, 0.02)
+			binding.position = Vector3(side * 0.8, 0.5 - wrap * 0.25, 0.2)
+			model.add_child(binding)
 
 static func _clear_character(model: Node3D) -> void:
 	for child in model.get_children():
