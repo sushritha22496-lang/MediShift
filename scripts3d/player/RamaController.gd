@@ -24,7 +24,7 @@ var call_intensity: float = 0.0  # How loud/emotional the call is
 
 # Systems
 var inventory: InventorySystem
-var anim_state: AnimationStateMachine
+var anim_controller: SmoothAnimationController
 var detection_range: float = 10.0
 
 # Signals
@@ -42,17 +42,15 @@ func _ready() -> void:
 	inventory = InventorySystem.new()
 	add_child(inventory)
 
-	if anim_player:
-		CharacterAnimationSetup.load_animations_for_player(anim_player, "hanuman_final")
-		anim_state = AnimationStateMachine.new()
-		anim_state.anim_player = anim_player
-		add_child(anim_state)
-		anim_state.play("idle")
-
 	# Load rigged character from Mixamo or fallback to procedural
 	if not RiggedCharacterLoader.load_character(self, "rama"):
 		if model:
 			ProfessionalCharacterBuilder.build_rama_professional(self)
+
+	# Initialize smooth animation controller
+	anim_controller = SmoothAnimationController.new()
+	add_child(anim_controller)
+	anim_controller.initialize(self)
 
 func _physics_process(delta: float) -> void:
 	# Apply gravity
@@ -66,6 +64,11 @@ func _physics_process(delta: float) -> void:
 
 	# Handle calling for Sita
 	_handle_calling(delta)
+
+	# Update animations based on velocity
+	if anim_controller:
+		var is_sprint = Input.is_action_pressed("dash")
+		anim_controller.update(velocity, delta, is_sprint)
 
 	move_and_slide()
 
@@ -83,13 +86,9 @@ func _handle_movement(delta: float) -> void:
 		velocity.x = move_dir.x * spd
 		velocity.z = move_dir.z * spd
 		model.rotation.y = lerp_angle(model.rotation.y, atan2(move_dir.x, move_dir.z), rotate_speed * delta)
-		if not is_calling and anim_state:
-			anim_state.play("run" if is_sprint else "walk")
 	else:
 		velocity.x = lerp(velocity.x, 0.0, 5.0 * delta)
 		velocity.z = lerp(velocity.z, 0.0, 5.0 * delta)
-		if not is_calling and anim_state:
-			anim_state.play("idle")
 
 func _handle_calling(delta: float) -> void:
 	"""Handle Rama calling for Sita"""
@@ -103,14 +102,15 @@ func _call_for_sita() -> void:
 	is_calling = true
 	call_cooldown = 5.0
 
-	if anim_state:
-		anim_state.play("call")
+	# Play call/shout animation
+	if anim_controller:
+		anim_controller.play_action("call")
 
 	# Emit signal (for NPC reactions)
-	call_intensity = randf_range(0.8, 1.0)  # Random emotional intensity
+	call_intensity = randf_range(0.8, 1.0)
 	rama_called.emit(call_intensity)
 
-	# Play audio (will add real voice later)
+	# Play audio
 	_play_call_audio()
 
 	# Duration of call animation

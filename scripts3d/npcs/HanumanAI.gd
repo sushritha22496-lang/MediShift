@@ -28,7 +28,7 @@ var has_met_rama: bool = false
 @onready var anim_player: AnimationPlayer = $Model/AnimationPlayer
 @onready var collision_shape: CollisionShape3D = $CollisionShape3D
 
-var anim_state: AnimationStateMachine
+var anim_controller: SmoothAnimationController
 
 # Signals
 signal rama_detected
@@ -41,17 +41,15 @@ func _ready() -> void:
 	current_state = State.IDLE
 	target_position = global_position
 
-	if anim_player:
-		CharacterAnimationSetup.load_animations_for_player(anim_player, "hanuman_final")
-		anim_state = AnimationStateMachine.new()
-		anim_state.anim_player = anim_player
-		add_child(anim_state)
-		anim_state.play("idle")
-
 	# Load rigged character from Mixamo or fallback to procedural
 	if not RiggedCharacterLoader.load_character(self, "hanuman"):
 		if model:
 			ProfessionalCharacterBuilder.build_hanuman_professional(self)
+
+	# Initialize smooth animation controller
+	anim_controller = SmoothAnimationController.new()
+	add_child(anim_controller)
+	anim_controller.initialize(self)
 
 func _physics_process(delta: float) -> void:
 	if not is_on_floor():
@@ -76,8 +74,8 @@ func _physics_process(delta: float) -> void:
 func _idle_behavior(delta: float) -> void:
 	velocity.x = lerp(velocity.x, 0.0, 5.0 * delta)
 	velocity.z = lerp(velocity.z, 0.0, 5.0 * delta)
-	if anim_state:
-		anim_state.play("idle")
+	if anim_controller:
+		anim_controller.update(velocity, delta)
 
 func _foraging_behavior(delta: float) -> void:
 	if global_position.distance_to(target_position) < 2.0:
@@ -87,10 +85,8 @@ func _foraging_behavior(delta: float) -> void:
 	velocity.z = dir.z * walk_speed
 	if dir.length() > 0.1:
 		model.rotation.y = atan2(dir.x, dir.z)
-		if anim_state:
-			anim_state.play("walk")
-	elif anim_state:
-		anim_state.play("idle")
+	if anim_controller:
+		anim_controller.update(velocity, delta)
 
 func _curious_behavior(delta: float) -> void:
 	velocity.x = lerp(velocity.x, 0.0, 5.0 * delta)
@@ -118,14 +114,14 @@ func _approaching_behavior(delta: float) -> void:
 	velocity.z = dir.z * run_speed
 	if dir.length() > 0.1:
 		model.rotation.y = atan2(dir.x, dir.z)
-		if anim_state:
-			anim_state.play("run")
+	if anim_controller:
+		anim_controller.update(velocity, delta, true)
 
 func _meeting_behavior(delta: float) -> void:
 	velocity.x = lerp(velocity.x, 0.0, 10.0 * delta)
 	velocity.z = lerp(velocity.z, 0.0, 10.0 * delta)
-	if anim_state:
-		anim_state.play("idle")
+	if anim_controller:
+		anim_controller.update(velocity, delta)
 
 func _following_behavior(delta: float) -> void:
 	if not rama:
@@ -138,13 +134,11 @@ func _following_behavior(delta: float) -> void:
 		velocity.z = dir.z * walk_speed
 		if dir.length() > 0.1:
 			model.rotation.y = atan2(dir.x, dir.z)
-			if anim_state:
-				anim_state.play("walk")
 	else:
 		velocity.x = lerp(velocity.x, 0.0, 5.0 * delta)
 		velocity.z = lerp(velocity.z, 0.0, 5.0 * delta)
-		if anim_state:
-			anim_state.play("idle")
+	if anim_controller:
+		anim_controller.update(velocity, delta)
 
 func detect_rama_call(rama_node: Node3D, call_intensity: float) -> void:
 	if has_met_rama:
